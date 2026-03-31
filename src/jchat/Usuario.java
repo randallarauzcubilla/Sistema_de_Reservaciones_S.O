@@ -1,24 +1,26 @@
 package jchat;
 
 /**
- * USUARIO - Modelo de datos de un jugador conectado
- *
- * Almacena la referencia al hilo de comunicación (Flujo),
- * el nombre del jugador y su cartón asignado por el servidor.
+ * USUARIO - Modelo de datos de un cliente conectado
+ * Almacena nombre y rol institucional para prioridad de reservas.
  */
 public class Usuario {
 
-    private final Flujo  flujo;
-    private final String nombre;
-    private final int[][] carton;
+    public enum Rol { ESTUDIANTE, DOCENTE, DECANATURA }
 
-    public Usuario(Flujo flujo, String nombre, int[][] carton) {
-        this.flujo  = flujo;
+    private final String nombre;
+    private final Rol    rol;
+
+    public Usuario(String nombre, Rol rol) {
         this.nombre = nombre;
-        this.carton = carton;
+        this.rol    = rol;
     }
 
-    public Flujo   getFlujo()  { return flujo;  }
-    public String  getNombre() { return nombre; }
-    public int[][] getCarton() { return carton; }
+    public String getNombre() { return nombre; }
+    public Rol    getRol()    { return rol;    }
+
+    @Override
+    public String toString() {
+        return nombre + " [" + rol + "]";
+    }
 }
