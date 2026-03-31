@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  *
- * @author Laboratorio_M
+ * @author KeilorM
  */
 public class Bitacora {
 
