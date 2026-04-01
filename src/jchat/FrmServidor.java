@@ -23,6 +23,8 @@ public class FrmServidor extends JFrame {
 
     // === ESTADO ===
     private boolean servidorActivo = false;
+    private Thread hiloServidor;
+    private Timer timerActualizacion;
 
     // === LABELS ===
     private JLabel lblEstadoValor;
@@ -50,7 +52,7 @@ public class FrmServidor extends JFrame {
         setLocationRelativeTo(null);
         setBackground(BG_DARK);
         initComponents();
-        log("Sistema iniciado. Esperando arranque del servidor...");
+        log("Sistema iniciado. Presione 'Iniciar Servidor' para comenzar.");
     }
 
     private void initComponents() {
@@ -68,7 +70,6 @@ public class FrmServidor extends JFrame {
         sidebar.setBackground(BG_PANEL);
         sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER_COLOR));
 
-        // Logo
         JPanel logoPanel = new JPanel(new GridLayout(2, 1));
         logoPanel.setBackground(BG_PANEL);
         logoPanel.setBorder(new EmptyBorder(28, 20, 20, 20));
@@ -82,40 +83,38 @@ public class FrmServidor extends JFrame {
         logoPanel.add(sub);
         sidebar.add(logoPanel, BorderLayout.NORTH);
 
-        // Cards de estado
         JPanel cards = new JPanel(new GridLayout(4, 1, 0, 10));
         cards.setBackground(BG_PANEL);
         cards.setBorder(new EmptyBorder(10, 12, 10, 12));
 
         lblEstadoValor    = new JLabel("INACTIVO");
-        lblCapacidadValor = new JLabel("0 / 30");
-        lblReservasValor  = new JLabel("0");
-        lblEquipoValor    = new JLabel("3 disponibles");
+        lblCapacidadValor = new JLabel("—");
+        lblReservasValor  = new JLabel("—");
+        lblEquipoValor    = new JLabel("—");
 
         lblEstadoValor.setForeground(ACCENT_RED);
         lblCapacidadValor.setForeground(TEXT_PRIMARY);
         lblReservasValor.setForeground(TEXT_PRIMARY);
         lblEquipoValor.setForeground(TEXT_PRIMARY);
 
-        cards.add(crearCard("Estado del servidor", lblEstadoValor, "●"));
-        cards.add(crearCard("Capacidad actual", lblCapacidadValor, "◈"));
-        cards.add(crearCard("Reservas activas", lblReservasValor, "◉"));
-        cards.add(crearCard("Equipamiento", lblEquipoValor, "◆"));
+        cards.add(crearCard("Estado del servidor", lblEstadoValor,    "●"));
+        cards.add(crearCard("Capacidad libre",      lblCapacidadValor, "◈"));
+        cards.add(crearCard("Reservas activas",     lblReservasValor,  "◉"));
+        cards.add(crearCard("Proyectores libres",   lblEquipoValor,    "◆"));
         sidebar.add(cards, BorderLayout.CENTER);
 
-        // Botones
         JPanel btnPanel = new JPanel(new GridLayout(3, 1, 0, 8));
         btnPanel.setBackground(BG_PANEL);
         btnPanel.setBorder(new EmptyBorder(10, 12, 24, 12));
 
         btnIniciar  = crearBotonSide("▶   Iniciar Servidor", ACCENT_GREEN);
         btnDetener  = crearBotonSide("■   Detener Servidor", ACCENT_RED);
-        btnBitacora = crearBotonSide("≡   Ver Bitácora",     ACCENT_BLUE);
+        btnBitacora = crearBotonSide("≡   Actualizar Vista",  ACCENT_BLUE);
 
         btnDetener.setEnabled(false);
-        btnIniciar.addActionListener(e -> iniciarServidor());
-        btnDetener.addActionListener(e -> detenerServidor());
-        btnBitacora.addActionListener(e -> log("--- Bitácora consultada por administrador ---"));
+        btnIniciar.addActionListener(e  -> iniciarServidor());
+        btnDetener.addActionListener(e  -> detenerServidor());
+        btnBitacora.addActionListener(e -> actualizarVista());
 
         btnPanel.add(btnIniciar);
         btnPanel.add(btnDetener);
@@ -131,11 +130,9 @@ public class FrmServidor extends JFrame {
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER_COLOR, 1),
                 new EmptyBorder(10, 12, 10, 12)));
-
         JLabel lblTit = new JLabel(icon + "  " + titulo);
         lblTit.setFont(new Font("Monospaced", Font.PLAIN, 10));
         lblTit.setForeground(TEXT_MUTED);
-
         valorLabel.setFont(new Font("Monospaced", Font.BOLD, 15));
         card.add(lblTit, BorderLayout.NORTH);
         card.add(valorLabel, BorderLayout.CENTER);
@@ -180,7 +177,7 @@ public class FrmServidor extends JFrame {
     }
 
     private JScrollPane crearPanelTabla() {
-        String[] cols = {"Fecha", "Hora", "Estado", "Asistentes", "Equipo", "TTL restante"};
+        String[] cols = {"ID", "Solicitante", "Fecha", "Hora", "Estado", "Asistentes", "Equipo", "TTL"};
         modeloTabla = new DefaultTableModel(cols, 0) {
             public boolean isCellEditable(int r, int c) { return false; }
         };
@@ -191,6 +188,10 @@ public class FrmServidor extends JFrame {
                 c.setBackground(row % 2 == 0 ? BG_CARD : BG_PANEL);
                 c.setForeground(TEXT_PRIMARY);
                 ((JComponent) c).setBorder(new EmptyBorder(0, 8, 0, 8));
+                Object estado = modeloTabla.getValueAt(row, 4);
+                if ("CONFIRMADA".equals(estado)) c.setForeground(ACCENT_GREEN);
+                else if ("CANCELADA".equals(estado)) c.setForeground(ACCENT_RED);
+                else if ("TEMPORAL".equals(estado))  c.setForeground(ACCENT_BLUE);
                 if (isRowSelected(row)) c.setBackground(new Color(64, 156, 255, 45));
                 return c;
             }
@@ -210,10 +211,6 @@ public class FrmServidor extends JFrame {
         th.setFont(new Font("Monospaced", Font.BOLD, 12));
         th.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, ACCENT_BLUE));
         th.setPreferredSize(new Dimension(0, 36));
-
-        modeloTabla.addRow(new Object[]{"2025-06-10", "09:00", "Confirmada", "15", "Proyector",  "02:30:00"});
-        modeloTabla.addRow(new Object[]{"2025-06-10", "11:00", "Pendiente",  "8",  "Micrófono",  "04:00:00"});
-        modeloTabla.addRow(new Object[]{"2025-06-11", "14:00", "Confirmada", "20", "Sonido",     "01:15:00"});
 
         JScrollPane scroll = new JScrollPane(tablaCalendario);
         scroll.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
@@ -248,33 +245,120 @@ public class FrmServidor extends JFrame {
         return panel;
     }
 
-    // ── ACCIONES ────────────────────────────────────────────
+    // ── ACCIONES REALES ──────────────────────────────────────
     private void iniciarServidor() {
-        servidorActivo = true;
-        lblEstadoValor.setText("ACTIVO");
-        lblEstadoValor.setForeground(ACCENT_GREEN);
-        lblCapacidadValor.setText("3 / 30");
-        lblReservasValor.setText("3");
-        btnIniciar.setEnabled(false);
-        btnDetener.setEnabled(true);
-        log("Servidor INICIADO correctamente en puerto 5000.");
+    servidorActivo = true;
+    lblEstadoValor.setText("ACTIVO");
+    lblEstadoValor.setForeground(ACCENT_GREEN);
+    btnIniciar.setEnabled(false);
+    btnDetener.setEnabled(true);
+    log("Servidor INICIADO en puerto 8000.");
+
+    // ← ESTO ES LO QUE FALTABA: arrancar el socket real en un hilo
+    hiloServidor = new Thread(() -> {
+        try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(8000)) {
+            // Arrancar HiloTTL
+            HiloTTL hiloTTL = new HiloTTL(
+                Servidor.calendario, Servidor.recursos,
+                Servidor.colaTTL, Servidor.bitacora, Servidor.gestor
+            );
+            hiloTTL.setDaemon(true);
+            hiloTTL.start();
+
+            System.out.println("[SERVIDOR] Puerto 8000 abierto, esperando clientes...");
+
+            while (!Thread.currentThread().isInterrupted()) {
+                java.net.Socket clienteSocket = serverSocket.accept();
+                java.io.DataInputStream entrada = new java.io.DataInputStream(
+                    new java.io.BufferedInputStream(clienteSocket.getInputStream()));
+                String idCliente = entrada.readUTF();
+                System.out.println("[SERVIDOR] Cliente: " + idCliente);
+
+                HiloReserva hilo = new HiloReserva(
+                    clienteSocket, idCliente,
+                    Servidor.calendario, Servidor.recursos,
+                    Servidor.colaTTL, Servidor.bitacora, Servidor.gestor
+                );
+                Servidor.clientesConectados.add(hilo);
+                hilo.start();
+            }
+        } catch (java.io.IOException e) {
+            if (servidorActivo) {
+                log("[ERROR] Servidor: " + e.getMessage());
+            }
+        }
+    });
+    hiloServidor.setDaemon(true);
+    hiloServidor.start();
+
+    // Timer que actualiza la vista cada 2 segundos
+    timerActualizacion = new Timer(2000, e -> actualizarVista());
+    timerActualizacion.start();
+    actualizarVista();
+}
+    private void detenerServidor() {
+    servidorActivo = false;
+    if (hiloServidor != null) hiloServidor.interrupt();
+    if (timerActualizacion != null) timerActualizacion.stop();
+
+    lblEstadoValor.setText("INACTIVO");
+    lblEstadoValor.setForeground(ACCENT_RED);
+    lblCapacidadValor.setText("—");
+    lblReservasValor.setText("—");
+    lblEquipoValor.setText("—");
+    btnIniciar.setEnabled(true);
+    btnDetener.setEnabled(false);
+    log("Servidor DETENIDO.");
+}
+
+    private void actualizarVista() {
+    if (!servidorActivo) return;
+
+    // Actualizar cards
+    lblCapacidadValor.setText(Servidor.gestor.capacidadDisponible() + " libres");
+    lblReservasValor.setText(Servidor.calendario.totalReservas() + " activas");
+    lblEquipoValor.setText(Servidor.gestor.proyectoresDisponibles() + " disponibles");
+
+    // Actualizar bitácora
+    java.util.List<String> entradas = Servidor.bitacora.getUltimasEntradas(100);
+    txtBitacora.setText("");
+    for (String e : entradas) {
+        txtBitacora.append(e + "\n");
+    }
+    txtBitacora.setCaretPosition(txtBitacora.getDocument().getLength());
+
+    // ── ACTUALIZAR TABLA CON RESERVAS REALES ──────────────────
+    modeloTabla.setRowCount(0); // limpiar
+
+    // Recorrer todos los clientes conectados y sus reservas
+    for (HiloReserva hilo : Servidor.clientesConectados) {
+        // Buscar reservas de este cliente en el calendario
+        // via la bitácora buscamos por solicitante
     }
 
-    private void detenerServidor() {
-        servidorActivo = false;
-        lblEstadoValor.setText("INACTIVO");
-        lblEstadoValor.setForeground(ACCENT_RED);
-        lblCapacidadValor.setText("0 / 30");
-        lblReservasValor.setText("0");
-        btnIniciar.setEnabled(true);
-        btnDetener.setEnabled(false);
-        log("Servidor DETENIDO por el administrador.");
+    // La forma más directa: exponer las reservas desde el Calendario
+    // Necesitamos un método getTodasLasReservas() en Calendario
+    java.util.List<Reserva> todasReservas = Servidor.calendario.getTodasLasReservas();
+    for (Reserva r : todasReservas) {
+        modeloTabla.addRow(new Object[]{
+            r.getId(),
+            r.getSolicitante(),
+            r.getFecha(),
+            r.getHora(),
+            r.getEstado().toString(),
+            r.getAsistentes(),
+            r.getEquipo().toString(),
+            r.segundosRestantes() + "s"
+        });
     }
+}
 
     public void log(String msg) {
         String t = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-        txtBitacora.append("[" + t + "]  " + msg + "\n");
-        txtBitacora.setCaretPosition(txtBitacora.getDocument().getLength());
+        SwingUtilities.invokeLater(() -> {
+            txtBitacora.append("[" + t + "]  " + msg + "\n");
+            txtBitacora.setCaretPosition(txtBitacora.getDocument().getLength());
+        });
     }
 
     public static void main(String[] args) {
