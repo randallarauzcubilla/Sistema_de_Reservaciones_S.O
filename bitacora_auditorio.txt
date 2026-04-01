@@ -11,3 +11,7 @@
 [01/04/2026 00:00:30] [CONFIRMACION    ] Reserva 4035fd65 confirmada por ANEL
 [01/04/2026 00:02:55] [CANCELACION     ] Reserva 4035fd65 cancelada. Motivo: Cancelado por cliente
 [01/04/2026 00:03:27] [DESCONEXION     ] ANEL desconectado
+[01/04/2026 16:35:18] [SISTEMA         ] Bitácora inicializada
+[01/04/2026 16:35:18] [SISTEMA         ] HiloTTL iniciado
+[01/04/2026 16:35:48] [CONEXION        ] Keilor Muñoz conectado
+[01/04/2026 16:36:01] [DESCONEXION     ] Keilor Muñoz desconectado

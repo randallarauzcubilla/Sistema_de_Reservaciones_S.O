@@ -85,23 +85,23 @@ public class HiloReserva extends Thread {
     }
 
     // SC-02: Reservar temporal — WRITE lock en Calendario + semáforos
-    // ORDEN JERÁRQUICO: R1 (calendario) → R2 (capacidad) → R3 (equipo) → R4 (TTL) → R5 (bitácora)
+    // Protocolo actualizado (FIX 1):
+    // RESERVAR|fecha|horaInicio|horaFin|asistentes|equipo|prioridad
+    //   p[1]    p[2]    p[3]      p[4]    p[5]      p[6]
     private void procesarReserva(String[] p) {
-        // p[1]=fecha, p[2]=hora, p[3]=asistentes, p[4]=equipo, p[5]=prioridad
-        if (p.length < 5) { responder("ERROR|PARAMETROS_INSUFICIENTES"); return; }
+        if (p.length < 6) { responder("ERROR|PARAMETROS_INSUFICIENTES"); return; }
 
         try {
-            String fecha     = p[1];
+            String fecha      = p[1];
             String horaInicio = p[2];
-            String horaFin   = p[2]; // misma hora como fin si no se especifica
-            int asistentes   = Integer.parseInt(p[3]);
-            Reserva.Equipo equipo = Reserva.Equipo.valueOf(p[4]);
+            String horaFin    = p[3];                        // FIX 1 — viene del cliente
+            int asistentes    = Integer.parseInt(p[4]);      // FIX 1 — índice subió
+            Reserva.Equipo equipo = Reserva.Equipo.valueOf(p[5]); // FIX 1 — índice subió
             Reserva.Prioridad prioridad = Reserva.Prioridad.ESTUDIANTE;
 
-            // Parsear prioridad si viene en p[5]
-            if (p.length >= 6) {
+            if (p.length >= 7) {                             // FIX 1 — índice subió
                 try {
-                    prioridad = Reserva.Prioridad.valueOf(p[5]);
+                    prioridad = Reserva.Prioridad.valueOf(p[6]);
                 } catch (IllegalArgumentException ignored) {}
             }
 
@@ -120,7 +120,6 @@ public class HiloReserva extends Thread {
             }
 
             // SC-02: Reservar en calendario (WRITE lock interno)
-            // Adquiere R1 → R2 → R3 en orden jerárquico
             Reserva reserva = calendario.reservarTemporal(
                 idCliente, fecha, horaInicio, horaFin,
                 asistentes, equipo, prioridad
@@ -138,7 +137,6 @@ public class HiloReserva extends Thread {
             // R5: Registrar en bitácora
             bitacora.logReserva(reserva);
 
-            // Responder con ID y TTL restante
             responder("OK|TEMPORAL|" + reserva.getIdReserva() + "|TTL:" + reserva.segundosRestantes());
             System.out.println("[HILO] Reserva temporal creada: " + reserva.getIdReserva());
 
@@ -152,10 +150,8 @@ public class HiloReserva extends Thread {
     // SC-03: Confirmar reserva — WRITE lock en Calendario
     private void procesarConfirmacion(String[] p) {
         if (p.length < 2) { responder("ERROR|PARAMETROS_INSUFICIENTES"); return; }
-        // p[1]=idReserva
         String idReserva = p[1];
 
-        // Verificar que la reserva pertenece a este cliente
         Reserva reserva = calendario.getReservaPorId(idReserva);
         if (reserva == null) {
             responder("ERROR|RESERVA_NO_ENCONTRADA");
@@ -171,10 +167,8 @@ public class HiloReserva extends Thread {
             return;
         }
 
-        // SC-03: Confirmar en calendario (WRITE lock interno)
         boolean confirmado = calendario.confirmarReserva(idReserva);
         if (confirmado) {
-            // Remover de cola TTL — ya no necesita expirar
             colaTTL.remover(idReserva);
             bitacora.logConfirmacion(reserva);
             responder("OK|CONFIRMADO|" + idReserva);
@@ -187,7 +181,6 @@ public class HiloReserva extends Thread {
     // SC-04: Cancelar reserva — WRITE lock en Calendario + liberar semáforos
     private void procesarCancelacion(String[] p) {
         if (p.length < 2) { responder("ERROR|PARAMETROS_INSUFICIENTES"); return; }
-        // p[1]=idReserva
         String idReserva = p[1];
 
         Reserva reserva = calendario.getReservaPorId(idReserva);
@@ -200,10 +193,8 @@ public class HiloReserva extends Thread {
             return;
         }
 
-        // SC-04: Cancelar en calendario (WRITE lock + libera R2 y R3 internamente)
         boolean cancelado = calendario.cancelarReserva(idReserva);
         if (cancelado) {
-            // Remover de cola TTL
             colaTTL.remover(idReserva);
             bitacora.logCancelacion(reserva, "Cancelado por cliente");
             responder("OK|CANCELADO|" + idReserva);

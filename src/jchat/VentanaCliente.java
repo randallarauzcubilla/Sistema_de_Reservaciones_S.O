@@ -38,6 +38,7 @@ public class VentanaCliente extends JFrame {
     // === FORMULARIO ===
     private JTextField txtFecha;
     private JTextField txtHora;
+    private JTextField txtHoraFin;       // FIX 1 — nueva variable
     private JTextField txtAsistentes;
     private JComboBox<String> cmbEquipamiento;
     private JButton btnReservar;
@@ -162,6 +163,7 @@ public class VentanaCliente extends JFrame {
         g.fill = GridBagConstraints.HORIZONTAL;
         g.insets = new Insets(5, 8, 5, 8);
 
+        // Fila 0: Fecha | Hora Inicio
         g.gridx = 0; g.gridy = 0; g.weightx = 0.3;
         card.add(etiqueta("Fecha (YYYY-MM-DD)"), g);
         g.gridx = 1;
@@ -169,11 +171,12 @@ public class VentanaCliente extends JFrame {
         card.add(txtFecha, g);
 
         g.gridx = 2;
-        card.add(etiqueta("Hora (HH:mm)"), g);
+        card.add(etiqueta("Hora Inicio (HH:mm)"), g);   // FIX 1 — renombrado
         g.gridx = 3;
         txtHora = crearCampo("09:00");
         card.add(txtHora, g);
 
+        // Fila 1: N° Asistentes | Equipamiento
         g.gridx = 0; g.gridy = 1;
         card.add(etiqueta("N° Asistentes"), g);
         g.gridx = 1;
@@ -189,7 +192,15 @@ public class VentanaCliente extends JFrame {
         estilizarCombo(cmbEquipamiento);
         card.add(cmbEquipamiento, g);
 
-        g.gridx = 0; g.gridy = 2; g.insets = new Insets(14, 8, 5, 8);
+        // Fila 2: Hora Fin (nueva) + botones        FIX 1
+        g.gridx = 0; g.gridy = 2;
+        card.add(etiqueta("Hora Fin (HH:mm)"), g);
+        g.gridx = 1;
+        txtHoraFin = crearCampo("10:00");
+        card.add(txtHoraFin, g);
+
+        // Fila 3: botones
+        g.gridx = 0; g.gridy = 3; g.insets = new Insets(14, 8, 5, 8);
         btnReservar  = crearBotonPrimario("📅  Reservar",  ACCENT_BLUE);
         btnConfirmar = crearBotonPrimario("✔  Confirmar", ACCENT_GREEN);
         btnCancelar  = crearBotonPrimario("✖  Cancelar",  ACCENT_RED);
@@ -297,11 +308,9 @@ public class VentanaCliente extends JFrame {
             entrada = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
             salida  = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
 
-            // Enviar ID al servidor (protocolo de HiloReserva)
             salida.writeUTF(nombre);
             salida.flush();
 
-            // Leer confirmación del servidor: "OK|CONECTADO"
             String respuesta = entrada.readUTF();
             if (!respuesta.startsWith("OK")) {
                 notify("❌ Servidor rechazó la conexión: " + respuesta);
@@ -319,7 +328,6 @@ public class VentanaCliente extends JFrame {
             notify("Servidor listo. Puede realizar su reserva.");
             setTitle("VentanaCliente — " + nombre);
 
-            // Hilo que escucha mensajes del servidor en background
             Thread hiloEscucha = new Thread(this::escucharServidor);
             hiloEscucha.setDaemon(true);
             hiloEscucha.start();
@@ -348,11 +356,9 @@ public class VentanaCliente extends JFrame {
         String[] partes = msg.split("\\|");
 
         if (partes[0].equals("OK") && partes.length >= 3 && partes[1].equals("TEMPORAL")) {
-            // OK|TEMPORAL|RSV-0001|TTL:30
             String id  = partes[2];
             String ttl = partes.length >= 4 ? partes[3] : "?";
             ultimaReservaId = id;
-            // Buscar la fila pendiente y actualizar su ID y estado
             for (int i = 0; i < modeloReservas.getRowCount(); i++) {
                 if ("ENVIANDO...".equals(modeloReservas.getValueAt(i, 3))) {
                     modeloReservas.setValueAt(id,        i, 0);
@@ -385,22 +391,22 @@ public class VentanaCliente extends JFrame {
     // ── ACCIONES ─────────────────────────────────────────────
     private void reservar() {
         if (!conectado) return;
-        String fecha  = txtFecha.getText().trim();
-        String hora   = txtHora.getText().trim();
-        String asis   = txtAsistentes.getText().trim();
-        String equipo = (String) cmbEquipamiento.getSelectedItem();
-        String rol    = (String) cmbRol.getSelectedItem();
+        String fecha    = txtFecha.getText().trim();
+        String hora     = txtHora.getText().trim();
+        String horaFin  = txtHoraFin.getText().trim();   // FIX 1 — leer campo nuevo
+        String asis     = txtAsistentes.getText().trim();
+        String equipo   = (String) cmbEquipamiento.getSelectedItem();
+        String rol      = (String) cmbRol.getSelectedItem();
 
-        if (fecha.isEmpty() || hora.isEmpty() || asis.isEmpty()) {
+        if (fecha.isEmpty() || hora.isEmpty() || horaFin.isEmpty() || asis.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Complete todos los campos.", "Campos vacíos", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        // Agregar fila temporal mientras espera respuesta
         modeloReservas.addRow(new Object[]{"...", fecha, hora, "ENVIANDO...", "..."});
 
-        // Enviar al servidor: RESERVAR|fecha|hora|asistentes|equipo|prioridad
-        enviar("RESERVAR|" + fecha + "|" + hora + "|" + asis + "|" + equipo + "|" + rol);
+        // FIX 1 — incluir horaFin en el protocolo: RESERVAR|fecha|horaInicio|horaFin|asistentes|equipo|rol
+        enviar("RESERVAR|" + fecha + "|" + hora + "|" + horaFin + "|" + asis + "|" + equipo + "|" + rol);
     }
 
     private void confirmarReserva() {
@@ -444,9 +450,13 @@ public class VentanaCliente extends JFrame {
     }
 
     private void activarFormulario(boolean on) {
-        txtFecha.setEnabled(on); txtHora.setEnabled(on);
-        txtAsistentes.setEnabled(on); cmbEquipamiento.setEnabled(on);
-        btnReservar.setEnabled(on); btnConfirmar.setEnabled(on);
+        txtFecha.setEnabled(on);
+        txtHora.setEnabled(on);
+        txtHoraFin.setEnabled(on);          // FIX 1 — habilitar/deshabilitar junto al resto
+        txtAsistentes.setEnabled(on);
+        cmbEquipamiento.setEnabled(on);
+        btnReservar.setEnabled(on);
+        btnConfirmar.setEnabled(on);
         btnCancelar.setEnabled(on);
     }
 
