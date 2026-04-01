@@ -257,10 +257,9 @@ public class FrmServidor extends JFrame {
     // ← ESTO ES LO QUE FALTABA: arrancar el socket real en un hilo
     hiloServidor = new Thread(() -> {
         try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(8000)) {
-            // Arrancar HiloTTL
             HiloTTL hiloTTL = new HiloTTL(
                 Servidor.calendario, Servidor.recursos,
-                Servidor.colaTTL, Servidor.bitacora, Servidor.gestor
+                Servidor.colaTTL, Servidor.bitacora
             );
             hiloTTL.setDaemon(true);
             hiloTTL.start();
@@ -277,7 +276,7 @@ public class FrmServidor extends JFrame {
                 HiloReserva hilo = new HiloReserva(
                     clienteSocket, idCliente,
                     Servidor.calendario, Servidor.recursos,
-                    Servidor.colaTTL, Servidor.bitacora, Servidor.gestor
+                    Servidor.colaTTL, Servidor.bitacora
                 );
                 Servidor.clientesConectados.add(hilo);
                 hilo.start();
@@ -320,7 +319,7 @@ public class FrmServidor extends JFrame {
     lblEquipoValor.setText(Servidor.gestor.proyectoresDisponibles() + " disponibles");
 
     // Actualizar bitácora
-    java.util.List<String> entradas = Servidor.bitacora.getUltimasEntradas(100);
+    java.util.List<String> entradas = Servidor.bitacora.getUltimas(100);
     txtBitacora.setText("");
     for (String e : entradas) {
         txtBitacora.append(e + "\n");
@@ -336,17 +335,16 @@ public class FrmServidor extends JFrame {
         // via la bitácora buscamos por solicitante
     }
 
-    // La forma más directa: exponer las reservas desde el Calendario
-    // Necesitamos un método getTodasLasReservas() en Calendario
+    
     java.util.List<Reserva> todasReservas = Servidor.calendario.getTodasLasReservas();
     for (Reserva r : todasReservas) {
         modeloTabla.addRow(new Object[]{
-            r.getId(),
-            r.getSolicitante(),
+            r.getIdReserva(),       
+            r.getIdCliente(),        
             r.getFecha(),
-            r.getHora(),
+            r.getHoraInicio() + "-" + r.getHoraFin(), 
             r.getEstado().toString(),
-            r.getAsistentes(),
+            r.getCantAsistentes(),   
             r.getEquipo().toString(),
             r.segundosRestantes() + "s"
         });

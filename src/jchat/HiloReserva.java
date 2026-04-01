@@ -48,14 +48,26 @@ public class HiloReserva extends Thread {
                 String[] partes = mensaje.split("\\|");
                 String comando = partes[0];
 
-                switch (comando) {
-                    case "CONSULTAR" -> procesarConsulta(partes);
-                    case "RESERVAR"  -> procesarReserva(partes);
-                    case "CONFIRMAR" -> procesarConfirmacion(partes);
-                    case "CANCELAR"  -> procesarCancelacion(partes);
-                    case "ESTADO"    -> procesarEstado(partes);
-                    default -> responder("ERROR|COMANDO_DESCONOCIDO");
-                }
+                    switch (comando) {
+                        case "CONSULTAR":
+                            procesarConsulta(partes);
+                            break;
+                        case "RESERVAR":
+                            procesarReserva(partes);
+                            break;
+                        case "CONFIRMAR":
+                            procesarConfirmacion(partes);
+                            break;
+                        case "CANCELAR":
+                            procesarCancelacion(partes);
+                            break;
+                        case "ESTADO":
+                            procesarEstado(partes);
+                            break;
+                        default:
+                            responder("ERROR|COMANDO_DESCONOCIDO");
+                            break;
+                    }
 
             } catch (IOException e) {
                 Servidor.clientesConectados.remove(this);

@@ -1,0 +1,6 @@
+[31/03/2026 22:55:44] [SISTEMA         ] Bitácora inicializada
+[31/03/2026 22:55:44] [SISTEMA         ] HiloTTL iniciado
+[31/03/2026 22:56:34] [SISTEMA         ] Bitácora inicializada
+[31/03/2026 22:56:34] [SISTEMA         ] HiloTTL iniciado
+[31/03/2026 22:56:46] [CONEXION        ] Keilor Muñoz conectado
+[31/03/2026 22:57:24] [DESCONEXION     ] Keilor Muñoz desconectado

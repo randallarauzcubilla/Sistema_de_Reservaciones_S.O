@@ -154,4 +154,17 @@ public class Calendario {
             gestor.lockLecturaCalendario().unlock();
         }
     }
+
+    public List<Reserva> getTodasLasReservas() {
+        gestor.lockLecturaCalendario().lock();
+        try {
+            return new ArrayList<>(franjas.values());
+        } finally {
+            gestor.lockLecturaCalendario().unlock();
+        }
+    }
+
+    public int totalReservas() {
+        return totalReservasActivas(); 
+    }
 }
