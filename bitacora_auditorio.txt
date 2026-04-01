@@ -4,3 +4,10 @@
 [31/03/2026 22:56:34] [SISTEMA         ] HiloTTL iniciado
 [31/03/2026 22:56:46] [CONEXION        ] Keilor Muñoz conectado
 [31/03/2026 22:57:24] [DESCONEXION     ] Keilor Muñoz desconectado
+[31/03/2026 23:56:58] [SISTEMA         ] Bitácora inicializada
+[31/03/2026 23:56:58] [SISTEMA         ] HiloTTL iniciado
+[31/03/2026 23:58:42] [CONEXION        ] ANEL conectado
+[01/04/2026 00:00:01] [RESERVA_TEMPORAL] [4035fd65] ANEL | 2025-04-01 12:00-12:00 | 1 personas | PROYECTOR | RESERVADO_TEMPORAL | TTL: 29s
+[01/04/2026 00:00:30] [CONFIRMACION    ] Reserva 4035fd65 confirmada por ANEL
+[01/04/2026 00:02:55] [CANCELACION     ] Reserva 4035fd65 cancelada. Motivo: Cancelado por cliente
+[01/04/2026 00:03:27] [DESCONEXION     ] ANEL desconectado
