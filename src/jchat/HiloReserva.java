@@ -103,7 +103,7 @@ public class HiloReserva extends Thread {
     }
 
     private void procesarEstado(String[] p) {
-        // p[1]=idReserva
+        
         responder("OK|ESTADO_PENDIENTE");
     }
 
