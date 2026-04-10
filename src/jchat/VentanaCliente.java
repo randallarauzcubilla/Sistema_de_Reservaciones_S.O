@@ -34,6 +34,7 @@ public class VentanaCliente extends JFrame {
     private JTextField txtNombre;
     private JComboBox<String> cmbRol;
     private JButton btnConectar;
+    private JLabel lblEstadoConexion;
 
     // === FORMULARIO ===
     private JTextField txtFecha;
@@ -113,7 +114,7 @@ public class VentanaCliente extends JFrame {
 
         formLogin.add(etiqueta("Nombre"), g);
         g.gridy++;
-        txtNombre = crearCampo("Tu nombre completo");
+        txtNombre = crearCampo("Tu_nombre_completo");
         formLogin.add(txtNombre, g);
 
         g.gridy++;
@@ -132,12 +133,12 @@ public class VentanaCliente extends JFrame {
         formLogin.add(btnConectar, g);
 
         sidebar.add(formLogin, BorderLayout.CENTER);
-
-        JLabel pie = new JLabel("Sin conexión al servidor", SwingConstants.CENTER);
-        pie.setFont(new Font("Monospaced", Font.ITALIC, 10));
-        pie.setForeground(TEXT_MUTED);
-        pie.setBorder(new EmptyBorder(0, 0, 20, 0));
-        sidebar.add(pie, BorderLayout.SOUTH);
+        
+        lblEstadoConexion = new JLabel("Sin conexión al servidor", SwingConstants.CENTER);
+        lblEstadoConexion.setFont(new Font("Monospaced", Font.ITALIC, 10));
+        lblEstadoConexion.setForeground(TEXT_MUTED);
+        lblEstadoConexion.setBorder(new EmptyBorder(0, 0, 20, 0));
+        sidebar.add(lblEstadoConexion, BorderLayout.SOUTH);
 
         return sidebar;
     }
@@ -167,13 +168,13 @@ public class VentanaCliente extends JFrame {
         g.gridx = 0; g.gridy = 0; g.weightx = 0.3;
         card.add(etiqueta("Fecha (YYYY-MM-DD)"), g);
         g.gridx = 1;
-        txtFecha = crearCampo("2025-06-10");
+        txtFecha = crearCampo("YYYY-MM-DD");
         card.add(txtFecha, g);
 
         g.gridx = 2;
         card.add(etiqueta("Hora Inicio (HH:mm)"), g);   // FIX 1 — renombrado
         g.gridx = 3;
-        txtHora = crearCampo("09:00");
+        txtHora = crearCampo("HH:mm");
         card.add(txtHora, g);
 
         // Fila 1: N° Asistentes | Equipamiento
@@ -196,7 +197,7 @@ public class VentanaCliente extends JFrame {
         g.gridx = 0; g.gridy = 2;
         card.add(etiqueta("Hora Fin (HH:mm)"), g);
         g.gridx = 1;
-        txtHoraFin = crearCampo("10:00");
+        txtHoraFin = crearCampo("HH:mm");
         card.add(txtHoraFin, g);
 
         // Fila 3: botones
@@ -318,6 +319,8 @@ public class VentanaCliente extends JFrame {
             }
 
             conectado = true;
+            lblEstadoConexion.setText("● Conectado");
+            lblEstadoConexion.setForeground(ACCENT_GREEN);
             panelDerecho.setVisible(true);
             activarFormulario(true);
             btnConectar.setEnabled(false);
@@ -339,17 +342,35 @@ public class VentanaCliente extends JFrame {
         }
     }
 
-    // ── ESCUCHAR RESPUESTAS DEL SERVIDOR ─────────────────────
+    // ── ESCUCHAR RESPUESTAS DEL SERVIDOR ─────────────────────    
     private void escucharServidor() {
-        try {
-            while (true) {
-                String msg = entrada.readUTF();
-                SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
-            }
-        } catch (IOException e) {
-            SwingUtilities.invokeLater(() -> notify("⚠ Conexión con el servidor perdida."));
+    try {
+        while (true) {
+            String msg = entrada.readUTF();
+            SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
         }
+    } catch (IOException e) {
+        SwingUtilities.invokeLater(() -> {
+            notify("⚠ Conexión con el servidor perdida.");
+            desconectar();
+        });
     }
+}
+    
+    private void desconectar() {
+    conectado = false;
+    activarFormulario(false);
+    btnConectar.setEnabled(true);
+    txtNombre.setEditable(true);
+    cmbRol.setEnabled(true);
+    panelDerecho.setVisible(false);
+    lblEstadoConexion.setText("Sin conexión al servidor");
+    lblEstadoConexion.setForeground(TEXT_MUTED);
+    setTitle("VentanaCliente — Sistema de Reservas");
+    try {
+        if (socket != null && !socket.isClosed()) socket.close();
+    } catch (IOException ignored) {}
+}
 
     private void procesarRespuesta(String msg) {
         notify("← " + msg);
@@ -375,6 +396,9 @@ public class VentanaCliente extends JFrame {
             actualizarEstadoTabla(id, "CANCELADA");
         } else if (partes[0].equals("ERROR")) {
             notify("❌ Error del servidor: " + (partes.length > 1 ? partes[1] : "desconocido"));
+            if (partes.length > 1 && partes[1].equals("SERVIDOR_DETENIDO")) {
+                desconectar();
+            }
         }
     }
 
@@ -468,17 +492,36 @@ public class VentanaCliente extends JFrame {
     }
 
     private JTextField crearCampo(String placeholder) {
-        JTextField f = new JTextField(placeholder);
-        f.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        f.setBackground(BG_DARK);
-        f.setForeground(TEXT_PRIMARY);
-        f.setCaretColor(ACCENT_BLUE);
-        f.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
-                new EmptyBorder(6, 10, 6, 10)));
-        f.setPreferredSize(new Dimension(0, 34));
-        return f;
-    }
+    JTextField f = new JTextField(placeholder);
+    f.setFont(new Font("Monospaced", Font.PLAIN, 12));
+    f.setBackground(BG_DARK);
+    f.setForeground(TEXT_MUTED); // color gris para placeholder
+    f.setCaretColor(ACCENT_BLUE);
+    f.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER_COLOR, 1),
+            new EmptyBorder(6, 10, 6, 10)));
+    f.setPreferredSize(new Dimension(0, 34));
+
+    // ── Comportamiento placeholder ──
+    f.addFocusListener(new FocusAdapter() {
+        @Override
+        public void focusGained(FocusEvent e) {
+            if (f.getText().equals(placeholder)) {
+                f.setText("");
+                f.setForeground(TEXT_PRIMARY);
+            }
+        }
+        @Override
+        public void focusLost(FocusEvent e) {
+            if (f.getText().isEmpty()) {
+                f.setText(placeholder);
+                f.setForeground(TEXT_MUTED);
+            }
+        }
+    });
+
+    return f;
+}
 
     private void estilizarCombo(JComboBox<?> combo) {
         combo.setFont(new Font("Monospaced", Font.PLAIN, 12));
