@@ -5,8 +5,11 @@ import javax.swing.border.*;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class FrmServidor extends JFrame {
 
@@ -25,6 +28,7 @@ public class FrmServidor extends JFrame {
     private boolean servidorActivo = false;
     private Thread hiloServidor;
     private Timer timerActualizacion;
+    private java.net.ServerSocket serverSocketRef;
 
     // === LABELS ===
     private JLabel lblEstadoValor;
@@ -254,9 +258,10 @@ public class FrmServidor extends JFrame {
     btnDetener.setEnabled(true);
     log("Servidor INICIADO en puerto 8000.");
 
-    // ← ESTO ES LO QUE FALTABA: arrancar el socket real en un hilo
     hiloServidor = new Thread(() -> {
-        try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(8000)) {
+        try {
+            serverSocketRef = new java.net.ServerSocket(8000);
+
             HiloTTL hiloTTL = new HiloTTL(
                 Servidor.calendario, Servidor.recursos,
                 Servidor.colaTTL, Servidor.bitacora
@@ -267,7 +272,7 @@ public class FrmServidor extends JFrame {
             System.out.println("[SERVIDOR] Puerto 8000 abierto, esperando clientes...");
 
             while (!Thread.currentThread().isInterrupted()) {
-                java.net.Socket clienteSocket = serverSocket.accept();
+                java.net.Socket clienteSocket = serverSocketRef.accept();
                 java.io.DataInputStream entrada = new java.io.DataInputStream(
                     new java.io.BufferedInputStream(clienteSocket.getInputStream()));
                 String idCliente = entrada.readUTF();
@@ -290,12 +295,28 @@ public class FrmServidor extends JFrame {
     hiloServidor.setDaemon(true);
     hiloServidor.start();
 
-    // Timer que actualiza la vista cada 2 segundos
     timerActualizacion = new Timer(2000, e -> actualizarVista());
     timerActualizacion.start();
     actualizarVista();
 }
     private void detenerServidor() {
+        
+    // Cerrar ServerSocket — fuerza salida del accept()
+    if (serverSocketRef != null && !serverSocketRef.isClosed()) {
+        try { serverSocketRef.close(); } catch (java.io.IOException ignored) {}
+    }
+
+    // Notificar y desconectar clientes
+    synchronized (Servidor.clientesConectados) {
+        for (HiloReserva hilo : Servidor.clientesConectados) {
+            try {
+                hilo.flujoEscritura.writeUTF("ERROR|SERVIDOR_DETENIDO");
+                hilo.flujoEscritura.flush();
+            } catch (java.io.IOException ignored) {}
+        }
+        Servidor.clientesConectados.clear();
+    }    
+      
     servidorActivo = false;
     if (hiloServidor != null) hiloServidor.interrupt();
     if (timerActualizacion != null) timerActualizacion.stop();
