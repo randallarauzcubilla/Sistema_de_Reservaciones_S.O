@@ -25,6 +25,7 @@ public class FrmServidor extends JFrame {
     private boolean servidorActivo = false;
     private Thread hiloServidor;
     private Timer timerActualizacion;
+    private java.net.ServerSocket serverSocketActivo; // ← referencia para cerrarlo
 
     // === LABELS ===
     private JLabel lblEstadoValor;
@@ -247,119 +248,119 @@ public class FrmServidor extends JFrame {
 
     // ── ACCIONES REALES ──────────────────────────────────────
     private void iniciarServidor() {
-    servidorActivo = true;
-    lblEstadoValor.setText("ACTIVO");
-    lblEstadoValor.setForeground(ACCENT_GREEN);
-    btnIniciar.setEnabled(false);
-    btnDetener.setEnabled(true);
-    log("Servidor INICIADO en puerto 8000.");
+        servidorActivo = true;
+        lblEstadoValor.setText("ACTIVO");
+        lblEstadoValor.setForeground(ACCENT_GREEN);
+        btnIniciar.setEnabled(false);
+        btnDetener.setEnabled(true);
+        log("Servidor INICIADO en puerto 8000.");
 
-    // ← ESTO ES LO QUE FALTABA: arrancar el socket real en un hilo
-    hiloServidor = new Thread(() -> {
-        try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(8000)) {
-            HiloTTL hiloTTL = new HiloTTL(
-                Servidor.calendario, Servidor.recursos,
-                Servidor.colaTTL, Servidor.bitacora
-            );
-            hiloTTL.setDaemon(true);
-            hiloTTL.start();
+        hiloServidor = new Thread(() -> {
+            try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(8000)) {
+                serverSocketActivo = serverSocket; // ← guardar referencia global
 
-            System.out.println("[SERVIDOR] Puerto 8000 abierto, esperando clientes...");
-
-            while (!Thread.currentThread().isInterrupted()) {
-                java.net.Socket clienteSocket = serverSocket.accept();
-                java.io.DataInputStream entrada = new java.io.DataInputStream(
-                    new java.io.BufferedInputStream(clienteSocket.getInputStream()));
-                String idCliente = entrada.readUTF();
-                System.out.println("[SERVIDOR] Cliente: " + idCliente);
-
-                HiloReserva hilo = new HiloReserva(
-                    clienteSocket, idCliente,
+                HiloTTL hiloTTL = new HiloTTL(
                     Servidor.calendario, Servidor.recursos,
                     Servidor.colaTTL, Servidor.bitacora
                 );
-                Servidor.clientesConectados.add(hilo);
-                hilo.start();
-            }
-        } catch (java.io.IOException e) {
-            if (servidorActivo) {
-                log("[ERROR] Servidor: " + e.getMessage());
-            }
-        }
-    });
-    hiloServidor.setDaemon(true);
-    hiloServidor.start();
+                hiloTTL.setDaemon(true);
+                hiloTTL.start();
 
-    // Timer que actualiza la vista cada 2 segundos
-    timerActualizacion = new Timer(2000, e -> actualizarVista());
-    timerActualizacion.start();
-    actualizarVista();
-}
-  private void detenerServidor() {
-    servidorActivo = false;
-    if (hiloServidor != null) hiloServidor.interrupt();
-    if (timerActualizacion != null) timerActualizacion.stop();
+                System.out.println("[SERVIDOR] Puerto 8000 abierto, esperando clientes...");
 
-    // Cerrar todos los sockets de clientes conectados
-    // Esto dispara IOException en el hilo de escucha de cada VentanaCliente
-    // lo que activa manejarDesconexion() en cada cliente
-    for (HiloReserva hilo : Servidor.clientesConectados) {
-        try {
-            hilo.flujoEscritura.close(); // fuerza IOException en el cliente
-        } catch (Exception ignored) {}
+                while (!Thread.currentThread().isInterrupted() && !serverSocket.isClosed()) {
+                    java.net.Socket clienteSocket = serverSocket.accept();
+                    java.io.DataInputStream entrada = new java.io.DataInputStream(
+                        new java.io.BufferedInputStream(clienteSocket.getInputStream()));
+                    String idCliente = entrada.readUTF();
+                    System.out.println("[SERVIDOR] Cliente: " + idCliente);
+
+                    HiloReserva hilo = new HiloReserva(
+                        clienteSocket, idCliente,
+                        Servidor.calendario, Servidor.recursos,
+                        Servidor.colaTTL, Servidor.bitacora
+                    );
+                    Servidor.clientesConectados.add(hilo);
+                    hilo.start();
+                }
+            } catch (java.io.IOException e) {
+                if (servidorActivo) {
+                    log("[ERROR] Servidor: " + e.getMessage());
+                }
+                // Si servidorActivo == false significa que fue cierre intencional, ignorar
+            }
+        });
+        hiloServidor.setDaemon(true);
+        hiloServidor.start();
+
+        timerActualizacion = new Timer(2000, e -> actualizarVista());
+        timerActualizacion.start();
+        actualizarVista();
     }
-    Servidor.clientesConectados.clear();
 
-    lblEstadoValor.setText("INACTIVO");
-    lblEstadoValor.setForeground(ACCENT_RED);
-    lblCapacidadValor.setText("—");
-    lblReservasValor.setText("—");
-    lblEquipoValor.setText("—");
-    btnIniciar.setEnabled(true);
-    btnDetener.setEnabled(false);
-    log("Servidor DETENIDO.");
-}
+    private void detenerServidor() {
+        servidorActivo = false;
+        if (timerActualizacion != null) timerActualizacion.stop();
+
+        // 1. Cerrar el socket de cada cliente conectado (libera el puerto y
+        //    dispara IOException en el hilo de escucha de cada VentanaCliente)
+        for (HiloReserva hilo : Servidor.clientesConectados) {
+            try {
+                hilo.socket.close(); // ← cierra el Socket completo, no solo el stream
+            } catch (Exception ignored) {}
+        }
+        Servidor.clientesConectados.clear();
+
+        // 2. Cerrar el ServerSocket — libera el puerto 8000 completamente en el SO
+        try {
+            if (serverSocketActivo != null && !serverSocketActivo.isClosed()) {
+                serverSocketActivo.close();
+            }
+        } catch (Exception ignored) {}
+        serverSocketActivo = null;
+
+        // 3. Interrumpir el hilo (ya saldrá solo por el cierre del ServerSocket)
+        if (hiloServidor != null) hiloServidor.interrupt();
+
+        lblEstadoValor.setText("INACTIVO");
+        lblEstadoValor.setForeground(ACCENT_RED);
+        lblCapacidadValor.setText("—");
+        lblReservasValor.setText("—");
+        lblEquipoValor.setText("—");
+        btnIniciar.setEnabled(true);
+        btnDetener.setEnabled(false);
+        log("Servidor DETENIDO.");
+    }
 
     private void actualizarVista() {
-    if (!servidorActivo) return;
+        if (!servidorActivo) return;
 
-    // Actualizar cards
-    lblCapacidadValor.setText(Servidor.gestor.capacidadDisponible() + " libres");
-    lblReservasValor.setText(Servidor.calendario.totalReservas() + " activas");
-    lblEquipoValor.setText(Servidor.gestor.proyectoresDisponibles() + " disponibles");
+        lblCapacidadValor.setText(Servidor.gestor.capacidadDisponible() + " libres");
+        lblReservasValor.setText(Servidor.calendario.totalReservas() + " activas");
+        lblEquipoValor.setText(Servidor.gestor.proyectoresDisponibles() + " disponibles");
 
-    // Actualizar bitácora
-    java.util.List<String> entradas = Servidor.bitacora.getUltimas(100);
-    txtBitacora.setText("");
-    for (String e : entradas) {
-        txtBitacora.append(e + "\n");
+        java.util.List<String> entradas = Servidor.bitacora.getUltimas(100);
+        txtBitacora.setText("");
+        for (String e : entradas) {
+            txtBitacora.append(e + "\n");
+        }
+        txtBitacora.setCaretPosition(txtBitacora.getDocument().getLength());
+
+        modeloTabla.setRowCount(0);
+        java.util.List<Reserva> todasReservas = Servidor.calendario.getTodasLasReservas();
+        for (Reserva r : todasReservas) {
+            modeloTabla.addRow(new Object[]{
+                r.getIdReserva(),
+                r.getIdCliente(),
+                r.getFecha(),
+                r.getHoraInicio() + "-" + r.getHoraFin(),
+                r.getEstado().toString(),
+                r.getCantAsistentes(),
+                r.getEquipo().toString(),
+                r.segundosRestantes() + "s"
+            });
+        }
     }
-    txtBitacora.setCaretPosition(txtBitacora.getDocument().getLength());
-
-    // ── ACTUALIZAR TABLA CON RESERVAS REALES ──────────────────
-    modeloTabla.setRowCount(0); // limpiar
-
-    // Recorrer todos los clientes conectados y sus reservas
-    for (HiloReserva hilo : Servidor.clientesConectados) {
-        // Buscar reservas de este cliente en el calendario
-        // via la bitácora buscamos por solicitante
-    }
-
-    
-    java.util.List<Reserva> todasReservas = Servidor.calendario.getTodasLasReservas();
-    for (Reserva r : todasReservas) {
-        modeloTabla.addRow(new Object[]{
-            r.getIdReserva(),       
-            r.getIdCliente(),        
-            r.getFecha(),
-            r.getHoraInicio() + "-" + r.getHoraFin(), 
-            r.getEstado().toString(),
-            r.getCantAsistentes(),   
-            r.getEquipo().toString(),
-            r.segundosRestantes() + "s"
-        });
-    }
-}
 
     public void log(String msg) {
         String t = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));

@@ -60,3 +60,30 @@
 [17/04/2026 22:21:07] [CONFIRMACION    ] Reserva d19c8310 confirmada por Marvin
 [17/04/2026 22:27:12] [DESCONEXION     ] Marvin desconectado
 [17/04/2026 22:27:17] [SISTEMA         ] HiloTTL iniciado
+[17/04/2026 22:52:09] [CONEXION        ] Marvin conectado
+[17/04/2026 23:23:13] [SISTEMA         ] Bitácora inicializada
+[17/04/2026 23:23:13] [SISTEMA         ] HiloTTL iniciado
+[17/04/2026 23:23:18] [CONEXION        ] Marvin (DNI: 604950989) conectado
+[17/04/2026 23:24:21] [RESERVA_TEMPORAL] [671d4e4d] 604950989 | 2026-04-17 8:00-10:00 | 50 personas | PROYECTOR | RESERVADO_TEMPORAL | TTL: 29s
+[17/04/2026 23:24:32] [CONFIRMACION    ] Reserva 671d4e4d confirmada por 604950989
+[17/04/2026 23:24:40] [DESCONEXION     ] Marvin (DNI: 604950989) desconectado
+[17/04/2026 23:25:03] [CONEXION        ] Marvin (DNI: 604950989) conectado
+[17/04/2026 23:25:19] [SISTEMA         ] HiloTTL iniciado
+[17/04/2026 23:25:40] [DESCONEXION     ] Marvin (DNI: 604950989) desconectado
+[17/04/2026 23:26:23] [CONEXION        ] Jafeth (DNI: 604950989) conectado
+[17/04/2026 23:26:46] [DESCONEXION     ] Jafeth (DNI: 604950989) desconectado
+[17/04/2026 23:33:44] [SISTEMA         ] Bitácora inicializada
+[17/04/2026 23:33:44] [SISTEMA         ] HiloTTL iniciado
+[17/04/2026 23:33:52] [CONEXION        ] Marvin (DNI: 604950989) conectado
+[17/04/2026 23:34:36] [RESERVA_TEMPORAL] [c0a672da] 604950989 | 2026/04/17 8:00-10:00 | 50 personas | MICROFONO | RESERVADO_TEMPORAL | TTL: 29s
+[17/04/2026 23:34:42] [CONFIRMACION    ] Reserva c0a672da confirmada por 604950989
+[17/04/2026 23:34:50] [DESCONEXION     ] Marvin (DNI: 604950989) desconectado
+[17/04/2026 23:35:25] [CONEXION        ] Marvin (DNI: 604950989) conectado
+[17/04/2026 23:36:40] [DESCONEXION     ] Marvin (DNI: 604950989) desconectado
+[17/04/2026 23:42:58] [SISTEMA         ] Bitácora inicializada
+[17/04/2026 23:42:58] [SISTEMA         ] HiloTTL iniciado
+[17/04/2026 23:43:08] [CONEXION        ] Marvin (DNI: 604950989) conectado
+[17/04/2026 23:43:15] [DESCONEXION     ] Marvin (DNI: 604950989) desconectado
+[17/04/2026 23:43:49] [SISTEMA         ] HiloTTL iniciado
+[17/04/2026 23:43:57] [CONEXION        ] Marvin (DNI: 604950989) conectado
+[17/04/2026 23:44:04] [DESCONEXION     ] Marvin (DNI: 604950989) desconectado
