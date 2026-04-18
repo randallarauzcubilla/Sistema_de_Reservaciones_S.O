@@ -343,23 +343,20 @@ public class VentanaCliente extends JFrame {
     }
 
     // ── ESCUCHAR RESPUESTAS DEL SERVIDOR ─────────────────────    
-    private void escucharServidor() {
-        try {
-            while (true) {
-                String msg = entrada.readUTF();
-                SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
-            }
-        } catch (IOException e) {
-            // El servidor se cayó o cerró la conexión
-            SwingUtilities.invokeLater(this::manejarDesconexion);
+private void escucharServidor() {
+    try {
+        while (true) {
+            String msg = entrada.readUTF();
+            SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
         }
     } catch (IOException e) {
         SwingUtilities.invokeLater(() -> {
             notify("⚠ Conexión con el servidor perdida.");
-            desconectar();
+            manejarDesconexion();
         });
     }
 }
+
     
     private void desconectar() {
     conectado = false;
@@ -439,7 +436,7 @@ public class VentanaCliente extends JFrame {
                 }
             }
 
-            
+        }        
     }
 
     private void actualizarEstadoTabla(String id, String nuevoEstado) {
