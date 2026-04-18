@@ -2,11 +2,13 @@ package jchat;
 
 import java.io.*;
 import java.net.*;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 public class HiloReserva extends Thread {
 
-    final Socket socket;                // package-private para que FrmServidor pueda cerrarlo
+    final Socket socket;
     private final String idCliente;
     private final String nombreCliente;
     private final Calendario calendario;
@@ -54,24 +56,12 @@ public class HiloReserva extends Thread {
                 String comando  = partes[0];
 
                 switch (comando) {
-                    case "CONSULTAR":
-                        procesarConsulta(partes);
-                        break;
-                    case "RESERVAR":
-                        procesarReserva(partes);
-                        break;
-                    case "CONFIRMAR":
-                        procesarConfirmacion(partes);
-                        break;
-                    case "CANCELAR":
-                        procesarCancelacion(partes);
-                        break;
-                    case "ESTADO":
-                        procesarEstado(partes);
-                        break;
-                    default:
-                        responder("ERROR|COMANDO_DESCONOCIDO");
-                        break;
+                    case "CONSULTAR":  procesarConsulta(partes);      break;
+                    case "RESERVAR":   procesarReserva(partes);       break;
+                    case "CONFIRMAR":  procesarConfirmacion(partes);  break;
+                    case "CANCELAR":   procesarCancelacion(partes);   break;
+                    case "ESTADO":     procesarEstado(partes);        break;
+                    default:           responder("ERROR|COMANDO_DESCONOCIDO"); break;
                 }
 
             } catch (IOException e) {
@@ -121,13 +111,55 @@ public class HiloReserva extends Thread {
             Reserva.Prioridad prioridad = Reserva.Prioridad.ESTUDIANTE;
 
             if (p.length >= 7) {
-                try {
-                    prioridad = Reserva.Prioridad.valueOf(p[6]);
-                } catch (IllegalArgumentException ignored) {}
+                try { prioridad = Reserva.Prioridad.valueOf(p[6]); }
+                catch (IllegalArgumentException ignored) {}
             }
 
+            // ── Validación 1: formato de fecha ──────────────────────────
+            LocalDate fechaReserva;
+            try {
+                fechaReserva = LocalDate.parse(fecha);
+            } catch (Exception e) {
+                responder("ERROR|FECHA_INVALIDA");
+                return;
+            }
+
+            // ── Validación 2: no reservar en el pasado ──────────────────
+            LocalDate hoy = LocalDate.now();
+            if (fechaReserva.isBefore(hoy)) {
+                bitacora.log("ERROR", idCliente + " intentó reservar en fecha pasada: " + fecha);
+                responder("ERROR|FECHA_EN_EL_PASADO");
+                return;
+            }
+
+            // ── Validación 3: formato de hora válido (00:00 – 23:59) ────
+            if (!esHoraValida(horaInicio) || !esHoraValida(horaFin)) {
+                responder("ERROR|HORA_INVALIDA");
+                return;
+            }
+
+            // ── Validación 4: si es hoy, no reservar horas ya pasadas ───
+            if (fechaReserva.isEqual(hoy)) {
+                LocalTime ahora      = LocalTime.now();
+                LocalTime inicioTime = LocalTime.parse(horaInicio);
+                if (inicioTime.isBefore(ahora)) {
+                    bitacora.log("ERROR", idCliente + " intentó reservar hora pasada hoy: " + horaInicio);
+                    responder("ERROR|HORA_EN_EL_PASADO");
+                    return;
+                }
+            }
+
+            // ── Validación 5: hora fin debe ser posterior a hora inicio ─
+            LocalTime tInicio = LocalTime.parse(horaInicio);
+            LocalTime tFin    = LocalTime.parse(horaFin);
+            if (!tFin.isAfter(tInicio)) {
+                responder("ERROR|HORA_FIN_INVALIDA");
+                return;
+            }
+
+            // ── Validación 6: capacidad y equipo ────────────────────────
             if (!recursos.hayCapacidad(asistentes)) {
-                bitacora.log("ERROR", idCliente + " sin capacidad para " + asistentes + " asistentes");
+                bitacora.log("ERROR", idCliente + " sin capacidad: " + asistentes);
                 responder("ERROR|SIN_CAPACIDAD");
                 return;
             }
@@ -138,13 +170,14 @@ public class HiloReserva extends Thread {
                 return;
             }
 
+            // ── Crear reserva temporal ───────────────────────────────────
             Reserva reserva = calendario.reservarTemporal(
                 idCliente, fecha, horaInicio, horaFin,
                 asistentes, equipo, prioridad
             );
 
             if (reserva == null) {
-                bitacora.log("ERROR", idCliente + " franja no disponible: " + fecha + " " + horaInicio);
+                bitacora.log("ERROR", idCliente + " franja ocupada: " + fecha + " " + horaInicio);
                 responder("ERROR|FRANJA_OCUPADA");
                 return;
             }
@@ -161,22 +194,27 @@ public class HiloReserva extends Thread {
         }
     }
 
+    // Valida que la hora tenga formato HH:mm y esté en rango 00:00–23:59
+    private boolean esHoraValida(String hora) {
+        if (hora == null || !hora.matches("\\d{2}:\\d{2}")) return false;
+        try {
+            LocalTime.parse(hora); // lanza excepción si está fuera de rango
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void procesarConfirmacion(String[] p) {
         if (p.length < 2) { responder("ERROR|PARAMETROS_INSUFICIENTES"); return; }
         String idReserva = p[1];
 
         Reserva reserva = calendario.getReservaPorId(idReserva);
-        if (reserva == null) {
-            responder("ERROR|RESERVA_NO_ENCONTRADA");
-            return;
-        }
-        if (!reserva.getIdCliente().equals(idCliente)) {
-            responder("ERROR|NO_AUTORIZADO");
-            return;
-        }
+        if (reserva == null) { responder("ERROR|RESERVA_NO_ENCONTRADA"); return; }
+        if (!reserva.getIdCliente().equals(idCliente)) { responder("ERROR|NO_AUTORIZADO"); return; }
         if (reserva.estaVencida()) {
             responder("ERROR|RESERVA_EXPIRADA");
-            bitacora.log("ERROR", idCliente + " intentó confirmar reserva expirada: " + idReserva);
+            bitacora.log("ERROR", idCliente + " confirmó reserva expirada: " + idReserva);
             return;
         }
 
@@ -196,14 +234,8 @@ public class HiloReserva extends Thread {
         String idReserva = p[1];
 
         Reserva reserva = calendario.getReservaPorId(idReserva);
-        if (reserva == null) {
-            responder("ERROR|RESERVA_NO_ENCONTRADA");
-            return;
-        }
-        if (!reserva.getIdCliente().equals(idCliente)) {
-            responder("ERROR|NO_AUTORIZADO");
-            return;
-        }
+        if (reserva == null) { responder("ERROR|RESERVA_NO_ENCONTRADA"); return; }
+        if (!reserva.getIdCliente().equals(idCliente)) { responder("ERROR|NO_AUTORIZADO"); return; }
 
         boolean cancelado = calendario.cancelarReserva(idReserva);
         if (cancelado) {
@@ -221,10 +253,7 @@ public class HiloReserva extends Thread {
         String idReserva = p[1];
 
         Reserva reserva = calendario.getReservaPorId(idReserva);
-        if (reserva == null) {
-            responder("ERROR|RESERVA_NO_ENCONTRADA");
-            return;
-        }
+        if (reserva == null) { responder("ERROR|RESERVA_NO_ENCONTRADA"); return; }
         responder("OK|ESTADO|" + reserva.getEstado() + "|TTL:" + reserva.segundosRestantes());
     }
 
@@ -239,6 +268,6 @@ public class HiloReserva extends Thread {
         }
     }
 
-    public String getIdCliente()    { return idCliente; }
-    public String getNombreCliente(){ return nombreCliente; }
+    public String getIdCliente()     { return idCliente; }
+    public String getNombreCliente() { return nombreCliente; }
 }

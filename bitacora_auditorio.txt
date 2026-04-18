@@ -87,3 +87,31 @@
 [17/04/2026 23:43:49] [SISTEMA         ] HiloTTL iniciado
 [17/04/2026 23:43:57] [CONEXION        ] Marvin (DNI: 604950989) conectado
 [17/04/2026 23:44:04] [DESCONEXION     ] Marvin (DNI: 604950989) desconectado
+[18/04/2026 12:15:05] [SISTEMA         ] Bitácora inicializada
+[18/04/2026 12:15:05] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 12:16:55] [CONEXION        ] Wasa (DNI: 604830418) conectado
+[18/04/2026 12:18:27] [RESERVA_TEMPORAL] [55017193] 604830418 | 2026-04-21 12:00-4:00 | 2 personas | MICROFONO | RESERVADO_TEMPORAL | TTL: 29s
+[18/04/2026 12:18:57] [EXPIRACION_TTL  ] Reserva 55017193 expirada. Cliente: 604830418
+[18/04/2026 12:19:16] [RESERVA_TEMPORAL] [ffeef10a] 604830418 | 2026-04-21 12:00-4:00 | 2 personas | MICROFONO | RESERVADO_TEMPORAL | TTL: 30s
+[18/04/2026 12:19:21] [CONFIRMACION    ] Reserva ffeef10a confirmada por 604830418
+[18/04/2026 12:35:10] [RESERVA_TEMPORAL] [9dd4c67d] 604830418 | 2026-04-21 30:00-4:00 | 2 personas | MICROFONO | RESERVADO_TEMPORAL | TTL: 29s
+[18/04/2026 12:35:15] [CONFIRMACION    ] Reserva 9dd4c67d confirmada por 604830418
+[18/04/2026 12:35:21] [DESCONEXION     ] Wasa (DNI: 604830418) desconectado
+[18/04/2026 12:52:26] [SISTEMA         ] Bitácora inicializada
+[18/04/2026 12:52:26] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 12:53:04] [CONEXION        ] Peperreito (DNI: 604830418) conectado
+[18/04/2026 12:53:57] [ERROR           ] 604830418 intentó reservar en fecha pasada: 2026-03-23
+[18/04/2026 12:54:42] [ERROR           ] 604830418 intentó reservar hora pasada hoy: 11:00
+[18/04/2026 12:54:51] [ERROR           ] 604830418 intentó reservar hora pasada hoy: 11:00
+[18/04/2026 12:55:16] [RESERVA_TEMPORAL] [62016344] 604830418 | 2026-04-18 13:00-14:00 | 13 personas | PROYECTOR | RESERVADO_TEMPORAL | TTL: 29s
+[18/04/2026 12:55:31] [CONFIRMACION    ] Reserva 62016344 confirmada por 604830418
+[18/04/2026 12:55:39] [DESCONEXION     ] Peperreito (DNI: 604830418) desconectado
+[18/04/2026 12:55:41] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 12:55:50] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 12:55:54] [CONEXION        ] Peperreito (DNI: 604830418) conectado
+[18/04/2026 12:56:01] [ERROR           ] 604830418 franja ocupada: 2026-04-18 13:00
+[18/04/2026 12:56:17] [CANCELACION     ] Reserva 62016344 cancelada. Motivo: Cancelado por cliente
+[18/04/2026 12:56:28] [RESERVA_TEMPORAL] [d1b19a72] 604830418 | 2026-04-18 13:00-14:00 | 13 personas | PROYECTOR | RESERVADO_TEMPORAL | TTL: 30s
+[18/04/2026 12:56:29] [CONFIRMACION    ] Reserva d1b19a72 confirmada por 604830418
+[18/04/2026 12:57:29] [SISTEMA         ] Bitácora inicializada
+[18/04/2026 12:57:29] [SISTEMA         ] HiloTTL iniciado

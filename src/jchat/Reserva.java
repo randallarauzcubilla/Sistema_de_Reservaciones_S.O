@@ -3,35 +3,51 @@ package jchat;
 public class Reserva {
 
     public enum Estado { LIBRE, RESERVADO_TEMPORAL, CONFIRMADO, CANCELADO }
-    
     public enum Equipo { NINGUNO, PROYECTOR, MICROFONO, SONIDO, COMPLETO }
-    
     public enum Prioridad { ESTUDIANTE, DOCENTE, DECANATURA }
 
     private final String idReserva;
     private final String idCliente;
     private final String fecha;
-    private final String horaInicio;  
-    private final String horaFin;    
+    private final String horaInicio;
+    private final String horaFin;
     private final int cantAsistentes;
-    private final Equipo equipo;      
+    private final Equipo equipo;
     private final Prioridad prioridad;
     private volatile Estado estado;
     private final long ttlExpiracion;
 
+    // Constructor normal — reserva temporal con TTL de 30s
     public Reserva(String idCliente, String fecha, String horaInicio,
                    String horaFin, int asistentes, Equipo equipo,
                    Prioridad prioridad) {
-        this.idReserva     = java.util.UUID.randomUUID().toString().substring(0, 8);
-        this.idCliente     = idCliente;
-        this.fecha         = fecha;
-        this.horaInicio    = horaInicio;
-        this.horaFin       = horaFin;
+        this.idReserva      = java.util.UUID.randomUUID().toString().substring(0, 8);
+        this.idCliente      = idCliente;
+        this.fecha          = fecha;
+        this.horaInicio     = horaInicio;
+        this.horaFin        = horaFin;
         this.cantAsistentes = asistentes;
-        this.equipo        = equipo;
-        this.prioridad     = prioridad;
-        this.estado        = Estado.RESERVADO_TEMPORAL;
-        this.ttlExpiracion = System.currentTimeMillis() + 30_000;
+        this.equipo         = equipo;
+        this.prioridad      = prioridad;
+        this.estado         = Estado.RESERVADO_TEMPORAL;
+        this.ttlExpiracion  = System.currentTimeMillis() + 30_000;
+    }
+
+    // Constructor de restauración — usado solo por PersistenciaReservas
+    // No asigna TTL corto; la reserva nunca expira por tiempo
+    public Reserva(String idCliente, String fecha, String horaInicio,
+                   String horaFin, int asistentes, Equipo equipo,
+                   Prioridad prioridad, boolean restaurada) {
+        this.idReserva      = java.util.UUID.randomUUID().toString().substring(0, 8);
+        this.idCliente      = idCliente;
+        this.fecha          = fecha;
+        this.horaInicio     = horaInicio;
+        this.horaFin        = horaFin;
+        this.cantAsistentes = asistentes;
+        this.equipo         = equipo;
+        this.prioridad      = prioridad;
+        this.estado         = Estado.CONFIRMADO;
+        this.ttlExpiracion  = Long.MAX_VALUE; // nunca expira
     }
 
     public boolean estaVencida() {
@@ -40,21 +56,22 @@ public class Reserva {
     }
 
     public long segundosRestantes() {
+        if (ttlExpiracion == Long.MAX_VALUE) return 0; // confirmada restaurada
         long restante = (ttlExpiracion - System.currentTimeMillis()) / 1000;
         return Math.max(0, restante);
     }
 
     // Getters
-    public String getIdReserva()    { return idReserva; }
-    public String getIdCliente()    { return idCliente; }
-    public String getFecha()        { return fecha; }
-    public String getHoraInicio()   { return horaInicio; }
-    public String getHoraFin()      { return horaFin; }
-    public int getCantAsistentes()  { return cantAsistentes; }
-    public Equipo getEquipo()       { return equipo; }
-    public Prioridad getPrioridad() { return prioridad; }
-    public Estado getEstado()       { return estado; }
-    public long getTTL()            { return ttlExpiracion; }
+    public String    getIdReserva()    { return idReserva; }
+    public String    getIdCliente()    { return idCliente; }
+    public String    getFecha()        { return fecha; }
+    public String    getHoraInicio()   { return horaInicio; }
+    public String    getHoraFin()      { return horaFin; }
+    public int       getCantAsistentes(){ return cantAsistentes; }
+    public Equipo    getEquipo()       { return equipo; }
+    public Prioridad getPrioridad()    { return prioridad; }
+    public Estado    getEstado()       { return estado; }
+    public long      getTTL()          { return ttlExpiracion; }
 
     public void setEstado(Estado e) { this.estado = e; }
 
