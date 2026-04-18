@@ -165,6 +165,27 @@ public class Calendario {
     }
 
     public int totalReservas() {
-        return totalReservasActivas(); 
+        return totalReservasActivas();
+    }
+
+    /**
+     * Carga una reserva restaurada desde disco directamente en el mapa.
+     * Solo se usa al arrancar el servidor vía PersistenciaReservas.
+     */
+    public void cargarReservaRestaurada(Reserva r) {
+        gestor.lockEscrituraCalendario().lock();
+        try {
+            String key = clave(r.getFecha(), r.getHoraInicio(), r.getHoraFin());
+            if (!franjas.containsKey(key)) {
+                franjas.put(key, r);
+                try {
+                    gestor.adquirirParaReserva(r.getCantAsistentes(), r.getEquipo());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        } finally {
+            gestor.lockEscrituraCalendario().unlock();
+        }
     }
 }

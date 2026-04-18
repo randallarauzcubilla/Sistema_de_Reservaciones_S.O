@@ -7,6 +7,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 public class FrmServidor extends JFrame {
 
@@ -112,8 +113,8 @@ public class FrmServidor extends JFrame {
         btnBitacora = crearBotonSide("≡   Actualizar Vista",  ACCENT_BLUE);
 
         btnDetener.setEnabled(false);
-        btnIniciar.addActionListener(e  -> iniciarServidor());
-        btnDetener.addActionListener(e  -> detenerServidor());
+        btnIniciar.addActionListener(e -> iniciarServidor());
+        btnDetener.addActionListener(e -> detenerServidor());
         btnBitacora.addActionListener(e -> actualizarVista());
 
         btnPanel.add(btnIniciar);
@@ -188,9 +189,9 @@ public class FrmServidor extends JFrame {
                 c.setForeground(TEXT_PRIMARY);
                 ((JComponent) c).setBorder(new EmptyBorder(0, 8, 0, 8));
                 Object estado = modeloTabla.getValueAt(row, 4);
-                if ("CONFIRMADA".equals(estado)) c.setForeground(ACCENT_GREEN);
-                else if ("CANCELADA".equals(estado)) c.setForeground(ACCENT_RED);
-                else if ("TEMPORAL".equals(estado))  c.setForeground(ACCENT_BLUE);
+                if ("CONFIRMADO".equals(estado))  c.setForeground(ACCENT_GREEN);
+                else if ("CANCELADO".equals(estado))  c.setForeground(ACCENT_RED);
+                else if ("RESERVADO_TEMPORAL".equals(estado)) c.setForeground(ACCENT_BLUE);
                 if (isRowSelected(row)) c.setBackground(new Color(64, 156, 255, 45));
                 return c;
             }
@@ -253,6 +254,17 @@ public class FrmServidor extends JFrame {
         btnDetener.setEnabled(true);
         log("Servidor INICIADO en puerto 8000.");
 
+        // ── Restaurar reservas confirmadas desde disco ──────────
+        List<Reserva> restauradas = PersistenciaReservas.cargar();
+        for (Reserva r : restauradas) {
+            Servidor.calendario.cargarReservaRestaurada(r);
+        }
+        if (!restauradas.isEmpty()) {
+            log("✔ " + restauradas.size() + " reserva(s) vigente(s) restauradas desde disco.");
+        } else {
+            log("No hay reservas previas que restaurar.");
+        }
+
         hiloServidor = new Thread(() -> {
             try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(8000)) {
                 serverSocketActivo = serverSocket;
@@ -299,7 +311,11 @@ public class FrmServidor extends JFrame {
         servidorActivo = false;
         if (timerActualizacion != null) timerActualizacion.stop();
 
-        // 1. Notificar a cada cliente que el servidor se detiene
+        // 1. Guardar reservas confirmadas antes de cerrar
+        PersistenciaReservas.guardar(Servidor.calendario);
+        log("Reservas confirmadas guardadas en disco.");
+
+        // 2. Notificar a cada cliente que el servidor se detiene
         synchronized (Servidor.clientesConectados) {
             for (HiloReserva hilo : Servidor.clientesConectados) {
                 try {
@@ -313,7 +329,7 @@ public class FrmServidor extends JFrame {
             Servidor.clientesConectados.clear();
         }
 
-        // 2. Cerrar el ServerSocket — libera el puerto 8000
+        // 3. Cerrar el ServerSocket
         try {
             if (serverSocketActivo != null && !serverSocketActivo.isClosed()) {
                 serverSocketActivo.close();
@@ -321,7 +337,7 @@ public class FrmServidor extends JFrame {
         } catch (java.io.IOException ignored) {}
         serverSocketActivo = null;
 
-        // 3. Interrumpir el hilo aceptador
+        // 4. Interrumpir el hilo aceptador
         if (hiloServidor != null) hiloServidor.interrupt();
 
         lblEstadoValor.setText("INACTIVO");
@@ -341,7 +357,7 @@ public class FrmServidor extends JFrame {
         lblReservasValor.setText(Servidor.calendario.totalReservas() + " activas");
         lblEquipoValor.setText(Servidor.gestor.proyectoresDisponibles() + " disponibles");
 
-        java.util.List<String> entradas = Servidor.bitacora.getUltimas(100);
+        List<String> entradas = Servidor.bitacora.getUltimas(100);
         txtBitacora.setText("");
         for (String e : entradas) {
             txtBitacora.append(e + "\n");
@@ -349,8 +365,10 @@ public class FrmServidor extends JFrame {
         txtBitacora.setCaretPosition(txtBitacora.getDocument().getLength());
 
         modeloTabla.setRowCount(0);
-        java.util.List<Reserva> todasReservas = Servidor.calendario.getTodasLasReservas();
+        List<Reserva> todasReservas = Servidor.calendario.getTodasLasReservas();
         for (Reserva r : todasReservas) {
+            // En la tabla mostrar solo las no canceladas
+            if (r.getEstado() == Reserva.Estado.CANCELADO) continue;
             modeloTabla.addRow(new Object[]{
                 r.getIdReserva(),
                 r.getIdCliente(),
@@ -359,7 +377,7 @@ public class FrmServidor extends JFrame {
                 r.getEstado().toString(),
                 r.getCantAsistentes(),
                 r.getEquipo().toString(),
-                r.segundosRestantes() + "s"
+                r.getTTL() == Long.MAX_VALUE ? "—" : r.segundosRestantes() + "s"
             });
         }
     }
