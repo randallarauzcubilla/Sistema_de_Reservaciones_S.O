@@ -295,10 +295,20 @@ public class FrmServidor extends JFrame {
     timerActualizacion.start();
     actualizarVista();
 }
-    private void detenerServidor() {
+  private void detenerServidor() {
     servidorActivo = false;
     if (hiloServidor != null) hiloServidor.interrupt();
     if (timerActualizacion != null) timerActualizacion.stop();
+
+    // Cerrar todos los sockets de clientes conectados
+    // Esto dispara IOException en el hilo de escucha de cada VentanaCliente
+    // lo que activa manejarDesconexion() en cada cliente
+    for (HiloReserva hilo : Servidor.clientesConectados) {
+        try {
+            hilo.flujoEscritura.close(); // fuerza IOException en el cliente
+        } catch (Exception ignored) {}
+    }
+    Servidor.clientesConectados.clear();
 
     lblEstadoValor.setText("INACTIVO");
     lblEstadoValor.setForeground(ACCENT_RED);

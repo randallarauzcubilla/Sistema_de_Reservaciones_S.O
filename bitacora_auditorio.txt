@@ -15,3 +15,48 @@
 [01/04/2026 16:35:18] [SISTEMA         ] HiloTTL iniciado
 [01/04/2026 16:35:48] [CONEXION        ] Keilor Muñoz conectado
 [01/04/2026 16:36:01] [DESCONEXION     ] Keilor Muñoz desconectado
+[07/04/2026 13:20:01] [SISTEMA         ] Bitácora inicializada
+[07/04/2026 13:20:01] [SISTEMA         ] HiloTTL iniciado
+[07/04/2026 13:26:31] [CONEXION        ] Randall conectado
+[07/04/2026 13:27:02] [DESCONEXION     ] Randall desconectado
+[07/04/2026 13:27:18] [CONEXION        ] Randall conectado
+[07/04/2026 13:28:52] [SISTEMA         ] Bitácora inicializada
+[07/04/2026 13:28:52] [SISTEMA         ] HiloTTL iniciado
+[07/04/2026 13:28:54] [CONEXION        ] Keilor conectado
+[07/04/2026 13:29:25] [RESERVA_TEMPORAL] [43c9ac0f] Keilor | 2025-06-10 09:00-10:00 | 10 personas | PROYECTOR | RESERVADO_TEMPORAL | TTL: 29s
+[07/04/2026 13:29:28] [CONFIRMACION    ] Reserva 43c9ac0f confirmada por Keilor
+[07/04/2026 13:29:59] [CANCELACION     ] Reserva 43c9ac0f cancelada. Motivo: Cancelado por cliente
+[10/04/2026 13:35:16] [SISTEMA         ] Bitácora inicializada
+[10/04/2026 13:35:16] [SISTEMA         ] HiloTTL iniciado
+[10/04/2026 13:35:57] [CONEXION        ] Marvin conectado
+[10/04/2026 13:36:18] [RESERVA_TEMPORAL] [00ecde85] Marvin | 2025-06-10 09:00-10:00 | 10 personas | MICROFONO | RESERVADO_TEMPORAL | TTL: 29s
+[10/04/2026 13:36:48] [EXPIRACION_TTL  ] Reserva 00ecde85 expirada. Cliente: Marvin
+[10/04/2026 13:37:37] [CONEXION        ] Randall conectado
+[10/04/2026 13:38:12] [RESERVA_TEMPORAL] [0437ca50] Randall | 2026-08-15 13:00-10:00 | 2 personas | SONIDO | RESERVADO_TEMPORAL | TTL: 30s
+[10/04/2026 13:38:42] [EXPIRACION_TTL  ] Reserva 0437ca50 expirada. Cliente: Randall
+[10/04/2026 13:39:33] [RESERVA_TEMPORAL] [7b34fae8] Randall | 2026-08-15 13:00-10:00 | 2 personas | SONIDO | RESERVADO_TEMPORAL | TTL: 30s
+[10/04/2026 13:39:37] [CONFIRMACION    ] Reserva 7b34fae8 confirmada por Randall
+[10/04/2026 13:39:52] [DESCONEXION     ] Randall desconectado
+[10/04/2026 13:40:54] [CONEXION        ] Randall conectado
+[10/04/2026 13:41:59] [RESERVA_TEMPORAL] [b05a98f8] Marvin | 2025-07-10 09:00-10:00 | 10 personas | COMPLETO | RESERVADO_TEMPORAL | TTL: 30s
+[10/04/2026 13:42:10] [CONFIRMACION    ] Reserva b05a98f8 confirmada por Marvin
+[10/04/2026 13:42:16] [SISTEMA         ] HiloTTL iniciado
+[10/04/2026 13:43:58] [CANCELACION     ] Reserva b05a98f8 cancelada. Motivo: Cancelado por cliente
+[17/04/2026 22:08:28] [SISTEMA         ] Bitácora inicializada
+[17/04/2026 22:08:28] [SISTEMA         ] HiloTTL iniciado
+[17/04/2026 22:08:54] [CONEXION        ] Marvin conectado
+[17/04/2026 22:09:37] [RESERVA_TEMPORAL] [f2cb68a2] Marvin | 2025-06-10 09:00-10:00 | 10 personas | PROYECTOR | RESERVADO_TEMPORAL | TTL: 29s
+[17/04/2026 22:10:49] [SISTEMA         ] Bitácora inicializada
+[17/04/2026 22:10:49] [SISTEMA         ] HiloTTL iniciado
+[17/04/2026 22:10:50] [CONEXION        ] Marvin conectado
+[17/04/2026 22:16:59] [SISTEMA         ] Bitácora inicializada
+[17/04/2026 22:16:59] [SISTEMA         ] HiloTTL iniciado
+[17/04/2026 22:17:27] [CONEXION        ] Marvin conectado
+[17/04/2026 22:19:48] [RESERVA_TEMPORAL] [511efcc7] Marvin | 2025-06-10 09:00-10:00 | 10 personas | COMPLETO | RESERVADO_TEMPORAL | TTL: 29s
+[17/04/2026 22:19:57] [CONFIRMACION    ] Reserva 511efcc7 confirmada por Marvin
+[17/04/2026 22:20:01] [DESCONEXION     ] Marvin desconectado
+[17/04/2026 22:20:42] [CONEXION        ] Marvin conectado
+[17/04/2026 22:20:59] [RESERVA_TEMPORAL] [d19c8310] Marvin | 2025-06-12 09:00-10:00 | 10 personas | MICROFONO | RESERVADO_TEMPORAL | TTL: 30s
+[17/04/2026 22:21:07] [CONFIRMACION    ] Reserva d19c8310 confirmada por Marvin
+[17/04/2026 22:27:12] [DESCONEXION     ] Marvin desconectado
+[17/04/2026 22:27:17] [SISTEMA         ] HiloTTL iniciado
