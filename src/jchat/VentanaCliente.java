@@ -91,7 +91,6 @@ public class VentanaCliente extends JFrame {
         sidebar.setBackground(BG_PANEL);
         sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER_COLOR));
 
-        // Logo
         JPanel logoPanel = new JPanel(new GridLayout(2, 1));
         logoPanel.setBackground(BG_PANEL);
         logoPanel.setBorder(new EmptyBorder(28, 20, 20, 20));
@@ -105,7 +104,6 @@ public class VentanaCliente extends JFrame {
         logoPanel.add(sub);
         sidebar.add(logoPanel, BorderLayout.NORTH);
 
-        // Formulario login
         JPanel formLogin = new JPanel(new GridBagLayout());
         formLogin.setBackground(BG_PANEL);
         formLogin.setBorder(new EmptyBorder(10, 16, 10, 16));
@@ -145,7 +143,6 @@ public class VentanaCliente extends JFrame {
 
         sidebar.add(formLogin, BorderLayout.CENTER);
 
-        // Label de estado — cambia al conectar/desconectar
         lblEstadoConexion = new JLabel("● Sin conexión al servidor", SwingConstants.CENTER);
         lblEstadoConexion.setFont(new Font("Monospaced", Font.BOLD, 11));
         lblEstadoConexion.setForeground(ACCENT_RED);
@@ -307,83 +304,79 @@ public class VentanaCliente extends JFrame {
     }
 
     // ── CONEXIÓN AL SERVIDOR ─────────────────────────────────
-    // ── CONEXIÓN AL SERVIDOR ─────────────────────────────────
-private void conectar() {
-    String nombre = txtNombre.getText().trim();
-    String dni    = txtDNI.getText().trim();
+    private void conectar() {
+        String nombre = txtNombre.getText().trim();
+        String dni    = txtDNI.getText().trim();
 
-    if (nombre.isEmpty() || nombre.equals("Tu nombre completo")) {
-        JOptionPane.showMessageDialog(this, "Ingrese su nombre.", "Campo vacío", JOptionPane.WARNING_MESSAGE);
-        return;
-    }
-    if (dni.isEmpty() || dni.equals("Número de cédula")) {
-        JOptionPane.showMessageDialog(this, "Ingrese su DNI / Cédula.", "Campo vacío", JOptionPane.WARNING_MESSAGE);
-        return;
-    }
-
-    Socket socketTemp = null;
-    try {
-        socketTemp = new Socket();
-        // Timeout de conexión: si en 3 segundos no responde, falla limpiamente
-        socketTemp.connect(new InetSocketAddress("localhost", 8000), 3000);
-
-        DataInputStream  entradaTemp = new DataInputStream(new BufferedInputStream(socketTemp.getInputStream()));
-        DataOutputStream salidaTemp  = new DataOutputStream(new BufferedOutputStream(socketTemp.getOutputStream()));
-
-        salidaTemp.writeUTF(nombre + "|" + dni);
-        salidaTemp.flush();
-
-        // Timeout de lectura: si el servidor no responde en 3 s, es que algo falla
-        socketTemp.setSoTimeout(3000);
-        String respuesta = entradaTemp.readUTF();
-        socketTemp.setSoTimeout(0); // quitar timeout para la sesión normal
-
-        if (!respuesta.equals("OK|CONECTADO")) {
-            notify("❌ Servidor rechazó la conexión: " + respuesta);
-            cerrarSilencioso(socketTemp);
+        if (nombre.isEmpty() || nombre.equals("Tu nombre completo")) {
+            JOptionPane.showMessageDialog(this, "Ingrese su nombre.", "Campo vacío", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (dni.isEmpty() || dni.equals("Número de cédula")) {
+            JOptionPane.showMessageDialog(this, "Ingrese su DNI / Cédula.", "Campo vacío", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        // Todo bien — promover a campos de instancia
-        socket  = socketTemp;
-        entrada = entradaTemp;
-        salida  = salidaTemp;
+        Socket socketTemp = null;
+        try {
+            socketTemp = new Socket();
+            socketTemp.connect(new InetSocketAddress("localhost", 8000), 3000);
 
-        conectado = true;
-        lblEstadoConexion.setText("● Conectado: " + nombre);
-        lblEstadoConexion.setForeground(ACCENT_GREEN);
-        panelDerecho.setVisible(true);
-        activarFormulario(true);
-        btnConectar.setEnabled(false);
-        txtNombre.setEditable(false);
-        txtDNI.setEditable(false);
-        cmbRol.setEnabled(false);
+            DataInputStream  entradaTemp = new DataInputStream(new BufferedInputStream(socketTemp.getInputStream()));
+            DataOutputStream salidaTemp  = new DataOutputStream(new BufferedOutputStream(socketTemp.getOutputStream()));
 
-        notify("✅ Conectado como: " + nombre + " (DNI: " + dni + ")");
-        notify("Servidor listo. Puede realizar su reserva.");
-        setTitle("VentanaCliente — " + nombre);
+            salidaTemp.writeUTF(nombre + "|" + dni);
+            salidaTemp.flush();
 
-        Thread hiloEscucha = new Thread(this::escucharServidor);
-        hiloEscucha.setDaemon(true);
-        hiloEscucha.start();
+            socketTemp.setSoTimeout(3000);
+            String respuesta = entradaTemp.readUTF();
+            socketTemp.setSoTimeout(0);
 
-    } catch (java.net.ConnectException e) {
-        cerrarSilencioso(socketTemp);
-        JOptionPane.showMessageDialog(this,
-            "No hay servidor activo en el puerto 8000.\n¿Está corriendo el servidor?",
-            "Sin conexión", JOptionPane.ERROR_MESSAGE);
-    } catch (java.net.SocketTimeoutException e) {
-        cerrarSilencioso(socketTemp);
-        JOptionPane.showMessageDialog(this,
-            "El servidor no respondió a tiempo.\nVerifique que esté operativo.",
-            "Tiempo de espera agotado", JOptionPane.ERROR_MESSAGE);
-    } catch (IOException e) {
-        cerrarSilencioso(socketTemp);
-        JOptionPane.showMessageDialog(this,
-            "Error de conexión: " + e.getMessage(),
-            "Error", JOptionPane.ERROR_MESSAGE);
+            if (!respuesta.equals("OK|CONECTADO")) {
+                notify("❌ Servidor rechazó la conexión: " + respuesta);
+                cerrarSilencioso(socketTemp);
+                return;
+            }
+
+            socket  = socketTemp;
+            entrada = entradaTemp;
+            salida  = salidaTemp;
+
+            conectado = true;
+            lblEstadoConexion.setText("● Conectado: " + nombre);
+            lblEstadoConexion.setForeground(ACCENT_GREEN);
+            panelDerecho.setVisible(true);
+            activarFormulario(true);
+            btnConectar.setEnabled(false);
+            txtNombre.setEditable(false);
+            txtDNI.setEditable(false);
+            cmbRol.setEnabled(false);
+
+            notify("✅ Conectado como: " + nombre + " (DNI: " + dni + ")");
+            notify("Servidor listo. Puede realizar su reserva.");
+            setTitle("VentanaCliente — " + nombre);
+
+            Thread hiloEscucha = new Thread(this::escucharServidor);
+            hiloEscucha.setDaemon(true);
+            hiloEscucha.start();
+
+        } catch (ConnectException e) {
+            cerrarSilencioso(socketTemp);
+            JOptionPane.showMessageDialog(this,
+                "No hay servidor activo en el puerto 8000.\n¿Está corriendo el servidor?",
+                "Sin conexión", JOptionPane.ERROR_MESSAGE);
+        } catch (SocketTimeoutException e) {
+            cerrarSilencioso(socketTemp);
+            JOptionPane.showMessageDialog(this,
+                "El servidor no respondió a tiempo.\nVerifique que esté operativo.",
+                "Tiempo de espera agotado", JOptionPane.ERROR_MESSAGE);
+        } catch (IOException e) {
+            cerrarSilencioso(socketTemp);
+            JOptionPane.showMessageDialog(this,
+                "Error de conexión: " + e.getMessage(),
+                "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
-}
 
     private void cerrarSilencioso(Socket s) {
         if (s != null && !s.isClosed()) {
@@ -406,6 +399,12 @@ private void conectar() {
     // ── MANEJAR CAÍDA DEL SERVIDOR ───────────────────────────
     private void manejarDesconexion() {
         if (!conectado) return;
+        notify("⚠ Conexión con el servidor perdida.");
+        desconectar();
+    }
+
+    // ── RESETEAR UI AL ESTADO INICIAL (sin cerrar la app) ────
+    private void desconectar() {
         conectado = false;
 
         for (int i = modeloReservas.getRowCount() - 1; i >= 0; i--) {
@@ -414,19 +413,17 @@ private void conectar() {
             }
         }
 
-        try {
-            if (socket != null && !socket.isClosed()) socket.close();
-        } catch (IOException ignored) {}
+        cerrarSilencioso(socket);
 
-        JOptionPane.showMessageDialog(
-            this,
-            "El servidor ha sido cerrado.\nLa aplicación se cerrará.",
-            "Servidor cerrado",
-            JOptionPane.ERROR_MESSAGE
-        );
-
-        dispose();
-        System.exit(0);
+        activarFormulario(false);
+        panelDerecho.setVisible(false);
+        btnConectar.setEnabled(true);
+        txtNombre.setEditable(true);
+        txtDNI.setEditable(true);
+        cmbRol.setEnabled(true);
+        lblEstadoConexion.setText("● Sin conexión al servidor");
+        lblEstadoConexion.setForeground(ACCENT_RED);
+        setTitle("VentanaCliente — Sistema de Reservas");
     }
 
     // ── PROCESAR RESPUESTAS ───────────────────────────────────
@@ -434,13 +431,11 @@ private void conectar() {
         notify("← " + msg);
         String[] partes = msg.split("\\|");
 
-        // HISTORIAL — repoblar tabla con reservas previas del usuario (por DNI)
         if (partes[0].equals("HISTORIAL")) {
             modeloReservas.setRowCount(0);
             for (int i = 1; i < partes.length; i++) {
                 String[] campos = partes[i].split(",", 5);
                 if (campos.length < 5) continue;
-                // campos: id, fecha, horaInicio, horaFin, estado
                 String id      = campos[0];
                 String fecha   = campos[1];
                 String horaRng = campos[2] + "-" + campos[3];
@@ -473,12 +468,10 @@ private void conectar() {
             actualizarEstadoTabla(id, "CANCELADA");
         } else if (partes[0].equals("ERROR")) {
             notify("❌ Error del servidor: " + (partes.length > 1 ? partes[1] : "desconocido"));
-
             if (partes.length > 1 && partes[1].equals("SERVIDOR_DETENIDO")) {
                 manejarDesconexion();
                 return;
             }
-
             for (int i = modeloReservas.getRowCount() - 1; i >= 0; i--) {
                 if ("ENVIANDO...".equals(modeloReservas.getValueAt(i, 3))) {
                     modeloReservas.removeRow(i);
@@ -618,7 +611,6 @@ private void conectar() {
                 new EmptyBorder(2, 6, 2, 6)));
         combo.setPreferredSize(new Dimension(0, 34));
 
-        // Renderer para que las opciones del dropdown también se vean bien
         combo.setRenderer(new DefaultListCellRenderer() {
             public Component getListCellRendererComponent(JList<?> list, Object value,
                     int index, boolean isSelected, boolean cellHasFocus) {

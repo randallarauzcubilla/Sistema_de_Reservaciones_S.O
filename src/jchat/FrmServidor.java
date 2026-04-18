@@ -25,7 +25,7 @@ public class FrmServidor extends JFrame {
     private boolean servidorActivo = false;
     private Thread hiloServidor;
     private Timer timerActualizacion;
-    private java.net.ServerSocket serverSocketActivo; // ← referencia para cerrarlo
+    private java.net.ServerSocket serverSocketActivo;
 
     // === LABELS ===
     private JLabel lblEstadoValor;
@@ -64,7 +64,6 @@ public class FrmServidor extends JFrame {
         add(root);
     }
 
-    // ── SIDEBAR ─────────────────────────────────────────────
     private JPanel crearSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());
         sidebar.setPreferredSize(new Dimension(230, 0));
@@ -161,7 +160,6 @@ public class FrmServidor extends JFrame {
         return btn;
     }
 
-    // ── CUERPO ──────────────────────────────────────────────
     private JPanel crearCuerpo() {
         JPanel body = new JPanel(new BorderLayout(0, 14));
         body.setBackground(BG_DARK);
@@ -246,7 +244,7 @@ public class FrmServidor extends JFrame {
         return panel;
     }
 
-    // ── ACCIONES REALES ──────────────────────────────────────
+    // ── ACCIONES ─────────────────────────────────────────────
     private void iniciarServidor() {
         servidorActivo = true;
         lblEstadoValor.setText("ACTIVO");
@@ -257,7 +255,7 @@ public class FrmServidor extends JFrame {
 
         hiloServidor = new Thread(() -> {
             try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(8000)) {
-                serverSocketActivo = serverSocket; // ← guardar referencia global
+                serverSocketActivo = serverSocket;
 
                 HiloTTL hiloTTL = new HiloTTL(
                     Servidor.calendario, Servidor.recursos,
@@ -287,7 +285,6 @@ public class FrmServidor extends JFrame {
                 if (servidorActivo) {
                     log("[ERROR] Servidor: " + e.getMessage());
                 }
-                // Si servidorActivo == false significa que fue cierre intencional, ignorar
             }
         });
         hiloServidor.setDaemon(true);
@@ -302,24 +299,29 @@ public class FrmServidor extends JFrame {
         servidorActivo = false;
         if (timerActualizacion != null) timerActualizacion.stop();
 
-        // 1. Cerrar el socket de cada cliente conectado (libera el puerto y
-        //    dispara IOException en el hilo de escucha de cada VentanaCliente)
-        for (HiloReserva hilo : Servidor.clientesConectados) {
-            try {
-                hilo.socket.close(); // ← cierra el Socket completo, no solo el stream
-            } catch (Exception ignored) {}
+        // 1. Notificar a cada cliente que el servidor se detiene
+        synchronized (Servidor.clientesConectados) {
+            for (HiloReserva hilo : Servidor.clientesConectados) {
+                try {
+                    hilo.flujoEscritura.writeUTF("ERROR|SERVIDOR_DETENIDO");
+                    hilo.flujoEscritura.flush();
+                } catch (java.io.IOException ignored) {}
+                try {
+                    hilo.socket.close();
+                } catch (java.io.IOException ignored) {}
+            }
+            Servidor.clientesConectados.clear();
         }
-        Servidor.clientesConectados.clear();
 
-        // 2. Cerrar el ServerSocket — libera el puerto 8000 completamente en el SO
+        // 2. Cerrar el ServerSocket — libera el puerto 8000
         try {
             if (serverSocketActivo != null && !serverSocketActivo.isClosed()) {
                 serverSocketActivo.close();
             }
-        } catch (Exception ignored) {}
+        } catch (java.io.IOException ignored) {}
         serverSocketActivo = null;
 
-        // 3. Interrumpir el hilo (ya saldrá solo por el cierre del ServerSocket)
+        // 3. Interrumpir el hilo aceptador
         if (hiloServidor != null) hiloServidor.interrupt();
 
         lblEstadoValor.setText("INACTIVO");
