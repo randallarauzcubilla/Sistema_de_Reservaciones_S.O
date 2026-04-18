@@ -39,7 +39,7 @@ public class VentanaCliente extends JFrame {
     // === FORMULARIO ===
     private JTextField txtFecha;
     private JTextField txtHora;
-    private JTextField txtHoraFin;       // FIX 1 — nueva variable
+    private JTextField txtHoraFin;
     private JTextField txtAsistentes;
     private JComboBox<String> cmbEquipamiento;
     private JButton btnReservar;
@@ -172,7 +172,7 @@ public class VentanaCliente extends JFrame {
         card.add(txtFecha, g);
 
         g.gridx = 2;
-        card.add(etiqueta("Hora Inicio (HH:mm)"), g);   // FIX 1 — renombrado
+        card.add(etiqueta("Hora Inicio (HH:mm)"), g);
         g.gridx = 3;
         txtHora = crearCampo("HH:mm");
         card.add(txtHora, g);
@@ -193,7 +193,7 @@ public class VentanaCliente extends JFrame {
         estilizarCombo(cmbEquipamiento);
         card.add(cmbEquipamiento, g);
 
-        // Fila 2: Hora Fin (nueva) + botones        FIX 1
+        // Fila 2: Hora Fin
         g.gridx = 0; g.gridy = 2;
         card.add(etiqueta("Hora Fin (HH:mm)"), g);
         g.gridx = 1;
@@ -344,10 +344,14 @@ public class VentanaCliente extends JFrame {
 
     // ── ESCUCHAR RESPUESTAS DEL SERVIDOR ─────────────────────    
     private void escucharServidor() {
-    try {
-        while (true) {
-            String msg = entrada.readUTF();
-            SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
+        try {
+            while (true) {
+                String msg = entrada.readUTF();
+                SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
+            }
+        } catch (IOException e) {
+            // El servidor se cayó o cerró la conexión
+            SwingUtilities.invokeLater(this::manejarDesconexion);
         }
     } catch (IOException e) {
         SwingUtilities.invokeLater(() -> {
@@ -372,6 +376,31 @@ public class VentanaCliente extends JFrame {
     } catch (IOException ignored) {}
 }
 
+    private void manejarDesconexion() {
+        if (!conectado) return;  
+        conectado = false;
+
+        for (int i = modeloReservas.getRowCount() - 1; i >= 0; i--) {
+            if ("ENVIANDO...".equals(modeloReservas.getValueAt(i, 3))) {
+                modeloReservas.removeRow(i);
+            }
+        }
+
+        try {
+            if (socket != null && !socket.isClosed()) socket.close();
+        } catch (IOException ignored) {}
+
+        JOptionPane.showMessageDialog(
+            this,
+            "El servidor ha sido cerrado.\nLa aplicación se cerrará.",
+            "Servidor cerrado",
+            JOptionPane.ERROR_MESSAGE
+        );
+
+        dispose();        
+        System.exit(0);     
+    }
+
     private void procesarRespuesta(String msg) {
         notify("← " + msg);
         String[] partes = msg.split("\\|");
@@ -382,7 +411,7 @@ public class VentanaCliente extends JFrame {
             ultimaReservaId = id;
             for (int i = 0; i < modeloReservas.getRowCount(); i++) {
                 if ("ENVIANDO...".equals(modeloReservas.getValueAt(i, 3))) {
-                    modeloReservas.setValueAt(id,        i, 0);
+                    modeloReservas.setValueAt(id,         i, 0);
                     modeloReservas.setValueAt("TEMPORAL", i, 3);
                     modeloReservas.setValueAt(ttl,        i, 4);
                     break;
@@ -396,10 +425,21 @@ public class VentanaCliente extends JFrame {
             actualizarEstadoTabla(id, "CANCELADA");
         } else if (partes[0].equals("ERROR")) {
             notify("❌ Error del servidor: " + (partes.length > 1 ? partes[1] : "desconocido"));
+            // Si el servidor se detuvo explícitamente, disparar desconexión completa
             if (partes.length > 1 && partes[1].equals("SERVIDOR_DETENIDO")) {
-                desconectar();
+                manejarDesconexion();
+                return;
             }
-        }
+
+            // Para cualquier otro ERROR, limpiar fila ENVIANDO... huérfana
+            for (int i = modeloReservas.getRowCount() - 1; i >= 0; i--) {
+                if ("ENVIANDO...".equals(modeloReservas.getValueAt(i, 3))) {
+                    modeloReservas.removeRow(i);
+                    break;
+                }
+            }
+
+            
     }
 
     private void actualizarEstadoTabla(String id, String nuevoEstado) {
@@ -412,24 +452,25 @@ public class VentanaCliente extends JFrame {
         }
     }
 
-    // ── ACCIONES ─────────────────────────────────────────────
+   
     private void reservar() {
         if (!conectado) return;
-        String fecha    = txtFecha.getText().trim();
-        String hora     = txtHora.getText().trim();
-        String horaFin  = txtHoraFin.getText().trim();   // FIX 1 — leer campo nuevo
-        String asis     = txtAsistentes.getText().trim();
-        String equipo   = (String) cmbEquipamiento.getSelectedItem();
-        String rol      = (String) cmbRol.getSelectedItem();
+        String fecha   = txtFecha.getText().trim();
+        String hora    = txtHora.getText().trim();
+        String horaFin = txtHoraFin.getText().trim();
+        String asis    = txtAsistentes.getText().trim();
+        String equipo  = (String) cmbEquipamiento.getSelectedItem();
+        String rol     = (String) cmbRol.getSelectedItem();
 
+        
         if (fecha.isEmpty() || hora.isEmpty() || horaFin.isEmpty() || asis.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Complete todos los campos.", "Campos vacíos", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                "Complete todos los campos antes de reservar.",
+                "Campos vacíos", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         modeloReservas.addRow(new Object[]{"...", fecha, hora, "ENVIANDO...", "..."});
-
-        // FIX 1 — incluir horaFin en el protocolo: RESERVAR|fecha|horaInicio|horaFin|asistentes|equipo|rol
         enviar("RESERVAR|" + fecha + "|" + hora + "|" + horaFin + "|" + asis + "|" + equipo + "|" + rol);
     }
 
@@ -455,7 +496,7 @@ public class VentanaCliente extends JFrame {
         enviar("CANCELAR|" + id);
     }
 
-    // ── ENVIAR AL SERVIDOR ────────────────────────────────────
+    
     private void enviar(String mensaje) {
         try {
             salida.writeUTF(mensaje);
@@ -466,7 +507,7 @@ public class VentanaCliente extends JFrame {
         }
     }
 
-    // ── UTILIDADES ────────────────────────────────────────────
+    
     private void notify(String msg) {
         String t = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         txtMensajes.append("[" + t + "]  " + msg + "\n");
@@ -476,7 +517,7 @@ public class VentanaCliente extends JFrame {
     private void activarFormulario(boolean on) {
         txtFecha.setEnabled(on);
         txtHora.setEnabled(on);
-        txtHoraFin.setEnabled(on);          // FIX 1 — habilitar/deshabilitar junto al resto
+        txtHoraFin.setEnabled(on);
         txtAsistentes.setEnabled(on);
         cmbEquipamiento.setEnabled(on);
         btnReservar.setEnabled(on);

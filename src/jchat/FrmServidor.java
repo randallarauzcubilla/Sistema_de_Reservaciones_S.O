@@ -300,7 +300,7 @@ public class FrmServidor extends JFrame {
     actualizarVista();
 }
     private void detenerServidor() {
-        
+
     // Cerrar ServerSocket — fuerza salida del accept()
     if (serverSocketRef != null && !serverSocketRef.isClosed()) {
         try { serverSocketRef.close(); } catch (java.io.IOException ignored) {}
@@ -315,8 +315,8 @@ public class FrmServidor extends JFrame {
             } catch (java.io.IOException ignored) {}
         }
         Servidor.clientesConectados.clear();
-    }    
-      
+    }
+
     servidorActivo = false;
     if (hiloServidor != null) hiloServidor.interrupt();
     if (timerActualizacion != null) timerActualizacion.stop();
