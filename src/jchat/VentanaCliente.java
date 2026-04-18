@@ -32,6 +32,7 @@ public class VentanaCliente extends JFrame {
 
     // === LOGIN ===
     private JTextField txtNombre;
+    private JTextField txtDNI;
     private JComboBox<String> cmbRol;
     private JButton btnConectar;
     private JLabel lblEstadoConexion;
@@ -86,7 +87,7 @@ public class VentanaCliente extends JFrame {
     // ── LOGIN SIDEBAR ────────────────────────────────────────
     private JPanel crearPanelLogin() {
         JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(230, 0));
+        sidebar.setPreferredSize(new Dimension(240, 0));
         sidebar.setBackground(BG_PANEL);
         sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER_COLOR));
 
@@ -109,34 +110,42 @@ public class VentanaCliente extends JFrame {
 
         GridBagConstraints g = new GridBagConstraints();
         g.fill = GridBagConstraints.HORIZONTAL;
-        g.gridx = 0; g.gridy = 0;
-        g.insets = new Insets(6, 0, 3, 0);
+        g.gridx = 0;
+        g.weightx = 1.0;
 
+        // Nombre
+        g.gridy = 0; g.insets = new Insets(6, 0, 3, 0);
         formLogin.add(etiqueta("Nombre"), g);
-        g.gridy++;
-        txtNombre = crearCampo("Tu_nombre_completo");
+        g.gridy = 1; g.insets = new Insets(0, 0, 0, 0);
+        txtNombre = crearCampo("Tu nombre completo");
         formLogin.add(txtNombre, g);
 
-        g.gridy++;
-        g.insets = new Insets(12, 0, 3, 0);
+        // DNI
+        g.gridy = 2; g.insets = new Insets(12, 0, 3, 0);
+        formLogin.add(etiqueta("DNI / Cédula"), g);
+        g.gridy = 3; g.insets = new Insets(0, 0, 0, 0);
+        txtDNI = crearCampo("Número de cédula");
+        formLogin.add(txtDNI, g);
+
+        // Rol
+        g.gridy = 4; g.insets = new Insets(12, 0, 3, 0);
         formLogin.add(etiqueta("Rol"), g);
-        g.gridy++;
-        g.insets = new Insets(0, 0, 0, 0);
+        g.gridy = 5; g.insets = new Insets(0, 0, 0, 0);
         cmbRol = new JComboBox<>(new String[]{"ESTUDIANTE", "DOCENTE", "DECANATURA"});
         estilizarCombo(cmbRol);
         formLogin.add(cmbRol, g);
 
-        g.gridy++;
-        g.insets = new Insets(20, 0, 0, 0);
+        // Botón conectar
+        g.gridy = 6; g.insets = new Insets(22, 0, 0, 0);
         btnConectar = crearBotonPrimario("▶  Conectar", ACCENT_GREEN);
         btnConectar.addActionListener(e -> conectar());
         formLogin.add(btnConectar, g);
 
         sidebar.add(formLogin, BorderLayout.CENTER);
-        
-        lblEstadoConexion = new JLabel("Sin conexión al servidor", SwingConstants.CENTER);
-        lblEstadoConexion.setFont(new Font("Monospaced", Font.ITALIC, 10));
-        lblEstadoConexion.setForeground(TEXT_MUTED);
+
+        lblEstadoConexion = new JLabel("● Sin conexión al servidor", SwingConstants.CENTER);
+        lblEstadoConexion.setFont(new Font("Monospaced", Font.BOLD, 11));
+        lblEstadoConexion.setForeground(ACCENT_RED);
         lblEstadoConexion.setBorder(new EmptyBorder(0, 0, 20, 0));
         sidebar.add(lblEstadoConexion, BorderLayout.SOUTH);
 
@@ -164,7 +173,6 @@ public class VentanaCliente extends JFrame {
         g.fill = GridBagConstraints.HORIZONTAL;
         g.insets = new Insets(5, 8, 5, 8);
 
-        // Fila 0: Fecha | Hora Inicio
         g.gridx = 0; g.gridy = 0; g.weightx = 0.3;
         card.add(etiqueta("Fecha (YYYY-MM-DD)"), g);
         g.gridx = 1;
@@ -177,7 +185,6 @@ public class VentanaCliente extends JFrame {
         txtHora = crearCampo("HH:mm");
         card.add(txtHora, g);
 
-        // Fila 1: N° Asistentes | Equipamiento
         g.gridx = 0; g.gridy = 1;
         card.add(etiqueta("N° Asistentes"), g);
         g.gridx = 1;
@@ -193,14 +200,12 @@ public class VentanaCliente extends JFrame {
         estilizarCombo(cmbEquipamiento);
         card.add(cmbEquipamiento, g);
 
-        // Fila 2: Hora Fin
         g.gridx = 0; g.gridy = 2;
         card.add(etiqueta("Hora Fin (HH:mm)"), g);
         g.gridx = 1;
         txtHoraFin = crearCampo("HH:mm");
         card.add(txtHoraFin, g);
 
-        // Fila 3: botones
         g.gridx = 0; g.gridy = 3; g.insets = new Insets(14, 8, 5, 8);
         btnReservar  = crearBotonPrimario("📅  Reservar",  ACCENT_BLUE);
         btnConfirmar = crearBotonPrimario("✔  Confirmar", ACCENT_GREEN);
@@ -243,9 +248,10 @@ public class VentanaCliente extends JFrame {
                 c.setForeground(TEXT_PRIMARY);
                 ((JComponent) c).setBorder(new EmptyBorder(0, 8, 0, 8));
                 Object estado = modeloReservas.getValueAt(row, 3);
-                if ("CONFIRMADA".equals(estado))  c.setForeground(ACCENT_GREEN);
-                else if ("CANCELADA".equals(estado))  c.setForeground(ACCENT_RED);
-                else if ("TEMPORAL".equals(estado))   c.setForeground(ACCENT_AMBER);
+                if ("CONFIRMADA".equals(estado))       c.setForeground(ACCENT_GREEN);
+                else if ("CANCELADA".equals(estado))   c.setForeground(ACCENT_RED);
+                else if ("TEMPORAL".equals(estado))    c.setForeground(ACCENT_AMBER);
+                else if ("ENVIANDO...".equals(estado)) c.setForeground(TEXT_MUTED);
                 if (isRowSelected(row)) c.setBackground(new Color(64, 156, 255, 45));
                 return c;
             }
@@ -297,37 +303,56 @@ public class VentanaCliente extends JFrame {
         return panel;
     }
 
-    // ── CONEXIÓN REAL AL SERVIDOR ────────────────────────────
+    // ── CONEXIÓN AL SERVIDOR ─────────────────────────────────
     private void conectar() {
         String nombre = txtNombre.getText().trim();
-        if (nombre.isEmpty()) {
+        String dni    = txtDNI.getText().trim();
+
+        if (nombre.isEmpty() || nombre.equals("Tu nombre completo")) {
             JOptionPane.showMessageDialog(this, "Ingrese su nombre.", "Campo vacío", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        if (dni.isEmpty() || dni.equals("Número de cédula")) {
+            JOptionPane.showMessageDialog(this, "Ingrese su DNI / Cédula.", "Campo vacío", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Socket socketTemp = null;
         try {
-            socket  = new Socket("localhost", 8000);
-            entrada = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-            salida  = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+            socketTemp = new Socket();
+            socketTemp.connect(new InetSocketAddress("localhost", 8000), 3000);
 
-            salida.writeUTF(nombre);
-            salida.flush();
+            DataInputStream  entradaTemp = new DataInputStream(new BufferedInputStream(socketTemp.getInputStream()));
+            DataOutputStream salidaTemp  = new DataOutputStream(new BufferedOutputStream(socketTemp.getOutputStream()));
 
-            String respuesta = entrada.readUTF();
-            if (!respuesta.startsWith("OK")) {
+            salidaTemp.writeUTF(nombre + "|" + dni);
+            salidaTemp.flush();
+
+            socketTemp.setSoTimeout(3000);
+            String respuesta = entradaTemp.readUTF();
+            socketTemp.setSoTimeout(0);
+
+            if (!respuesta.equals("OK|CONECTADO")) {
                 notify("❌ Servidor rechazó la conexión: " + respuesta);
+                cerrarSilencioso(socketTemp);
                 return;
             }
 
+            socket  = socketTemp;
+            entrada = entradaTemp;
+            salida  = salidaTemp;
+
             conectado = true;
-            lblEstadoConexion.setText("● Conectado");
+            lblEstadoConexion.setText("● Conectado: " + nombre);
             lblEstadoConexion.setForeground(ACCENT_GREEN);
             panelDerecho.setVisible(true);
             activarFormulario(true);
             btnConectar.setEnabled(false);
             txtNombre.setEditable(false);
+            txtDNI.setEditable(false);
             cmbRol.setEnabled(false);
 
-            notify("✅ Conectado como: " + nombre);
+            notify("✅ Conectado como: " + nombre + " (DNI: " + dni + ")");
             notify("Servidor listo. Puede realizar su reserva.");
             setTitle("VentanaCliente — " + nombre);
 
@@ -335,46 +360,51 @@ public class VentanaCliente extends JFrame {
             hiloEscucha.setDaemon(true);
             hiloEscucha.start();
 
-        } catch (IOException e) {
+        } catch (ConnectException e) {
+            cerrarSilencioso(socketTemp);
             JOptionPane.showMessageDialog(this,
-                "No se pudo conectar al servidor.\n¿Está corriendo el servidor?",
-                "Error de conexión", JOptionPane.ERROR_MESSAGE);
+                "No hay servidor activo en el puerto 8000.\n¿Está corriendo el servidor?",
+                "Sin conexión", JOptionPane.ERROR_MESSAGE);
+        } catch (SocketTimeoutException e) {
+            cerrarSilencioso(socketTemp);
+            JOptionPane.showMessageDialog(this,
+                "El servidor no respondió a tiempo.\nVerifique que esté operativo.",
+                "Tiempo de espera agotado", JOptionPane.ERROR_MESSAGE);
+        } catch (IOException e) {
+            cerrarSilencioso(socketTemp);
+            JOptionPane.showMessageDialog(this,
+                "Error de conexión: " + e.getMessage(),
+                "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // ── ESCUCHAR RESPUESTAS DEL SERVIDOR ─────────────────────    
-private void escucharServidor() {
-    try {
-        while (true) {
-            String msg = entrada.readUTF();
-            SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
+    private void cerrarSilencioso(Socket s) {
+        if (s != null && !s.isClosed()) {
+            try { s.close(); } catch (IOException ignored) {}
         }
-    } catch (IOException e) {
-        SwingUtilities.invokeLater(() -> {
-            notify("⚠ Conexión con el servidor perdida.");
-            manejarDesconexion();
-        });
     }
-}
 
-    
-    private void desconectar() {
-    conectado = false;
-    activarFormulario(false);
-    btnConectar.setEnabled(true);
-    txtNombre.setEditable(true);
-    cmbRol.setEnabled(true);
-    panelDerecho.setVisible(false);
-    lblEstadoConexion.setText("Sin conexión al servidor");
-    lblEstadoConexion.setForeground(TEXT_MUTED);
-    setTitle("VentanaCliente — Sistema de Reservas");
-    try {
-        if (socket != null && !socket.isClosed()) socket.close();
-    } catch (IOException ignored) {}
-}
+    // ── ESCUCHAR RESPUESTAS DEL SERVIDOR ─────────────────────
+    private void escucharServidor() {
+        try {
+            while (true) {
+                String msg = entrada.readUTF();
+                SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
+            }
+        } catch (IOException e) {
+            SwingUtilities.invokeLater(this::manejarDesconexion);
+        }
+    }
 
+    // ── MANEJAR CAÍDA DEL SERVIDOR ───────────────────────────
     private void manejarDesconexion() {
-        if (!conectado) return;  
+        if (!conectado) return;
+        notify("⚠ Conexión con el servidor perdida.");
+        desconectar();
+    }
+
+    // ── RESETEAR UI AL ESTADO INICIAL (sin cerrar la app) ────
+    private void desconectar() {
         conectado = false;
 
         for (int i = modeloReservas.getRowCount() - 1; i >= 0; i--) {
@@ -383,24 +413,40 @@ private void escucharServidor() {
             }
         }
 
-        try {
-            if (socket != null && !socket.isClosed()) socket.close();
-        } catch (IOException ignored) {}
+        cerrarSilencioso(socket);
 
-        JOptionPane.showMessageDialog(
-            this,
-            "El servidor ha sido cerrado.\nLa aplicación se cerrará.",
-            "Servidor cerrado",
-            JOptionPane.ERROR_MESSAGE
-        );
-
-        dispose();        
-        System.exit(0);     
+        activarFormulario(false);
+        panelDerecho.setVisible(false);
+        btnConectar.setEnabled(true);
+        txtNombre.setEditable(true);
+        txtDNI.setEditable(true);
+        cmbRol.setEnabled(true);
+        lblEstadoConexion.setText("● Sin conexión al servidor");
+        lblEstadoConexion.setForeground(ACCENT_RED);
+        setTitle("VentanaCliente — Sistema de Reservas");
     }
 
+    // ── PROCESAR RESPUESTAS ───────────────────────────────────
     private void procesarRespuesta(String msg) {
         notify("← " + msg);
         String[] partes = msg.split("\\|");
+
+        if (partes[0].equals("HISTORIAL")) {
+            modeloReservas.setRowCount(0);
+            for (int i = 1; i < partes.length; i++) {
+                String[] campos = partes[i].split(",", 5);
+                if (campos.length < 5) continue;
+                String id      = campos[0];
+                String fecha   = campos[1];
+                String horaRng = campos[2] + "-" + campos[3];
+                String estado  = campos[4];
+                modeloReservas.addRow(new Object[]{id, fecha, horaRng, estado, "—"});
+            }
+            if (modeloReservas.getRowCount() > 0) {
+                notify("📋 Historial restaurado: " + modeloReservas.getRowCount() + " reserva(s).");
+            }
+            return;
+        }
 
         if (partes[0].equals("OK") && partes.length >= 3 && partes[1].equals("TEMPORAL")) {
             String id  = partes[2];
@@ -422,21 +468,17 @@ private void escucharServidor() {
             actualizarEstadoTabla(id, "CANCELADA");
         } else if (partes[0].equals("ERROR")) {
             notify("❌ Error del servidor: " + (partes.length > 1 ? partes[1] : "desconocido"));
-            // Si el servidor se detuvo explícitamente, disparar desconexión completa
             if (partes.length > 1 && partes[1].equals("SERVIDOR_DETENIDO")) {
                 manejarDesconexion();
                 return;
             }
-
-            // Para cualquier otro ERROR, limpiar fila ENVIANDO... huérfana
             for (int i = modeloReservas.getRowCount() - 1; i >= 0; i--) {
                 if ("ENVIANDO...".equals(modeloReservas.getValueAt(i, 3))) {
                     modeloReservas.removeRow(i);
                     break;
                 }
             }
-
-        }        
+        }
     }
 
     private void actualizarEstadoTabla(String id, String nuevoEstado) {
@@ -449,7 +491,7 @@ private void escucharServidor() {
         }
     }
 
-   
+    // ── ACCIONES ─────────────────────────────────────────────
     private void reservar() {
         if (!conectado) return;
         String fecha   = txtFecha.getText().trim();
@@ -459,15 +501,17 @@ private void escucharServidor() {
         String equipo  = (String) cmbEquipamiento.getSelectedItem();
         String rol     = (String) cmbRol.getSelectedItem();
 
-        
-        if (fecha.isEmpty() || hora.isEmpty() || horaFin.isEmpty() || asis.isEmpty()) {
+        if (fecha.isEmpty() || fecha.equals("YYYY-MM-DD")
+                || hora.isEmpty() || hora.equals("HH:mm")
+                || horaFin.isEmpty() || horaFin.equals("HH:mm")
+                || asis.isEmpty()) {
             JOptionPane.showMessageDialog(this,
                 "Complete todos los campos antes de reservar.",
                 "Campos vacíos", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        modeloReservas.addRow(new Object[]{"...", fecha, hora, "ENVIANDO...", "..."});
+        modeloReservas.addRow(new Object[]{"...", fecha, hora + "-" + horaFin, "ENVIANDO...", "..."});
         enviar("RESERVAR|" + fecha + "|" + hora + "|" + horaFin + "|" + asis + "|" + equipo + "|" + rol);
     }
 
@@ -493,7 +537,7 @@ private void escucharServidor() {
         enviar("CANCELAR|" + id);
     }
 
-    
+    // ── ENVIAR AL SERVIDOR ────────────────────────────────────
     private void enviar(String mensaje) {
         try {
             salida.writeUTF(mensaje);
@@ -504,7 +548,7 @@ private void escucharServidor() {
         }
     }
 
-    
+    // ── UTILIDADES ────────────────────────────────────────────
     private void notify(String msg) {
         String t = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         txtMensajes.append("[" + t + "]  " + msg + "\n");
@@ -530,43 +574,54 @@ private void escucharServidor() {
     }
 
     private JTextField crearCampo(String placeholder) {
-    JTextField f = new JTextField(placeholder);
-    f.setFont(new Font("Monospaced", Font.PLAIN, 12));
-    f.setBackground(BG_DARK);
-    f.setForeground(TEXT_MUTED); // color gris para placeholder
-    f.setCaretColor(ACCENT_BLUE);
-    f.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BORDER_COLOR, 1),
-            new EmptyBorder(6, 10, 6, 10)));
-    f.setPreferredSize(new Dimension(0, 34));
+        JTextField f = new JTextField();
+        f.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        f.setBackground(BG_DARK);
+        f.setForeground(TEXT_MUTED);
+        f.setCaretColor(ACCENT_BLUE);
+        f.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                new EmptyBorder(6, 10, 6, 10)));
+        f.setPreferredSize(new Dimension(0, 34));
+        f.setText(placeholder);
 
-    // ── Comportamiento placeholder ──
-    f.addFocusListener(new FocusAdapter() {
-        @Override
-        public void focusGained(FocusEvent e) {
-            if (f.getText().equals(placeholder)) {
-                f.setText("");
-                f.setForeground(TEXT_PRIMARY);
+        f.addFocusListener(new FocusAdapter() {
+            public void focusGained(FocusEvent e) {
+                if (f.getText().equals(placeholder)) {
+                    f.setText("");
+                    f.setForeground(TEXT_PRIMARY);
+                }
             }
-        }
-        @Override
-        public void focusLost(FocusEvent e) {
-            if (f.getText().isEmpty()) {
-                f.setText(placeholder);
-                f.setForeground(TEXT_MUTED);
+            public void focusLost(FocusEvent e) {
+                if (f.getText().isEmpty()) {
+                    f.setText(placeholder);
+                    f.setForeground(TEXT_MUTED);
+                }
             }
-        }
-    });
-
-    return f;
-}
+        });
+        return f;
+    }
 
     private void estilizarCombo(JComboBox<?> combo) {
-        combo.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        combo.setBackground(BG_DARK);
+        combo.setFont(new Font("Monospaced", Font.BOLD, 12));
+        combo.setBackground(BG_CARD);
         combo.setForeground(TEXT_PRIMARY);
-        combo.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
+        combo.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ACCENT_BLUE, 1),
+                new EmptyBorder(2, 6, 2, 6)));
         combo.setPreferredSize(new Dimension(0, 34));
+
+        combo.setRenderer(new DefaultListCellRenderer() {
+            public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                setFont(new Font("Monospaced", Font.BOLD, 12));
+                setBackground(isSelected ? ACCENT_BLUE : BG_CARD);
+                setForeground(isSelected ? BG_DARK : TEXT_PRIMARY);
+                setBorder(new EmptyBorder(4, 10, 4, 10));
+                return this;
+            }
+        });
     }
 
     private JButton crearBotonPrimario(String texto, Color color) {
