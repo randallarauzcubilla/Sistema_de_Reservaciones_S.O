@@ -115,3 +115,58 @@
 [18/04/2026 12:56:29] [CONFIRMACION    ] Reserva d1b19a72 confirmada por 604830418
 [18/04/2026 12:57:29] [SISTEMA         ] Bitácora inicializada
 [18/04/2026 12:57:29] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 21:10:36] [SISTEMA         ] Bitácora inicializada
+[18/04/2026 21:10:36] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 21:11:51] [CONEXION        ] Keilor Jafet Muñoz Chavarria (DNI: 402520321) conectado
+[18/04/2026 21:12:46] [ERROR           ] 402520321 intentó reservar en fecha pasada: 2022-04-15
+[18/04/2026 21:13:08] [ERROR           ] 402520321 intentó reservar hora pasada hoy: 01:00
+[18/04/2026 21:14:03] [ERROR           ] 402520321 sin capacidad: 500
+[18/04/2026 21:14:11] [ERROR           ] 402520321 sin capacidad: 201
+[18/04/2026 21:14:17] [ERROR           ] 402520321 sin capacidad: 200
+[18/04/2026 21:14:25] [ERROR           ] 402520321 sin capacidad: 1990
+[18/04/2026 21:14:39] [RESERVA_TEMPORAL] [564c47b0] 402520321 | 2026-04-18 21:20-22:00 | 181 personas | COMPLETO | RESERVADO_TEMPORAL | TTL: 29s
+[18/04/2026 21:15:01] [CONFIRMACION    ] Reserva 564c47b0 confirmada por 402520321
+[18/04/2026 21:18:35] [ERROR           ] 402520321 sin capacidad: 181
+[18/04/2026 21:18:41] [ERROR           ] 402520321 sin capacidad: 7
+[18/04/2026 21:19:08] [RESERVA_TEMPORAL] [af706097] 402520321 | 2026-04-18 22:00-23:00 | 6 personas | NINGUNO | RESERVADO_TEMPORAL | TTL: 30s
+[18/04/2026 21:19:38] [EXPIRACION_TTL  ] Reserva af706097 expirada. Cliente: 402520321
+[18/04/2026 21:19:57] [RESERVA_TEMPORAL] [7b4ecf38] 402520321 | 2026-04-18 22:00-23:00 | 6 personas | NINGUNO | RESERVADO_TEMPORAL | TTL: 29s
+[18/04/2026 21:20:03] [CONFIRMACION    ] Reserva 7b4ecf38 confirmada por 402520321
+[18/04/2026 21:22:00] [RESERVA_TEMPORAL] [e5e14a26] 402520321 | 2026-04-19 09:00-12:00 | 0 personas | NINGUNO | RESERVADO_TEMPORAL | TTL: 30s
+[18/04/2026 21:22:19] [CONFIRMACION    ] Reserva e5e14a26 confirmada por 402520321
+[18/04/2026 21:22:37] [ERROR           ] 402520321 sin capacidad: 200
+[18/04/2026 21:28:41] [DESCONEXION     ] Keilor Jafet Muñoz Chavarria (DNI: 402520321) desconectado
+[18/04/2026 21:28:42] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 21:29:26] [CONEXION        ] Keilor Jafet Muñoz Chavarria (DNI: 402520321) conectado
+[18/04/2026 21:29:33] [CANCELACION     ] Reserva 564c47b0 cancelada. Motivo: Cancelado por cliente
+[18/04/2026 21:29:37] [CANCELACION     ] Reserva e5e14a26 cancelada. Motivo: Cancelado por cliente
+[18/04/2026 21:29:39] [CANCELACION     ] Reserva 7b4ecf38 cancelada. Motivo: Cancelado por cliente
+[18/04/2026 21:30:45] [DESCONEXION     ] Keilor Jafet Muñoz Chavarria (DNI: 402520321) desconectado
+[18/04/2026 21:47:52] [SISTEMA         ] Bitácora inicializada
+[18/04/2026 21:47:52] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 21:50:41] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) conectado
+[18/04/2026 21:52:07] [RESERVA_TEMPORAL] [72a256cd] 604940262 | 2026-04-19 08:00-09:00 | 100 personas | COMPLETO | RESERVADO_TEMPORAL | TTL: 29s
+[18/04/2026 21:52:09] [CONFIRMACION    ] Reserva 72a256cd confirmada por 604940262
+[18/04/2026 21:52:45] [ERROR           ] 604940262 sin capacidad: 200
+[18/04/2026 21:53:43] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[18/04/2026 21:53:45] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 21:57:13] [CONEXION        ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) conectado
+[18/04/2026 21:57:23] [DESCONEXION     ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) desconectado
+[18/04/2026 22:03:15] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 22:03:42] [CONEXION        ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) conectado
+[18/04/2026 22:04:59] [DESCONEXION     ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) desconectado
+[18/04/2026 22:05:00] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 22:05:23] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) conectado
+[18/04/2026 22:05:27] [CANCELACION     ] Reserva 72a256cd cancelada. Motivo: Cancelado por cliente
+[18/04/2026 22:06:03] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[18/04/2026 22:06:36] [SISTEMA         ] Bitácora inicializada
+[18/04/2026 22:06:36] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 22:06:52] [CONEXION        ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) conectado
+[18/04/2026 22:07:07] [DESCONEXION     ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) desconectado
+[18/04/2026 22:07:08] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 22:07:24] [CONEXION        ] PRENDAS MATARRITA ANDDY ELIH (DNI: 604830418) conectado
+[18/04/2026 22:07:29] [CANCELACION     ] Reserva 205c52e3 cancelada. Motivo: Cancelado por cliente
+[18/04/2026 22:07:39] [DESCONEXION     ] PRENDAS MATARRITA ANDDY ELIH (DNI: 604830418) desconectado
+[18/04/2026 22:07:40] [SISTEMA         ] HiloTTL iniciado
+[18/04/2026 22:07:52] [CONEXION        ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) conectado
+[18/04/2026 22:09:01] [DESCONEXION     ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) desconectado
