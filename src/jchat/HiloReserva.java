@@ -115,7 +115,7 @@ public class HiloReserva extends Thread {
                 catch (IllegalArgumentException ignored) {}
             }
 
-            // ── Validación 1: formato de fecha ──────────────────────────
+            // ── Validación 1: formato de fecha 
             LocalDate fechaReserva;
             try {
                 fechaReserva = LocalDate.parse(fecha);
@@ -124,7 +124,7 @@ public class HiloReserva extends Thread {
                 return;
             }
 
-            // ── Validación 2: no reservar en el pasado ──────────────────
+            // ── Validación 2: no reservar en el pasado 
             LocalDate hoy = LocalDate.now();
             if (fechaReserva.isBefore(hoy)) {
                 bitacora.log("ERROR", idCliente + " intentó reservar en fecha pasada: " + fecha);
@@ -157,9 +157,10 @@ public class HiloReserva extends Thread {
                 return;
             }
 
-            // ── Validación 6: capacidad y equipo ────────────────────────
-            if (!recursos.hayCapacidad(asistentes)) {
-                bitacora.log("ERROR", idCliente + " sin capacidad: " + asistentes);
+            // ── Validación 6: capacidad y equipo - Verificación por rango (no global)
+            int ocupada = calendario.capacidadOcupadaEnRango(fecha, horaInicio, horaFin);
+            if (ocupada + asistentes > Servidor.gestor.getCapacidadMaxima()) {
+                bitacora.log("ERROR", idCliente + " sin capacidad en franja: " + fecha);
                 responder("ERROR|SIN_CAPACIDAD");
                 return;
             }
@@ -170,7 +171,7 @@ public class HiloReserva extends Thread {
                 return;
             }
 
-            // ── Crear reserva temporal ───────────────────────────────────
+            // ── Crear reserva temporal 
             Reserva reserva = calendario.reservarTemporal(
                 idCliente, fecha, horaInicio, horaFin,
                 asistentes, equipo, prioridad
