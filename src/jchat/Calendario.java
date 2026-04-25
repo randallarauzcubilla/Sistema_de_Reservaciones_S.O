@@ -181,17 +181,16 @@ public class Calendario {
         gestor.lockEscrituraCalendario().lock();
         try {
             String key = clave(r.getFecha(), r.getHoraInicio(), r.getHoraFin());
-
+            
             if (!franjas.containsKey(key)) {
                 franjas.put(key, r);
-
+                // Solo adquirir equipo, NO capacidad (es por rango)
                 try {
-                    gestor.adquirirParaReserva(r.getCantAsistentes(), r.getEquipo());
+                    gestor.adquirirSoloEquipo(r.getEquipo());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
             }
-
         } finally {
             gestor.lockEscrituraCalendario().unlock();
         }

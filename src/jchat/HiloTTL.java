@@ -1,7 +1,6 @@
 package jchat;
 
 public class HiloTTL extends Thread {
-
     private final Calendario       calendario;
     private final RecursoAuditorio recursos;
     private final ColaTTL          colaTTL;
@@ -22,27 +21,41 @@ public class HiloTTL extends Thread {
         bitacora.log("SISTEMA", "HiloTTL iniciado");
         while (activo) {
             try {
-                // Dormir hasta la próxima expiración
                 long espera = colaTTL.msHastaProxima();
                 colaTTL.esperarConTimeout(espera);
-
-                // Expirar vencidas en el calendario
                 java.util.List<Reserva> expiradas = calendario.expirarVencidas();
 
-                // Limpiar de la cola y registrar en bitácora
                 for (Reserva r : expiradas) {
                     colaTTL.remover(r.getIdReserva());
                     bitacora.logExpiracion(r);
-                    System.out.println("[TTL] Expirada: " + r.getIdReserva()
-                            + " | " + r.getIdCliente());
-                }
+                    System.out.println("[TTL] Expirada: " + r.getIdReserva());
 
+                    // Notificar al cliente dueño de la reserva
+                    notificarClienteExpiracion(r);
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 activo = false;
             }
         }
         bitacora.log("SISTEMA", "HiloTTL detenido");
+    }
+
+    // Busca el hilo del cliente y le avisa que su reserva expiró 
+    private void notificarClienteExpiracion(Reserva r) {
+        for (HiloReserva hilo : Servidor.clientesConectados) {
+            if (hilo.getIdCliente().equals(r.getIdCliente())) {
+                try {
+                    synchronized (hilo.flujoEscritura) {
+                        hilo.flujoEscritura.writeUTF("EXPIRACION|" + r.getIdReserva());
+                        hilo.flujoEscritura.flush();
+                    }
+                } catch (java.io.IOException ignored) {
+                    System.out.println("[TTL-DEBUG] Error al enviar: " + ignored.getMessage());
+                }
+                break;
+            }
+        }
     }
 
     public void detener() {

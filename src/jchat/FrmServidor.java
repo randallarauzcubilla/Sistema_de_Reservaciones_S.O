@@ -58,6 +58,15 @@ public class FrmServidor extends JFrame {
         setBackground(BG_DARK);
         initComponents();
         log("Sistema iniciado. Presione 'Iniciar Servidor' para comenzar.");
+          
+    // Guardar al cerrar ventana
+    addWindowListener(new java.awt.event.WindowAdapter() {
+        @Override
+        public void windowClosing(java.awt.event.WindowEvent e) {
+            PersistenciaReservas.guardar(Servidor.calendario);
+            System.out.println("[CIERRE] Reservas guardadas antes de cerrar.");
+        }
+    });
     }
 
     private void initComponents() {
@@ -267,20 +276,28 @@ public class FrmServidor extends JFrame {
         btnDetener.setEnabled(true);
         log("Servidor INICIADO en puerto 8000.");
 
-        // ── Restaurar reservas confirmadas desde disco ──────────
-        List<Reserva> restauradas = PersistenciaReservas.cargar();
-        for (Reserva r : restauradas) {
-            Servidor.calendario.cargarReservaRestaurada(r);
-        }
-        if (!restauradas.isEmpty()) {
-            log("✔ " + restauradas.size() + " reserva(s) vigente(s) restauradas desde disco.");
-        } else {
-            log("No hay reservas previas que restaurar.");
-        }
-
         hiloServidor = new Thread(() -> {
-            try (java.net.ServerSocket serverSocket = new java.net.ServerSocket(8000)) {
-                serverSocketActivo = serverSocket;
+            // ── Todo dentro del hilo — no bloquea Swing ──
+
+            // 1. Cargar roles
+            VerificadorRoles.cargar();
+
+            // 2. Restaurar reservas desde disco
+            List<Reserva> restauradas = PersistenciaReservas.cargar();
+            for (Reserva r : restauradas) {
+                Servidor.calendario.cargarReservaRestaurada(r);
+            }
+            SwingUtilities.invokeLater(() -> {
+                if (!restauradas.isEmpty()) {
+                    log("✔ " + restauradas.size() + " reserva(s) restauradas desde disco.");
+                } else {
+                    log("No hay reservas previas que restaurar.");
+                }
+            });
+
+            // 3. Abrir socket
+            try {
+                serverSocketActivo = new java.net.ServerSocket(8000);
 
                 HiloTTL hiloTTL = new HiloTTL(
                     Servidor.calendario, Servidor.recursos,
@@ -291,15 +308,16 @@ public class FrmServidor extends JFrame {
 
                 System.out.println("[SERVIDOR] Puerto 8000 abierto, esperando clientes...");
 
-                while (!Thread.currentThread().isInterrupted() && !serverSocket.isClosed()) {
-                    java.net.Socket clienteSocket = serverSocket.accept();
+                while (!Thread.currentThread().isInterrupted()
+                        && !serverSocketActivo.isClosed()) {
+                    java.net.Socket clienteSocket = serverSocketActivo.accept();
                     java.io.DataInputStream entrada = new java.io.DataInputStream(
                         new java.io.BufferedInputStream(clienteSocket.getInputStream()));
-                    String idCliente = entrada.readUTF();
-                    System.out.println("[SERVIDOR] Cliente: " + idCliente);
+                    String datosCliente = entrada.readUTF();
+                    System.out.println("[SERVIDOR] Cliente: " + datosCliente);
 
                     HiloReserva hilo = new HiloReserva(
-                        clienteSocket, idCliente,
+                        clienteSocket, datosCliente,
                         Servidor.calendario, Servidor.recursos,
                         Servidor.colaTTL, Servidor.bitacora
                     );
