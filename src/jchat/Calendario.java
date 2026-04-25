@@ -24,9 +24,11 @@ public class Calendario {
         try {
             String key = clave(fecha, horaInicio, horaFin);
             Reserva r = franjas.get(key);
+
             return r == null
-                || r.getEstado() == Reserva.Estado.CANCELADO
-                || r.getEstado() == Reserva.Estado.LIBRE;
+                    || r.getEstado() == Reserva.Estado.CANCELADO
+                    || r.getEstado() == Reserva.Estado.LIBRE;
+
         } finally {
             gestor.lockLecturaCalendario().unlock();
         }
@@ -34,28 +36,35 @@ public class Calendario {
 
     // SC-02: Reservar temporal (WRITE lock)
     public Reserva reservarTemporal(String idCliente, String fecha,
-                                     String horaInicio, String horaFin,
-                                     int asistentes, Reserva.Equipo equipo,
-                                     Reserva.Prioridad prioridad) {
-        gestor.lockEscrituraCalendario().lock();
-        try {
-            if (!estaDisponibleSinLock(fecha, horaInicio, horaFin)) {
-                return null;
-            }
-            gestor.adquirirParaReserva(asistentes, equipo);
-            Reserva reserva = new Reserva(idCliente, fecha, horaInicio,
-                                           horaFin, asistentes, equipo, prioridad);
-            franjas.put(clave(fecha, horaInicio, horaFin), reserva);
-            return reserva;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return null;
-        } finally {
-            gestor.lockEscrituraCalendario().unlock();
+                                String horaInicio, String horaFin,
+                                int asistentes, Reserva.Equipo equipo,
+                                Reserva.Prioridad prioridad) {
+    gestor.lockEscrituraCalendario().lock();
+    try {
+        // Verificar solapamiento y capacidad por rango (sin semáforo global)
+        int ocupada = capacidadOcupadaEnRango(fecha, horaInicio, horaFin);
+        int capacidadTotal = gestor.getCapacidadMaxima();
+
+        if (ocupada + asistentes > capacidadTotal) {
+            return null; // No hay capacidad en ESA franja
         }
+        // Solo adquirir equipo (no capacidad — se controla por rango)
+        gestor.adquirirSoloEquipo(equipo);
+
+        Reserva reserva = new Reserva(idCliente, fecha, horaInicio,
+                horaFin, asistentes, equipo, prioridad);
+        franjas.put(clave(fecha, horaInicio, horaFin), reserva);
+        return reserva;
+
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return null;
+    } finally {
+        gestor.lockEscrituraCalendario().unlock();
+    }
     }
 
-    // SC-03: Confirmar reserva (WRITE lock)
+    // SC-03: Confirmar reserva
     public boolean confirmarReserva(String idReserva) {
         gestor.lockEscrituraCalendario().lock();
         try {
@@ -63,14 +72,16 @@ public class Calendario {
             if (r == null) return false;
             if (r.getEstado() != Reserva.Estado.RESERVADO_TEMPORAL) return false;
             if (r.estaVencida()) return false;
+
             r.setEstado(Reserva.Estado.CONFIRMADO);
             return true;
+
         } finally {
             gestor.lockEscrituraCalendario().unlock();
         }
     }
 
-    // SC-04: Cancelar reserva (WRITE lock)
+    // SC-04: Cancelar reserva
     public boolean cancelarReserva(String idReserva) {
         gestor.lockEscrituraCalendario().lock();
         try {
@@ -78,14 +89,14 @@ public class Calendario {
             if (r == null) return false;
             if (r.getEstado() == Reserva.Estado.CANCELADO) return false;
             r.setEstado(Reserva.Estado.CANCELADO);
-            gestor.liberarDeReserva(r.getCantAsistentes(), r.getEquipo());
+            gestor.liberarSoloEquipo(r.getEquipo()); // Solo equipo, no capacidad
             return true;
         } finally {
             gestor.lockEscrituraCalendario().unlock();
         }
     }
 
-    // SC-08: Expirar reservas vencidas (WRITE lock)
+    // SC-08: Expirar reservas
     public List<Reserva> expirarVencidas() {
         List<Reserva> expiradas = new ArrayList<>();
         gestor.lockEscrituraCalendario().lock();
@@ -93,17 +104,17 @@ public class Calendario {
             for (Reserva r : franjas.values()) {
                 if (r.estaVencida()) {
                     r.setEstado(Reserva.Estado.CANCELADO);
-                    gestor.liberarDeReserva(r.getCantAsistentes(), r.getEquipo());
+                    gestor.liberarSoloEquipo(r.getEquipo()); // Solo equipo
                     expiradas.add(r);
                 }
             }
+            return expiradas;
         } finally {
             gestor.lockEscrituraCalendario().unlock();
         }
-        return expiradas;
     }
 
-    // SC-09: Estado general (READ lock)
+    // SC-09: Activas
     public List<Reserva> getReservasActivas() {
         gestor.lockLecturaCalendario().lock();
         try {
@@ -130,28 +141,59 @@ public class Calendario {
 
     private Reserva buscarPorId(String idReserva) {
         for (Reserva r : franjas.values()) {
-            if (r.getIdReserva().equals(idReserva)) return r;
+            if (r.getIdReserva().equals(idReserva)) {
+                return r;
+            }
         }
         return null;
     }
 
-    private boolean estaDisponibleSinLock(String fecha,
-                                           String horaInicio, String horaFin) {
-        String key = clave(fecha, horaInicio, horaFin);
-        Reserva r = franjas.get(key);
-        return r == null
-            || r.getEstado() == Reserva.Estado.CANCELADO
-            || r.getEstado() == Reserva.Estado.LIBRE;
+    // lógica correcta de solapamiento
+    private boolean solapan(String ini1, String fin1, String ini2, String fin2) {
+        return ini1.compareTo(fin2) < 0 && fin1.compareTo(ini2) > 0;
     }
 
-    public int totalReservasActivas() {
+    // capacidad por rango (CORRECTO)
+    public int capacidadOcupadaEnRango(String fecha, String inicio, String fin) {
         gestor.lockLecturaCalendario().lock();
         try {
-            return (int) franjas.values().stream()
-                    .filter(r -> r.getEstado() != Reserva.Estado.CANCELADO)
-                    .count();
+            int ocupada = 0;
+
+            for (Reserva r : franjas.values()) {
+
+                if (r.getEstado() == Reserva.Estado.CANCELADO) continue;
+                if (!r.getFecha().equals(fecha)) continue;
+
+                if (solapan(inicio, fin, r.getHoraInicio(), r.getHoraFin())) {
+                    ocupada += r.getCantAsistentes();
+                }
+            }
+
+            return ocupada;
+
         } finally {
             gestor.lockLecturaCalendario().unlock();
+        }
+    }
+
+    // carga persistencia
+    public void cargarReservaRestaurada(Reserva r) {
+        gestor.lockEscrituraCalendario().lock();
+        try {
+            String key = clave(r.getFecha(), r.getHoraInicio(), r.getHoraFin());
+
+            if (!franjas.containsKey(key)) {
+                franjas.put(key, r);
+
+                try {
+                    gestor.adquirirParaReserva(r.getCantAsistentes(), r.getEquipo());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+        } finally {
+            gestor.lockEscrituraCalendario().unlock();
         }
     }
 
@@ -164,28 +206,11 @@ public class Calendario {
         }
     }
 
-    public int totalReservas() {
-        return totalReservasActivas();
+    public int totalReservasActivas() {
+        return getReservasActivas().size();
     }
 
-    /**
-     * Carga una reserva restaurada desde disco directamente en el mapa.
-     * Solo se usa al arrancar el servidor vía PersistenciaReservas.
-     */
-    public void cargarReservaRestaurada(Reserva r) {
-        gestor.lockEscrituraCalendario().lock();
-        try {
-            String key = clave(r.getFecha(), r.getHoraInicio(), r.getHoraFin());
-            if (!franjas.containsKey(key)) {
-                franjas.put(key, r);
-                try {
-                    gestor.adquirirParaReserva(r.getCantAsistentes(), r.getEquipo());
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        } finally {
-            gestor.lockEscrituraCalendario().unlock();
-        }
+    public int totalReservas() {
+        return totalReservasActivas();
     }
 }

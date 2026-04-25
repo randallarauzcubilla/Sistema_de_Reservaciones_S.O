@@ -33,6 +33,9 @@ public class FrmServidor extends JFrame {
     private JLabel lblCapacidadValor;
     private JLabel lblReservasValor;
     private JLabel lblEquipoValor;
+    private JLabel lblMicrofonoValor;
+    private JLabel lblSonidoValor;
+    private JLabel lblCompletoValor;
 
     // === TABLA ===
     private JTable tablaCalendario;
@@ -67,7 +70,7 @@ public class FrmServidor extends JFrame {
 
     private JPanel crearSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(230, 0));
+        sidebar.setPreferredSize(new Dimension(320, 0));
         sidebar.setBackground(BG_PANEL);
         sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER_COLOR));
 
@@ -85,23 +88,32 @@ public class FrmServidor extends JFrame {
         sidebar.add(logoPanel, BorderLayout.NORTH);
 
         JPanel cards = new JPanel(new GridLayout(4, 1, 0, 10));
+        cards.setLayout(new GridLayout(0, 2, 8, 8));
         cards.setBackground(BG_PANEL);
         cards.setBorder(new EmptyBorder(10, 12, 10, 12));
-
+     
         lblEstadoValor    = new JLabel("INACTIVO");
-        lblCapacidadValor = new JLabel("—");
         lblReservasValor  = new JLabel("—");
+        lblCapacidadValor = new JLabel("—");
         lblEquipoValor    = new JLabel("—");
-
+        lblMicrofonoValor = new JLabel("—");
+        lblSonidoValor    = new JLabel("—");
+        lblCompletoValor  = new JLabel("—");
+        
         lblEstadoValor.setForeground(ACCENT_RED);
-        lblCapacidadValor.setForeground(TEXT_PRIMARY);
         lblReservasValor.setForeground(TEXT_PRIMARY);
         lblEquipoValor.setForeground(TEXT_PRIMARY);
+        lblMicrofonoValor.setForeground(TEXT_PRIMARY);
+        lblSonidoValor.setForeground(TEXT_PRIMARY);
+        lblCompletoValor.setForeground(TEXT_PRIMARY);
 
-        cards.add(crearCard("Estado del servidor", lblEstadoValor,    "●"));
-        cards.add(crearCard("Capacidad libre",      lblCapacidadValor, "◈"));
-        cards.add(crearCard("Reservas activas",     lblReservasValor,  "◉"));
-        cards.add(crearCard("Proyectores libres",   lblEquipoValor,    "◆"));
+        cards.add(crearCard("Estado del<br>servidor", lblEstadoValor, "●"));
+        cards.add(crearCard("Capacidad<br>libre",lblCapacidadValor, "◈"));
+        cards.add(crearCard("Reservas<br>Activas", lblReservasValor, "◉"));
+        cards.add(crearCard("Proyectores<br>libres", lblEquipoValor, "◆"));
+        cards.add(crearCard("Micrófonos<br>libres", lblMicrofonoValor, "🎤"));
+        cards.add(crearCard("Sonido<br>libre", lblSonidoValor, "🔊"));
+        cards.add(crearCard("Completo<br>libre ", lblCompletoValor, "🧩"));
         sidebar.add(cards, BorderLayout.CENTER);
 
         JPanel btnPanel = new JPanel(new GridLayout(3, 1, 0, 8));
@@ -125,21 +137,22 @@ public class FrmServidor extends JFrame {
         return sidebar;
     }
 
-    private JPanel crearCard(String titulo, JLabel valorLabel, String icon) {
-        JPanel card = new JPanel(new BorderLayout(4, 4));
-        card.setBackground(BG_CARD);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
-                new EmptyBorder(10, 12, 10, 12)));
-        JLabel lblTit = new JLabel(icon + "  " + titulo);
-        lblTit.setFont(new Font("Monospaced", Font.PLAIN, 10));
-        lblTit.setForeground(TEXT_MUTED);
-        valorLabel.setFont(new Font("Monospaced", Font.BOLD, 15));
-        card.add(lblTit, BorderLayout.NORTH);
-        card.add(valorLabel, BorderLayout.CENTER);
-        return card;
-    }
+   private JPanel crearCard(String titulo, JLabel valorLabel, String icon) {
+    JPanel card = new JPanel(new BorderLayout(4, 4));
+    card.setBackground(BG_CARD);
+    card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER_COLOR, 1),
+            new EmptyBorder(10, 12, 10, 12)));
+    JLabel lblTit = new JLabel("<html>" + icon + " " + titulo + "</html>");
+    lblTit.setFont(new Font("Monospaced", Font.PLAIN, 10));
+    lblTit.setForeground(TEXT_MUTED);
+    valorLabel.setFont(new Font("Monospaced", Font.BOLD, 13));
+    card.add(lblTit, BorderLayout.NORTH);
+    card.add(valorLabel, BorderLayout.CENTER);
 
+    return card;
+}
+    
     private JButton crearBotonSide(String texto, Color color) {
         JButton btn = new JButton(texto);
         btn.setFont(new Font("Monospaced", Font.BOLD, 12));
@@ -148,7 +161,7 @@ public class FrmServidor extends JFrame {
         btn.setFocusPainted(false);
         btn.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(color.getRed(), color.getGreen(), color.getBlue(), 80), 1),
-                new EmptyBorder(9, 14, 9, 14)));
+                new EmptyBorder(8, 10, 8, 10)));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) {
@@ -342,7 +355,6 @@ public class FrmServidor extends JFrame {
 
         lblEstadoValor.setText("INACTIVO");
         lblEstadoValor.setForeground(ACCENT_RED);
-        lblCapacidadValor.setText("—");
         lblReservasValor.setText("—");
         lblEquipoValor.setText("—");
         btnIniciar.setEnabled(true);
@@ -352,10 +364,17 @@ public class FrmServidor extends JFrame {
 
     private void actualizarVista() {
         if (!servidorActivo) return;
-
-        lblCapacidadValor.setText(Servidor.gestor.capacidadDisponible() + " libres");
+     
         lblReservasValor.setText(Servidor.calendario.totalReservas() + " activas");
-        lblEquipoValor.setText(Servidor.gestor.proyectoresDisponibles() + " disponibles");
+        lblCapacidadValor.setText(String.valueOf(Servidor.gestor.getCapacidadMaxima()));
+        int proy = Servidor.gestor.proyectoresDisponibles();
+        int mic  = Servidor.gestor.microfonosDisponibles();
+        int son  = Servidor.gestor.sonidosDisponibles();
+        lblEquipoValor.setText(String.valueOf(proy));
+        lblMicrofonoValor.setText(String.valueOf(mic));
+        lblSonidoValor.setText(String.valueOf(son));
+        int completo = Math.min(proy, Math.min(mic, son));
+        lblCompletoValor.setText(String.valueOf(completo));
 
         List<String> entradas = Servidor.bitacora.getUltimas(100);
         txtBitacora.setText("");

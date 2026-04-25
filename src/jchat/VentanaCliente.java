@@ -62,6 +62,7 @@ public class VentanaCliente extends JFrame {
     private JTextField     txtDNI;
     private JComboBox<String> cmbRol;
     private JButton        btnConectar;
+    private JButton btnSalir;
     private JLabel         lblEstadoConexion;
     private JLabel         lblVerificacion;   // Estado de validación de cédula
 
@@ -91,6 +92,7 @@ public class VentanaCliente extends JFrame {
     private boolean cedulaVerificada     = false;
     private String  ultimaCedulaConsultada = ""; // evita re-consultar la misma cédula
     private JPanel  panelDerecho;
+    private volatile boolean ejecutando = false;
 
     // =========================================================
     // CONSTRUCTOR
@@ -218,11 +220,18 @@ public class VentanaCliente extends JFrame {
         estilizarCombo(cmbRol);
         formLogin.add(cmbRol, g);
 
-        // ── Botón Conectar ────────────────────────────────────
+        // ── Botón Conectar/ingresar ────────────────────────────────────
         g.gridy = 7; g.insets = new Insets(22, 0, 0, 0);
-        btnConectar = crearBotonPrimario("▶  Conectar", ACCENT_GREEN);
+        btnConectar = crearBotonPrimario("▶  Ingresar", ACCENT_GREEN);
         btnConectar.addActionListener(e -> conectar());
         formLogin.add(btnConectar, g);
+        
+        // - botón de desconectar
+        g.gridy = 8; g.insets = new Insets(10, 0, 0, 0);
+        btnSalir = crearBotonPrimario("Salir", ACCENT_AMBER);
+        btnSalir.addActionListener(e -> salirSistema());
+        btnSalir.setEnabled(false);
+        formLogin.add(btnSalir, g);
 
         sidebar.add(formLogin, BorderLayout.CENTER);
 
@@ -665,18 +674,17 @@ public class VentanaCliente extends JFrame {
                 "Cédula no verificada",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
-            if (opcion != JOptionPane.YES_OPTION) return;
 
-            // Si no fue verificada, pedir el nombre manualmente
-            if (nombre.isEmpty()) {
-                nombre = JOptionPane.showInputDialog(this,
-                    "Ingrese su nombre completo manualmente:",
-                    "Nombre requerido",
-                    JOptionPane.PLAIN_MESSAGE);
-                if (nombre == null || nombre.trim().isEmpty()) return;
-                txtNombre.setText(nombre.trim());
-                nombre = nombre.trim();
-            }
+            if (opcion != JOptionPane.YES_OPTION) return;
+            nombre = JOptionPane.showInputDialog(this,
+                "Ingrese su nombre completo:",
+                "Nombre requerido",
+                JOptionPane.PLAIN_MESSAGE);
+
+            if (nombre == null || nombre.trim().isEmpty()) return;
+            nombre = nombre.trim();
+            txtNombre.setText(nombre);
+            cedulaVerificada = true;
         }
 
         if (nombre.isEmpty()) {
@@ -715,11 +723,13 @@ public class VentanaCliente extends JFrame {
             salida  = salidaTemp;
 
             conectado = true;
+            ejecutando = true;
             lblEstadoConexion.setText("● " + nombre.split(" ")[0]);
             lblEstadoConexion.setForeground(ACCENT_GREEN);
             panelDerecho.setVisible(true);
             activarFormulario(true);
             btnConectar.setEnabled(false);
+            btnSalir.setEnabled(true);
             txtDNI.setEditable(false);
             cmbRol.setEnabled(false);
 
@@ -727,7 +737,6 @@ public class VentanaCliente extends JFrame {
             notifyMsg("Servidor listo. Puede realizar su reserva.");
             setTitle("VentanaCliente — " + nombre.split(" ")[0]);
 
-            // Hilo de escucha de respuestas del servidor
             Thread hiloEscucha = new Thread(this::escucharServidor);
             hiloEscucha.setDaemon(true);
             hiloEscucha.setName("Servidor-Listener");
@@ -750,6 +759,47 @@ public class VentanaCliente extends JFrame {
                 "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+    
+    private void salirSistema() {
+
+    ejecutando = false;
+
+    try {
+        if (socket != null && !socket.isClosed()) {
+            socket.close();
+        }
+    } catch (IOException ignored) {}
+
+    conectado = false;
+    cedulaVerificada = false;
+    ultimaReservaId = null;
+
+    txtDNI.setText("");
+    txtDNI.setForeground(TEXT_MUTED);
+    txtDNI.setEditable(true);
+    ultimaCedulaConsultada = "";
+    txtNombre.setText("");
+    cmbRol.setSelectedIndex(0);
+    cmbRol.setEnabled(true);
+
+    lblVerificacion.setText("○  Ingrese su cédula");
+    lblVerificacion.setForeground(TEXT_MUTED);
+
+    btnConectar.setEnabled(true);
+    btnSalir.setEnabled(false);
+
+    panelDerecho.setVisible(false);
+
+    modeloReservas.setRowCount(0);
+    txtMensajes.setText("");
+
+    lblEstadoConexion.setText("● Sin conexión al servidor");
+    lblEstadoConexion.setForeground(ACCENT_RED);
+
+    setTitle("VentanaCliente — Sistema de Reservas");
+
+    notifyMsg("Usuario desconectado.");
+}
 
     private void cerrarSilencioso(Socket s) {
         if (s != null && !s.isClosed()) {
@@ -761,15 +811,15 @@ public class VentanaCliente extends JFrame {
     // ESCUCHAR RESPUESTAS DEL SERVIDOR
     // =========================================================
     private void escucharServidor() {
-        try {
-            while (true) {
-                String msg = entrada.readUTF();
-                SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
-            }
-        } catch (IOException e) {
-            SwingUtilities.invokeLater(this::manejarDesconexion);
+    try {
+        while (ejecutando && !socket.isClosed()) {
+            String msg = entrada.readUTF();
+            SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
         }
+    } catch (IOException e) {
+        SwingUtilities.invokeLater(this::manejarDesconexion);
     }
+}
 
     // =========================================================
     // MANEJO DE DESCONEXIÓN DEL SERVIDOR

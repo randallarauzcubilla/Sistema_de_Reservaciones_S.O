@@ -8,10 +8,6 @@ public class RecursoAuditorio {
         this.gestor = gestor;
     }
 
-    public boolean hayCapacidad(int asistentes) {
-        return gestor.capacidadDisponible() >= asistentes;
-    }
-
     public void liberarCapacidad(int asistentes) {
         gestor.getSemCapacidad().release(asistentes);
     }
