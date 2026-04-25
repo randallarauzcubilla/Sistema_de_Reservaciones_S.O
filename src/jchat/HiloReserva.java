@@ -11,6 +11,7 @@ public class HiloReserva extends Thread {
     final Socket socket;
     private final String idCliente;
     private final String nombreCliente;
+    private final String rolCliente;
     private final Calendario calendario;
     private final RecursoAuditorio recursos;
     private final ColaTTL colaTTL;
@@ -28,9 +29,10 @@ public class HiloReserva extends Thread {
         this.colaTTL    = colaTTL;
         this.bitacora   = bitacora;
 
-        String[] partes = datosCliente.split("\\|", 2);
+        String[] partes = datosCliente.split("\\|", 3);
         this.nombreCliente = partes[0].trim();
         this.idCliente     = partes.length >= 2 ? partes[1].trim() : partes[0].trim();
+        this.rolCliente    = partes.length >= 3 ? partes[2].trim() : "ESTUDIANTE";
 
         try {
             flujoLectura   = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
@@ -42,8 +44,16 @@ public class HiloReserva extends Thread {
 
     @Override
     public void run() {
-        bitacora.log("CONEXION", nombreCliente + " (DNI: " + idCliente + ") conectado");
+        // Verificar si el rol es válido para esta cédula
+        if (!VerificadorRoles.puedeUsarRol(idCliente, rolCliente)) {
+            responder("ERROR|ROL_NO_AUTORIZADO");
+            bitacora.log("SEGURIDAD", nombreCliente + " intentó acceder como " 
+                + rolCliente + " sin autorización");
+            try { socket.close(); } catch (IOException ignored) {}
+            return;
+        }
 
+        bitacora.log("CONEXION", nombreCliente + " conectado como " + rolCliente);
         responder("OK|CONECTADO");
         enviarHistorial();
 

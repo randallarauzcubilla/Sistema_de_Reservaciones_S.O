@@ -358,6 +358,7 @@ public class VentanaCliente extends JFrame {
                 else if ("CANCELADA".equals(estado))   c.setForeground(ACCENT_RED);
                 else if ("TEMPORAL".equals(estado))    c.setForeground(ACCENT_AMBER);
                 else if ("ENVIANDO...".equals(estado)) c.setForeground(TEXT_MUTED);
+                else if ("EXPIRADA".equals(estado)) c.setForeground(ACCENT_RED);
                 if (isRowSelected(row)) c.setBackground(new Color(64, 156, 255, 45));
                 return c;
             }
@@ -658,7 +659,7 @@ public class VentanaCliente extends JFrame {
     private void conectar() {
         String nombre = txtNombre.getText().trim();
         String dni    = txtDNI.getText().trim();
-
+        String rol = (String) cmbRol.getSelectedItem();
         // Validar campos
         if (dni.isEmpty() || dni.equals("Ej: 123456789")) {
             JOptionPane.showMessageDialog(this,
@@ -705,12 +706,21 @@ public class VentanaCliente extends JFrame {
             DataOutputStream salidaTemp  = new DataOutputStream(
                     new BufferedOutputStream(socketTemp.getOutputStream()));
 
-            salidaTemp.writeUTF(nombre + "|" + dni);
+            salidaTemp.writeUTF(nombre + "|" + dni + "|" + rol);
             salidaTemp.flush();
 
             socketTemp.setSoTimeout(3000);
             String respuesta = entradaTemp.readUTF();
             socketTemp.setSoTimeout(0);
+            
+            if (respuesta.equals("ERROR|ROL_NO_AUTORIZADO")) {
+                JOptionPane.showMessageDialog(this,
+                    "Su cédula no está autorizada para el rol: " + rol + "\n" +
+                    "Contacte al administrador.",
+                    "Acceso denegado", JOptionPane.ERROR_MESSAGE);
+                cerrarSilencioso(socketTemp);
+                return;
+            }
 
             if (!respuesta.equals("OK|CONECTADO")) {
                 notifyMsg("❌ Servidor rechazó la conexión: " + respuesta);
@@ -883,7 +893,7 @@ public class VentanaCliente extends JFrame {
                     modeloReservas.addRow(new Object[]{id, fecha, horaRng, estado, "—"});
                 }
                 if (modeloReservas.getRowCount() > 0) {
-                    notifyMsg("📋 Historial restaurado: " + modeloReservas.getRowCount() + " reserva(s).");
+                    notifyMsg("Historial restaurado: " + modeloReservas.getRowCount() + " reserva(s).");
                 }
                 break;
 
@@ -926,6 +936,24 @@ public class VentanaCliente extends JFrame {
                     }
                 }
                 break;
+                               
+                case "EXPIRACION":
+                    if (partes.length >= 2) {
+                        String idExp = partes[1];
+                        actualizarEstadoTabla(idExp, "EXPIRADA");  // Actualizar estado en tabla
+                        // Limpiar TTL
+                        for (int i = 0; i < modeloReservas.getRowCount(); i++) {
+                            if (idExp.equals(modeloReservas.getValueAt(i, 0))) {
+                                modeloReservas.setValueAt("—", i, 4); // limpiar TTL
+                                break;
+                            }
+                        }
+                        notifyMsg("Reserva " + idExp + " expiró. Puede volver a reservar.");
+                        JOptionPane.showMessageDialog(this,
+                            "Tu reserva " + idExp + " expiró por TTL.\nPuede realizar una nueva reserva.",
+                            "Reserva expirada", JOptionPane.WARNING_MESSAGE);
+                    }
+                    break;
 
             default:
                 // Mensaje no reconocido — ya se imprimió en el log
