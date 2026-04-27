@@ -325,3 +325,15 @@
 [24/04/2026 21:58:30] [CANCELACION     ] Reserva 3cbeb19a cancelada. Motivo: Cancelado por cliente
 [24/04/2026 21:58:36] [CANCELACION     ] Reserva 8569690f cancelada. Motivo: Cancelado por cliente
 [24/04/2026 21:58:41] [CANCELACION     ] Reserva 8f503a55 cancelada. Motivo: Cancelado por cliente
+[26/04/2026 19:28:49] [SISTEMA         ] Bitácora inicializada
+[26/04/2026 19:28:49] [SISTEMA         ] HiloTTL iniciado
+[26/04/2026 19:29:22] [CONEXION        ] KEILOR JAFET MUÑOZ CHAVARRIA conectado como ESTUDIANTE
+[26/04/2026 19:30:19] [RESERVA_TEMPORAL] [50cd29ff] 402520321 | 2026-05-20 08:00-10:00 | 15 personas | COMPLETO | RESERVADO_TEMPORAL | TTL: 29s
+[26/04/2026 19:30:22] [CONFIRMACION    ] Reserva 50cd29ff confirmada por 402520321
+[26/04/2026 19:34:19] [SISTEMA         ] Bitácora inicializada
+[26/04/2026 19:34:19] [SISTEMA         ] HiloTTL iniciado
+[26/04/2026 19:34:42] [CONEXION        ] KEILOR JAFET MUÑOZ CHAVARRIA conectado como ESTUDIANTE
+[26/04/2026 19:35:11] [EDICION-SERVIDOR] Servidor editó reserva 4835a346 → 4bf05d53 | cliente: 402520321
+[26/04/2026 19:35:23] [DESCONEXION     ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) desconectado
+[26/04/2026 19:35:33] [CONEXION        ] KEILOR JAFET MUÑOZ CHAVARRIA conectado como ESTUDIANTE
+[26/04/2026 19:35:50] [DESCONEXION     ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) desconectado

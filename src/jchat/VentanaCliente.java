@@ -44,8 +44,7 @@ public class VentanaCliente extends JFrame {
     // API TSE
     // =========================================================
     private static final String API_CEDULAS_URL = "https://apis.gometa.org/cedulas/";
-    // Opcional: agregar tu API key si superás el límite de 20 req/5min
-    // private static final String API_KEY = "tu_api_key_aqui";
+
 
     // =========================================================
     // CONEXIÓN AL SERVIDOR DE RESERVAS
@@ -58,13 +57,13 @@ public class VentanaCliente extends JFrame {
     // =========================================================
     // COMPONENTES — LOGIN
     // =========================================================
-    private JTextField     txtNombre;         // Solo lectura, auto-rellenado por TSE
+    private JTextField     txtNombre;         
     private JTextField     txtDNI;
     private JComboBox<String> cmbRol;
     private JButton        btnConectar;
     private JButton btnSalir;
     private JLabel         lblEstadoConexion;
-    private JLabel         lblVerificacion;   // Estado de validación de cédula
+    private JLabel         lblVerificacion;  
 
     // =========================================================
     // COMPONENTES — FORMULARIO RESERVA
