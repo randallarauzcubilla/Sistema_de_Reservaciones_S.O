@@ -11,8 +11,11 @@ import javax.swing.border.*;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -489,7 +492,7 @@ public class FrmServer extends JFrame {
         }
     }
     // ── EDITAR RESERVA DESDE SERVIDOR ────────────────────────
-    private void editarReservaSeleccionada() throws InterruptedException {
+   private void editarReservaSeleccionada() throws InterruptedException {
         int fila = tablaCalendario.getSelectedRow();
         if (fila < 0) return;
 
@@ -499,23 +502,22 @@ public class FrmServer extends JFrame {
         String horario     = (String) modeloTabla.getValueAt(fila, 3);
         String[] horas     = horario.split("-");
 
-        // Formulario con datos actuales precargados
         JTextField fFecha  = new JTextField(fechaActual);
         JTextField fInicio = new JTextField(horas.length > 0 ? horas[0] : "");
         JTextField fFin    = new JTextField(horas.length > 1 ? horas[1] : "");
-        JTextField fAsis   = new JTextField(modeloTabla.getValueAt(
-                fila, 5).toString());
+        JTextField fAsis   = new JTextField(
+                modeloTabla.getValueAt(fila, 5).toString());
+
         JComboBox<String> fEquipo = new JComboBox<>(
-            new String[]{"NINGUNO","PROYECTOR","MICROFONO",
-                "SONIDO","COMPLETO"});
+          new String[]{"NINGUNO","PROYECTOR","MICROFONO","SONIDO","COMPLETO"});
         fEquipo.setSelectedItem(modeloTabla.getValueAt(fila, 6).toString());
 
         JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
         form.add(new JLabel("Fecha (YYYY-MM-DD):")); form.add(fFecha);
         form.add(new JLabel("Hora inicio (HH:mm):")); form.add(fInicio);
         form.add(new JLabel("Hora fin (HH:mm):"));    form.add(fFin);
-        form.add(new JLabel("Asistentes:"));           form.add(fAsis);
-        form.add(new JLabel("Equipo:"));               form.add(fEquipo);
+        form.add(new JLabel("Asistentes:"));          form.add(fAsis);
+        form.add(new JLabel("Equipo:"));              form.add(fEquipo);
 
         int resultado = JOptionPane.showConfirmDialog(this, form,
             "Editar reserva " + idReserva + " (cliente: " + idCliente + ")",
@@ -532,11 +534,73 @@ public class FrmServer extends JFrame {
         if (nuevaFecha.isEmpty() || nuevaInicio.isEmpty()
                 || nuevaFin.isEmpty() || nuevaAsis.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Complete todos los campos.",
-                "Campos vacíos", JOptionPane.WARNING_MESSAGE);
+                "Campos vacios", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        // Buscar la reserva original para conservar prioridad y cliente
+        LocalDate fecha;
+        LocalTime inicio, fin;
+        int asistentes;
+
+        try {
+            fecha = LocalDate.parse(nuevaFecha, DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (DateTimeParseException e) {
+            JOptionPane.showMessageDialog(this,
+                "Fecha invalida (YYYY-MM-DD).",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            inicio = LocalTime.parse(nuevaInicio);
+            fin    = LocalTime.parse(nuevaFin);
+        } catch (DateTimeParseException e) {
+            JOptionPane.showMessageDialog(this,
+                "Hora invalida (HH:mm).",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            asistentes = Integer.parseInt(nuevaAsis);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this,
+                "Asistentes debe ser un numero.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (asistentes < 1 || asistentes > 200) {
+            JOptionPane.showMessageDialog(this,
+                "Los asistentes deben estar entre 0 y 200.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        if (asistentes < 0 || asistentes > 200) {
+            JOptionPane.showMessageDialog(this,
+                "Los asistentes deben estar entre 0 y 200.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!inicio.isBefore(fin)) {
+            JOptionPane.showMessageDialog(this,
+                "La hora de inicio debe ser menor a la hora fin.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime nuevaFechaHora = LocalDateTime.of(fecha, inicio);
+
+        if (nuevaFechaHora.isBefore(ahora)) {
+            JOptionPane.showMessageDialog(this,
+                "No puedes usar fechas u horas pasadas.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         Reservation original = ServerApp.calendario.getReservaPorId(idReserva);
         if (original == null) {
             JOptionPane.showMessageDialog(this, "Reserva no encontrada.",
@@ -544,55 +608,30 @@ public class FrmServer extends JFrame {
             return;
         }
 
-        // Cancelar la vieja y crear una nueva confirmada
+        Reservation nueva = ServerApp.calendario.reservarTemporal(
+            idCliente, nuevaFecha, nuevaInicio, nuevaFin,
+            asistentes,
+            Reservation.Equipo.valueOf(nuevoEquipo),
+            original.getPrioridad()
+        );
+
+        if (nueva == null) {
+            JOptionPane.showMessageDialog(this,
+                "La nueva franja ya esta ocupada.",
+                "Conflicto", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         ServerApp.calendario.cancelarReserva(idReserva);
         ServerApp.colaTTL.remover(idReserva);
 
-        Reservation nueva;
-        try {
-            nueva = ServerApp.calendario.reservarTemporal(
-                idCliente, nuevaFecha, nuevaInicio, nuevaFin,
-                Integer.parseInt(nuevaAsis),
-                Reservation.Equipo.valueOf(nuevoEquipo),
-                original.getPrioridad()
-            );
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Asistentes debe ser un número.",
-                "Error", JOptionPane.ERROR_MESSAGE);
-            // Restaurar la original si falla
-            ServerApp.calendario.reservarTemporal(
-                idCliente, original.getFecha(),
-                original.getHoraInicio(), original.getHoraFin(),
-                original.getCantAsistentes(), original.getEquipo(), 
-                original.getPrioridad()
-            );
-            return;
-        }
-
-        if (nueva == null) {
-            JOptionPane.showMessageDialog(this, 
-                    "La nueva franja ya está ocupada.",
-                "Conflicto", JOptionPane.ERROR_MESSAGE);
-            // Restaurar la original
-            Reservation rest = ServerApp.calendario.reservarTemporal(
-                idCliente, original.getFecha(),
-                original.getHoraInicio(), original.getHoraFin(),
-                original.getCantAsistentes(), original.getEquipo(), 
-                original.getPrioridad()
-            );
-            if (rest != null) ServerApp.calendario.confirmarReserva(
-                    rest.getIdReserva());
-            return;
-        }
-
         ServerApp.calendario.confirmarReserva(nueva.getIdReserva());
         ReservationPersistence.guardar(ServerApp.calendario);
+
         ServerApp.bitacora.log("EDICION-SERVIDOR",
-            "Servidor editó reserva " + idReserva + " → " + nueva.getIdReserva()
+            "Servidor edito reserva " + idReserva + " → " + nueva.getIdReserva()
             + " | cliente: " + idCliente);
 
-        // Notificar al cliente si está conectado
         synchronized (ServerApp.clientesConectados) {
             for (ClientHandler hilo : ServerApp.clientesConectados) {
                 if (hilo.getIdCliente().equals(idCliente)) {
@@ -604,7 +643,7 @@ public class FrmServer extends JFrame {
             }
         }
 
-        log("✏ Reserva " + idReserva + " editada → " + nueva.getIdReserva()
+        log(" Reserva " + idReserva + " editada - " + nueva.getIdReserva()
             + " | cliente: " + idCliente);
         actualizarVista();
     }
