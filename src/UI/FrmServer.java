@@ -544,6 +544,14 @@ public class FrmServer extends JFrame {
 
         try {
             fecha = LocalDate.parse(nuevaFecha, DateTimeFormatter.ISO_LOCAL_DATE);
+            int anioActual = LocalDate.now().getYear();
+
+            if (fecha.getYear() != anioActual) {
+            JOptionPane.showMessageDialog(this,
+            "Solo se permiten reservas dentro del año actual (" + anioActual + ").",
+            "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+            }
         } catch (DateTimeParseException e) {
             JOptionPane.showMessageDialog(this,
                 "Fecha invalida (YYYY-MM-DD).",
