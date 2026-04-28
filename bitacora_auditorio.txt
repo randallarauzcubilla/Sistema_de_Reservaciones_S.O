@@ -618,3 +618,10 @@
 [27/04/2026 19:07:25] [SISTEMA         ] HiloTTL iniciado
 [27/04/2026 19:07:35] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
 [27/04/2026 19:07:47] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[27/04/2026 21:17:52] [SISTEMA         ] Bitacora inicializada
+[27/04/2026 21:17:57] [SISTEMA         ] HiloTTL iniciado
+[27/04/2026 21:19:02] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[27/04/2026 21:56:26] [SISTEMA         ] Bitacora inicializada
+[27/04/2026 21:56:36] [SISTEMA         ] HiloTTL iniciado
+[27/04/2026 21:56:42] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[27/04/2026 22:07:34] [EDICION-SERVIDOR] Servidor editó reserva b3dbc25d → 532d45a3 | cliente: 604940262
