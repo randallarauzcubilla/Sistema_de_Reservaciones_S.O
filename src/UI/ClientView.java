@@ -8,6 +8,7 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -43,7 +44,7 @@ public class ClientView extends JFrame {
     // =========================================================
     // API TSE
     // =========================================================
-    private static final String API_CEDULAS_URL = 
+    private static final String API_CEDULAS_URL =
             "https://apis.gometa.org/cedulas/";
 
 
@@ -58,13 +59,13 @@ public class ClientView extends JFrame {
     // =========================================================
     // COMPONENTES — LOGIN
     // =========================================================
-    private JTextField     txtNombre;         
+    private JTextField     txtNombre;
     private JTextField     txtDNI;
     private JComboBox<String> cmbRol;
     private JButton        btnConectar;
-    private JButton btnSalir;
+    private JButton        btnSalir;
     private JLabel         lblEstadoConexion;
-    private JLabel         lblVerificacion;  
+    private JLabel         lblVerificacion;
 
     // =========================================================
     // COMPONENTES — FORMULARIO RESERVA
@@ -88,11 +89,11 @@ public class ClientView extends JFrame {
     // =========================================================
     // ESTADO DE LA APLICACIÓN
     // =========================================================
-    private boolean conectado            = false;
-    private boolean cedulaVerificada     = false;
-    private String  ultimaCedulaConsultada = "";//evita re-consultar cédula
+    private boolean conectado              = false;
+    private boolean cedulaVerificada       = false;
+    private String  ultimaCedulaConsultada = "";
     private JPanel  panelDerecho;
-    private volatile boolean ejecutando = false;
+    private volatile boolean ejecutando   = false;
     private Timer ttlTimer;
 
     // =========================================================
@@ -137,7 +138,7 @@ public class ClientView extends JFrame {
         sidebar.setPreferredSize(new Dimension(240, 0));
         sidebar.setBackground(BG_PANEL);
         sidebar.setBorder(BorderFactory.createMatteBorder(
-                0,0,0,1,BORDER_COLOR));
+                0, 0, 0, 1, BORDER_COLOR));
 
         // Logo / Header
         JPanel logoPanel = new JPanel(new GridLayout(2, 1));
@@ -169,8 +170,6 @@ public class ClientView extends JFrame {
 
         g.gridy = 1; g.insets = new Insets(0, 0, 0, 0);
         txtDNI = crearCampo("Ej: 123456789");
-        // Verificar al perder el foco 
-        //solo si la cédula cambió respecto a la última consulta
         txtDNI.addFocusListener(new FocusAdapter() {
             @Override
             public void focusLost(FocusEvent e) {
@@ -181,7 +180,6 @@ public class ClientView extends JFrame {
                 }
             }
         });
-        // También verificar al presionar Enter en el campo
         txtDNI.addActionListener(e -> {
             String dni = txtDNI.getText().trim();
             if (!dni.isEmpty() && !dni.equals("Ej: 123456789")
@@ -222,7 +220,7 @@ public class ClientView extends JFrame {
         formLogin.add(etiqueta("Rol"), g);
 
         g.gridy = 6; g.insets = new Insets(0, 0, 0, 0);
-        cmbRol = new JComboBox<>(new String[]{"ESTUDIANTE","DOCENTE",
+        cmbRol = new JComboBox<>(new String[]{"ESTUDIANTE", "DOCENTE",
             "DECANATURA"});
         estilizarCombo(cmbRol);
         formLogin.add(cmbRol, g);
@@ -232,8 +230,8 @@ public class ClientView extends JFrame {
         btnConectar = crearBotonPrimario("▶  Ingresar", ACCENT_GREEN);
         btnConectar.addActionListener(e -> conectar());
         formLogin.add(btnConectar, g);
-        
-        // - botón de desconectar
+
+        // ── Botón Salir ───────────────────────────────────────
         g.gridy = 8; g.insets = new Insets(10, 0, 0, 0);
         btnSalir = crearBotonPrimario("Salir", ACCENT_AMBER);
         btnSalir.addActionListener(e -> salirSistema());
@@ -354,8 +352,8 @@ public class ClientView extends JFrame {
 
         tablaReservas = new JTable(modeloReservas) {
             @Override
-            public Component prepareRenderer(TableCellRenderer r,int row,
-                    int col){
+            public Component prepareRenderer(TableCellRenderer r, int row,
+                    int col) {
                 Component c = super.prepareRenderer(r, row, col);
                 c.setBackground(row % 2 == 0 ? BG_CARD : BG_PANEL);
                 c.setForeground(TEXT_PRIMARY);
@@ -363,15 +361,13 @@ public class ClientView extends JFrame {
                     ((JComponent) c).setBorder(new EmptyBorder(0, 8, 0, 8));
                 }
                 Object estado = modeloReservas.getValueAt(row, 3);
-                if ("CONFIRMADA".equals(estado))c.setForeground(ACCENT_GREEN);
-                else if ("CANCELADA".equals(estado))c.setForeground(ACCENT_RED);
-                else if ("TEMPORAL".equals(estado))c.setForeground(
-                        ACCENT_AMBER);
-                else if ("ENVIANDO...".equals(estado))c.setForeground(
-                        TEXT_MUTED);
-                else if ("EXPIRADA".equals(estado)) c.setForeground(ACCENT_RED);
+                if ("CONFIRMADA".equals(estado))  c.setForeground(ACCENT_GREEN);
+                else if ("CANCELADA".equals(estado))  c.setForeground(ACCENT_RED);
+                else if ("TEMPORAL".equals(estado))   c.setForeground(ACCENT_AMBER);
+                else if ("ENVIANDO...".equals(estado)) c.setForeground(TEXT_MUTED);
+                else if ("EXPIRADA".equals(estado))   c.setForeground(ACCENT_RED);
                 if (isRowSelected(row)) c.setBackground(
-                        new Color(64,156,255,45));
+                        new Color(64, 156, 255, 45));
                 return c;
             }
         };
@@ -427,48 +423,18 @@ public class ClientView extends JFrame {
     // =========================================================
     // INTEGRACIÓN TSE — CONSULTA DE CÉDULA
     // =========================================================
-
-    /**
-     * Consulta el padrón electoral del TSE a través de apis.gometa.org.
-     * Endpoint: GET https://apis.gometa.org/cedulas/{cedula}
-     *
-     * Respuesta JSON esperada:
-     * {
-     *   "results": [
-     *     {
-     *       "cedula":    "123456789",
-     *       "nombre":    "JUAN CARLOS",
-     *       "papellido": "PEREZ",
-     *       "sapellido": "MORA",
-     *       "sexo":      "M",
-     *       "fechacaduc":"20301231",
-     *       "junta":     "1234"
-     *     }
-     *   ]
-     * }
-     *
-     * Límite gratuito: 20 req / IP / 5 min.
-     * API Key: https://apis.gometa.org/cedulas/signup
-     *
-     * La consulta se ejecuta en un hilo separado para no bloquear la UI.
-     */
     private void consultarCedulaTSE(String cedula) {
-        // Solo dígitos (limpiar guiones o espacios ingresados)
         String cedulaLimpia = cedula.replaceAll("[^0-9]", "");
         if (cedulaLimpia.isEmpty()) return;
 
-        // Registrar esta cédula como "ya consultada" para evitar re-disparos
-        // cuando el campo pierde el foco al hacer clic en otros controles
         ultimaCedulaConsultada = cedulaLimpia;
 
-        // Actualizar UI: estado "verificando"
         lblVerificacion.setText("⟳  Verificando en TSE...");
         lblVerificacion.setForeground(ACCENT_AMBER);
         txtNombre.setText("");
         cedulaVerificada = false;
         btnConectar.setEnabled(false);
 
-        // Ejecutar consulta HTTP en hilo separado para no bloquear...
         Thread hiloConsulta = new Thread(() -> {
             String urlStr = API_CEDULAS_URL + cedulaLimpia;
             HttpURLConnection conn = null;
@@ -477,26 +443,23 @@ public class ClientView extends JFrame {
                 URL url = new URL(urlStr);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
-                conn.setConnectTimeout(6000); // 6 segundos timeout de conexión
-                conn.setReadTimeout(6000);     // 6 segundos timeout de lectura
+                conn.setConnectTimeout(6000);
+                conn.setReadTimeout(6000);
                 conn.setRequestProperty("Accept", "application/json");
-                conn.setRequestProperty("User-Agent", 
+                conn.setRequestProperty("User-Agent",
                         "VentanaCliente-ReservasSala/1.0");
 
                 int status = conn.getResponseCode();
 
                 if (status == 200) {
-                    // Leer respuesta completa
                     StringBuilder sb = new StringBuilder();
                     try (BufferedReader br = new BufferedReader(
-                            new InputStreamReader(conn.getInputStream(), 
+                            new InputStreamReader(conn.getInputStream(),
                                     StandardCharsets.UTF_8))) {
                         String line;
                         while ((line = br.readLine()) != null) sb.append(line);
                     }
                     String jsonStr = sb.toString();
-
-                    // Parsear JSON (sin dependencia externa)
                     String nombreCompleto = extraerNombreDesdeJson(jsonStr,
                             cedulaLimpia);
 
@@ -529,7 +492,6 @@ public class ClientView extends JFrame {
                     });
 
                 } else if (status == 429) {
-                    // Rate limit superado
                     SwingUtilities.invokeLater(() -> {
                         lblVerificacion.setText(
                                 "⚠ Límite de consultas — reintente");
@@ -539,10 +501,10 @@ public class ClientView extends JFrame {
 
                 } else {
                     SwingUtilities.invokeLater(() -> {
-                        lblVerificacion.setText("⚠  Error TSE (HTTP " + status 
+                        lblVerificacion.setText("⚠  Error TSE (HTTP " + status
                                 + ")");
                         lblVerificacion.setForeground(ACCENT_AMBER);
-                        btnConectar.setEnabled(true); // Permitir continuar
+                        btnConectar.setEnabled(true);
                     });
                 }
 
@@ -551,19 +513,19 @@ public class ClientView extends JFrame {
                     lblVerificacion.setText(
                             "⚠  TSE sin respuesta — continuando");
                     lblVerificacion.setForeground(ACCENT_AMBER);
-                    btnConectar.setEnabled(true); 
+                    btnConectar.setEnabled(true);
                 });
 
             } catch (UnknownHostException e) {
                 SwingUtilities.invokeLater(() -> {
                     lblVerificacion.setText("⚠  Sin internet — no verificado");
                     lblVerificacion.setForeground(ACCENT_AMBER);
-                    btnConectar.setEnabled(true); // Permitir en modo offline
+                    btnConectar.setEnabled(true);
                 });
 
             } catch (IOException e) {
                 SwingUtilities.invokeLater(() -> {
-                    lblVerificacion.setText("⚠  Error de red: " 
+                    lblVerificacion.setText("⚠  Error de red: "
                             + e.getMessage());
                     lblVerificacion.setForeground(ACCENT_AMBER);
                     btnConectar.setEnabled(true);
@@ -578,30 +540,15 @@ public class ClientView extends JFrame {
         hiloConsulta.start();
     }
 
-    /**
-     * Extrae el nombre completo del JSON retornado por apis.gometa.org
-     * sin usar librerías externas (parser manual liviano).
-     *
-     * La API puede retornar dos estructuras:
-     *
-     * Estructura 1 — array "results":
-     *   { "results": [ { "nombre": "JUAN", 
-     *    "papellido": "PEREZ", "sapellido": "MORA" } ] }
-     *
-     * Estructura 2 — campos directos (cuando es búsqueda exacta):
-     *   { "nombre": "JUAN", "papellido": "PEREZ", "sapellido": "MORA" }
-     */
     private String extraerNombreDesdeJson(String json, String cedula) {
         if (json == null || json.isBlank()) return null;
 
         try {
-            // Verificar si retornó resultados vacíos
-            if (json.contains("\"results\":[]") || 
+            if (json.contains("\"results\":[]") ||
                     json.contains("\"results\": []")) {
                 return null;
             }
 
-            // Extraer campos nombre, papellido, sapellido
             String nombre    = extraerCampoJson(json, "nombre");
             String papellido = extraerCampoJson(json, "papellido");
             String sapellido = extraerCampoJson(json, "sapellido");
@@ -609,14 +556,16 @@ public class ClientView extends JFrame {
             if (nombre == null && papellido == null) return null;
 
             StringBuilder sb = new StringBuilder();
-            if (nombre    != null && !nombre.isBlank())    
+            if (nombre    != null && !nombre.isBlank())
                 sb.append(nombre.trim());
-            if (papellido != null && !papellido.isBlank()) { 
-                if (sb.length() > 0) sb.append(" "); 
-                sb.append(papellido.trim()); }
-            if (sapellido != null && !sapellido.isBlank()) { 
-                if (sb.length() > 0) sb.append(" "); 
-                sb.append(sapellido.trim()); }
+            if (papellido != null && !papellido.isBlank()) {
+                if (sb.length() > 0) sb.append(" ");
+                sb.append(papellido.trim());
+            }
+            if (sapellido != null && !sapellido.isBlank()) {
+                if (sb.length() > 0) sb.append(" ");
+                sb.append(sapellido.trim());
+            }
 
             String resultado = sb.toString().trim();
             return resultado.isEmpty() ? null : resultado;
@@ -626,24 +575,14 @@ public class ClientView extends JFrame {
         }
     }
 
-    /**
-     * Extrae el valor de un campo JSON de tipo string.
-     * Ejemplo: para "nombre":"JUAN CARLOS" retorna "JUAN CARLOS"
-     *
-     * Parser minimalista — funciona para los campos simples de la API del TSE.
-     * No maneja JSON anidado complejo ni arrays de objetos anidados.
-     */
     private String extraerCampoJson(String json, String campo) {
-        // Busca: "campo":"valor" o "campo": "valor"
         String patron = "\"" + campo + "\"";
         int idx = json.indexOf(patron);
         if (idx < 0) return null;
 
-        // Mover al carácter después del nombre del campo
         int start = idx + patron.length();
 
-        // Saltar espacios y el ":"
-        while (start < json.length() && (json.charAt(start) == ':' || 
+        while (start < json.length() && (json.charAt(start) == ':' ||
                 json.charAt(start) == ' ')) {
             start++;
         }
@@ -653,16 +592,15 @@ public class ClientView extends JFrame {
         char primer = json.charAt(start);
 
         if (primer == '"') {
-            // Valor string: buscar la comilla de cierre (respetando escapes)
-            start++; // saltar comilla de apertura
+            start++;
             StringBuilder valor = new StringBuilder();
             while (start < json.length()) {
                 char c = json.charAt(start);
                 if (c == '\\' && start + 1 < json.length()) {
-                    start++; // saltar escape
+                    start++;
                     valor.append(json.charAt(start));
                 } else if (c == '"') {
-                    break; // fin del valor
+                    break;
                 } else {
                     valor.append(c);
                 }
@@ -672,7 +610,6 @@ public class ClientView extends JFrame {
             return v.isEmpty() ? null : v;
 
         } else if (primer == 'n') {
-            // null
             return null;
         }
 
@@ -685,8 +622,8 @@ public class ClientView extends JFrame {
     private void conectar() {
         String nombre = txtNombre.getText().trim();
         String dni    = txtDNI.getText().trim();
-        String rol = (String) cmbRol.getSelectedItem();
-        // Validar campos
+        String rol    = (String) cmbRol.getSelectedItem();
+
         if (dni.isEmpty() || dni.equals("Ej: 123456789")) {
             JOptionPane.showMessageDialog(this,
                 "Ingrese su número de cédula.",
@@ -722,7 +659,6 @@ public class ClientView extends JFrame {
             return;
         }
 
-        // Intentar conectar al servidor de reservas
         Socket socketTemp = null;
         try {
             socketTemp = new Socket();
@@ -739,7 +675,7 @@ public class ClientView extends JFrame {
             socketTemp.setSoTimeout(3000);
             String respuesta = entradaTemp.readUTF();
             socketTemp.setSoTimeout(0);
-            
+
             if (respuesta.equals("ERROR|ROL_NO_AUTORIZADO")) {
                 JOptionPane.showMessageDialog(this,
                     "Su cédula no está autorizada para el rol: " + rol + "\n" +
@@ -759,7 +695,7 @@ public class ClientView extends JFrame {
             entrada = entradaTemp;
             salida  = salidaTemp;
 
-            conectado = true;
+            conectado  = true;
             ejecutando = true;
             lblEstadoConexion.setText("● " + nombre.split(" ")[0]);
             lblEstadoConexion.setForeground(ACCENT_GREEN);
@@ -798,47 +734,46 @@ public class ClientView extends JFrame {
                 "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-    
+
     private void salirSistema() {
+        ejecutando = false;
 
-    ejecutando = false;
+        try {
+            if (socket != null && !socket.isClosed()) {
+                socket.close();
+            }
+        } catch (IOException ignored) {}
 
-    try {
-        if (socket != null && !socket.isClosed()) {
-            socket.close();
-        }
-    } catch (IOException ignored) {}
+        conectado         = false;
+        cedulaVerificada  = false;
+        ultimaReservaId   = null;
 
-    conectado = false;
-    cedulaVerificada = false;
-    ultimaReservaId = null;
+        txtDNI.setText("");
+        txtDNI.setForeground(TEXT_MUTED);
+        txtDNI.setEditable(true);
+        ultimaCedulaConsultada = "";
+        txtNombre.setText("");
+        cmbRol.setSelectedIndex(0);
+        cmbRol.setEnabled(true);
 
-    txtDNI.setText("");
-    txtDNI.setForeground(TEXT_MUTED);
-    txtDNI.setEditable(true);
-    ultimaCedulaConsultada = "";
-    txtNombre.setText("");
-    cmbRol.setSelectedIndex(0);
-    cmbRol.setEnabled(true);
+        lblVerificacion.setText("○  Ingrese su cédula");
+        lblVerificacion.setForeground(TEXT_MUTED);
 
-    lblVerificacion.setText("○  Ingrese su cédula");
-    lblVerificacion.setForeground(TEXT_MUTED);
+        btnConectar.setEnabled(true);
+        btnSalir.setEnabled(false);
 
-    btnConectar.setEnabled(true);
-    btnSalir.setEnabled(false);
+        panelDerecho.setVisible(false);
 
-    panelDerecho.setVisible(false);
+        modeloReservas.setRowCount(0);
+        txtMensajes.setText("");
 
-    modeloReservas.setRowCount(0);
-    txtMensajes.setText("");
+        lblEstadoConexion.setText("● Sin conexión al servidor");
+        lblEstadoConexion.setForeground(ACCENT_RED);
 
-    lblEstadoConexion.setText("● Sin conexión al servidor");
-    lblEstadoConexion.setForeground(ACCENT_RED);
+        setTitle("VentanaCliente — Sistema de Reservas");
 
-    setTitle("VentanaCliente — Sistema de Reservas");
-
-    notifyMsg("Usuario desconectado.");
-}
+        notifyMsg("Usuario desconectado.");
+    }
 
     private void cerrarSilencioso(Socket s) {
         if (s != null && !s.isClosed()) {
@@ -850,15 +785,15 @@ public class ClientView extends JFrame {
     // ESCUCHAR RESPUESTAS DEL SERVIDOR
     // =========================================================
     private void escucharServidor() {
-    try {
-        while (ejecutando && !socket.isClosed()) {
-            String msg = entrada.readUTF();
-            SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
+        try {
+            while (ejecutando && !socket.isClosed()) {
+                String msg = entrada.readUTF();
+                SwingUtilities.invokeLater(() -> procesarRespuesta(msg));
+            }
+        } catch (IOException e) {
+            SwingUtilities.invokeLater(this::manejarDesconexion);
         }
-    } catch (IOException e) {
-        SwingUtilities.invokeLater(this::manejarDesconexion);
     }
-}
 
     // =========================================================
     // MANEJO DE DESCONEXIÓN DEL SERVIDOR
@@ -872,7 +807,6 @@ public class ClientView extends JFrame {
     private void desconectar() {
         conectado = false;
 
-        // Eliminar filas en estado transitorio
         for (int i = modeloReservas.getRowCount() - 1; i >= 0; i--) {
             if ("ENVIANDO...".equals(modeloReservas.getValueAt(i, 3))) {
                 modeloReservas.removeRow(i);
@@ -883,7 +817,6 @@ public class ClientView extends JFrame {
         activarFormulario(false);
         panelDerecho.setVisible(false);
 
-        // Restaurar UI de login
         btnConectar.setEnabled(true);
         txtDNI.setEditable(true);
         cmbRol.setEnabled(true);
@@ -891,13 +824,12 @@ public class ClientView extends JFrame {
         lblEstadoConexion.setForeground(ACCENT_RED);
         setTitle("VentanaCliente — Sistema de Reservas");
 
-        // Limpiar datos del usuario
         txtNombre.setText("");
         txtDNI.setText("Ej: 123456789");
         txtDNI.setForeground(TEXT_MUTED);
         lblVerificacion.setText("○  Ingrese su cédula");
         lblVerificacion.setForeground(TEXT_MUTED);
-        cedulaVerificada = false;
+        cedulaVerificada       = false;
         ultimaCedulaConsultada = "";
     }
 
@@ -919,11 +851,11 @@ public class ClientView extends JFrame {
                     String fecha   = campos[1];
                     String horaRng = campos[2] + " - " + campos[3];
                     String estado  = campos[4];
-                    modeloReservas.addRow(new Object[]{id, fecha, horaRng, 
+                    modeloReservas.addRow(new Object[]{id, fecha, horaRng,
                         estado, "—"});
                 }
                 if (modeloReservas.getRowCount() > 0) {
-                    notifyMsg("Historial restaurado: " + 
+                    notifyMsg("Historial restaurado: " +
                             modeloReservas.getRowCount() + " reserva(s).");
                 }
                 break;
@@ -933,7 +865,6 @@ public class ClientView extends JFrame {
                     String id  = partes[2];
                     String ttl = partes.length >= 4 ? partes[3] : "?";
                     ultimaReservaId = id;
-                    // Actualizar la fila que estaba en "ENVIANDO..."
                     for (int i = 0; i < modeloReservas.getRowCount(); i++) {
                         if ("ENVIANDO...".equals(modeloReservas.getValueAt(
                                 i, 3))) {
@@ -945,18 +876,15 @@ public class ClientView extends JFrame {
                         }
                     }
 
-                } else if (partes.length >= 2 && 
+                } else if (partes.length >= 2 &&
                         "CONFIRMADO".equals(partes[1])) {
-                    String id = partes.length >= 
-                            3 ? partes[2] : ultimaReservaId;
+                    String id = partes.length >= 3 ? partes[2] : ultimaReservaId;
                     actualizarEstadoTabla(id, "CONFIRMADA");
-                    
                     limpiarTTL(id);
 
-                }  else if (partes.length >= 2 && "CANCELADO".equals(partes[1])) {
+                } else if (partes.length >= 2 && "CANCELADO".equals(partes[1])) {
                     String id = partes.length >= 3 ? partes[2] : ultimaReservaId;
                     actualizarEstadoTabla(id, "CANCELADA");
-
                     limpiarTTL(id);
                 }
                 break;
@@ -964,11 +892,10 @@ public class ClientView extends JFrame {
             case "ERROR":
                 notifyMsg("❌ Error del servidor: " + (partes.length >
                         1 ? partes[1] : "desconocido"));
-                if (partes.length > 1 && "SERVIDOR_DETENIDO".equals(partes[1])){
+                if (partes.length > 1 && "SERVIDOR_DETENIDO".equals(partes[1])) {
                     manejarDesconexion();
                     return;
                 }
-                // Remover fila transitoria si hay un error
                 for (int i = modeloReservas.getRowCount() - 1; i >= 0; i--) {
                     if ("ENVIANDO...".equals(modeloReservas.getValueAt(i, 3))) {
                         modeloReservas.removeRow(i);
@@ -976,31 +903,31 @@ public class ClientView extends JFrame {
                     }
                 }
                 break;
-                               
-                case "EXPIRACION":
-                    if (partes.length >= 2) {
-                        String idExp = partes[1];
-                        actualizarEstadoTabla(idExp, "EXPIRADA");  
-                        // Limpiar TTL
-                        for (int i = 0; i < modeloReservas.getRowCount(); i++) {
-                            if (idExp.equals(modeloReservas.getValueAt(i, 0))) {
-                                modeloReservas.setValueAt("—", i, 4);
-                                break;
-                            }
+
+            case "EXPIRACION":
+                if (partes.length >= 2) {
+                    String idExp = partes[1];
+                    actualizarEstadoTabla(idExp, "EXPIRADA");
+                    for (int i = 0; i < modeloReservas.getRowCount(); i++) {
+                        if (idExp.equals(modeloReservas.getValueAt(i, 0))) {
+                            modeloReservas.setValueAt("—", i, 4);
+                            break;
                         }
-                        notifyMsg("Reserva " + idExp + " expiró. "
-                                + "Puede volver a reservar.");
-                        JOptionPane.showMessageDialog(this,
-                            "Tu reserva " + idExp + " expiró por TTL.\n"
-                                    + "Puede realizar una nueva reserva.",
-                            "Reserva expirada", JOptionPane.WARNING_MESSAGE);
                     }
-                    break;
+                    notifyMsg("Reserva " + idExp + " expiró. "
+                            + "Puede volver a reservar.");
+                    JOptionPane.showMessageDialog(this,
+                        "Tu reserva " + idExp + " expiró por TTL.\n"
+                                + "Puede realizar una nueva reserva.",
+                        "Reserva expirada", JOptionPane.WARNING_MESSAGE);
+                }
+                break;
+
             default:
                 break;
         }
     }
-   
+
     private void limpiarTTL(String id) {
         for (int i = 0; i < modeloReservas.getRowCount(); i++) {
             if (id != null && id.equals(modeloReservas.getValueAt(i, 0))) {
@@ -1034,7 +961,7 @@ public class ClientView extends JFrame {
         String equipo  = (String) cmbEquipamiento.getSelectedItem();
         String rol     = (String) cmbRol.getSelectedItem();
 
-        // Validar que no sean placeholders
+        // ── Validar que no sean placeholders ──────────────────
         if (fecha.isEmpty()   || "YYYY-MM-DD".equals(fecha)
          || hora.isEmpty()    || "HH:mm".equals(hora)
          || horaFin.isEmpty() || "HH:mm".equals(horaFin)
@@ -1045,12 +972,40 @@ public class ClientView extends JFrame {
             return;
         }
 
-        modeloReservas.addRow(new Object[]{"...", fecha, hora + " - " + 
+        // ── Validar formato de fecha y año actual ─────────────
+        try {
+            LocalDate fechaDate = LocalDate.parse(fecha);
+            int anioActual = LocalDate.now().getYear();
+
+            if (fechaDate.getYear() != anioActual) {
+                JOptionPane.showMessageDialog(this,
+                    "Solo se permiten reservas dentro del año actual ("
+                            + anioActual + ").",
+                    "Año no permitido", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (fechaDate.isBefore(LocalDate.now())) {
+                JOptionPane.showMessageDialog(this,
+                    "No se pueden hacer reservas en fechas pasadas.",
+                    "Fecha inválida", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                "Formato de fecha inválido. Use YYYY-MM-DD\n"
+                        + "Ejemplo: " + LocalDate.now().toString(),
+                "Error de formato", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        modeloReservas.addRow(new Object[]{"...", fecha, hora + " - " +
                 horaFin, "ENVIANDO...", "..."});
-        enviar("RESERVAR|" + fecha + "|" + hora + "|" + horaFin + "|" + 
+        enviar("RESERVAR|" + fecha + "|" + hora + "|" + horaFin + "|" +
                 asis + "|" + equipo + "|" + rol);
     }
-    
+
     private void actualizarTTL() {
         for (int i = 0; i < modeloReservas.getRowCount(); i++) {
 
@@ -1062,7 +1017,7 @@ public class ClientView extends JFrame {
             if (!"TEMPORAL".equals(estadoObj.toString())) continue;
 
             try {
-               String ttlStr = ttlObj.toString();
+                String ttlStr = ttlObj.toString();
 
                 if (ttlStr.contains(":")) {
                     ttlStr = ttlStr.split(":")[1].trim();
@@ -1090,7 +1045,7 @@ public class ClientView extends JFrame {
             return;
         }
         String id = (String) modeloReservas.getValueAt(fila, 0);
-        if ("...".equals(id) || 
+        if ("...".equals(id) ||
                 "ENVIANDO...".equals(modeloReservas.getValueAt(fila, 3))) {
             notifyMsg("⚠ Espere la respuesta del servidor.");
             return;
@@ -1128,8 +1083,6 @@ public class ClientView extends JFrame {
     // =========================================================
     // UTILIDADES DE UI
     // =========================================================
-
-    /** Agrega una línea con timestamp al área de mensajes */
     private void notifyMsg(String msg) {
         String t = LocalDateTime.now().format(DateTimeFormatter.ofPattern(
                 "HH:mm:ss"));
@@ -1137,7 +1090,6 @@ public class ClientView extends JFrame {
         txtMensajes.setCaretPosition(txtMensajes.getDocument().getLength());
     }
 
-    /** Habilita o deshabilita los controles del formulario de reserva */
     private void activarFormulario(boolean on) {
         txtFecha.setEnabled(on);
         txtHora.setEnabled(on);
@@ -1149,7 +1101,6 @@ public class ClientView extends JFrame {
         btnCancelar.setEnabled(on);
     }
 
-    /** Etiqueta de formulario con estilo consistente */
     private JLabel etiqueta(String texto) {
         JLabel lbl = new JLabel(texto);
         lbl.setFont(new Font("Monospaced", Font.BOLD, 11));
@@ -1157,7 +1108,6 @@ public class ClientView extends JFrame {
         return lbl;
     }
 
-    /** Campo de texto con placeholder y estilo oscuro */
     private JTextField crearCampo(String placeholder) {
         JTextField f = new JTextField();
         f.setFont(new Font("Monospaced", Font.PLAIN, 12));
@@ -1189,7 +1139,6 @@ public class ClientView extends JFrame {
         return f;
     }
 
-    /** Estiliza un JComboBox con la paleta oscura */
     private void estilizarCombo(JComboBox<?> combo) {
         combo.setFont(new Font("Monospaced", Font.BOLD, 12));
         combo.setBackground(BG_CARD);
@@ -1215,7 +1164,6 @@ public class ClientView extends JFrame {
         });
     }
 
-    /** Crea un botón con borde de color y efecto hover */
     private JButton crearBotonPrimario(String texto, Color color) {
         JButton btn = new JButton(texto);
         btn.setFont(new Font("Monospaced", Font.BOLD, 12));
