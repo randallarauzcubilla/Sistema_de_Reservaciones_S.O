@@ -1,12 +1,12 @@
-package jchat;
+package Concurrency;
 
+import Core.Reservation;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class GestorSincronizacion {
+public class SynchronizationManager {
 
-    // NIVEL 1: Calendario (RWLock)
     private final ReentrantReadWriteLock rwlockCalendario =
             new ReentrantReadWriteLock(true);
 
@@ -18,24 +18,17 @@ public class GestorSincronizacion {
         return rwlockCalendario.writeLock();
     }
 
-    // CAPACIDAD FIJA (CORREGIDO)
     private final int capacidadMaxima;
-
-    // NIVEL 2: Capacidad dinámica
     private final Semaphore semCapacidad;
 
-    // NIVEL 3: Equipamiento
     private final Semaphore semProyector;
     private final Semaphore semMicrofono;
     private final Semaphore semSonido;
 
-    // NIVEL 4: TTL
     private final ReentrantLock mutexTTL = new ReentrantLock(true);
-
-    // NIVEL 5: Bitácora
     private final ReentrantLock mutexBitacora = new ReentrantLock(true);
 
-    public GestorSincronizacion(int capacidadMaxima,
+    public SynchronizationManager(int capacidadMaxima,
                                int unidadesProyector,
                                int unidadesMicrofono,
                                int unidadesSonido) {
@@ -45,54 +38,43 @@ public class GestorSincronizacion {
         this.semCapacidad = new Semaphore(capacidadMaxima, true);
         this.semProyector = new Semaphore(unidadesProyector, true);
         this.semMicrofono = new Semaphore(unidadesMicrofono, true);
-        this.semSonido    = new Semaphore(unidadesSonido, true);
+        this.semSonido = new Semaphore(unidadesSonido, true);
     }
 
-    // ✔️ NUEVO: capacidad real del sistema
     public int getCapacidadMaxima() {
         return capacidadMaxima;
     }
 
-    // ✔️ estado actual (solo informativo)
     public int capacidadDisponible() {
         return semCapacidad.availablePermits();
     }
 
-    public Semaphore getSemCapacidad() { return semCapacidad; }
-    public Semaphore getSemProyector() { return semProyector; }
-    public Semaphore getSemMicrofono() { return semMicrofono; }
-    public Semaphore getSemSonido()    { return semSonido; }
-
-    public ReentrantLock getMutexTTL() { return mutexTTL; }
-    public ReentrantLock getMutexBitacora() { return mutexBitacora; }
-
-    // ─────────────────────────────
-    // RESERVA DE RECURSOS
-    // ─────────────────────────────
-
-    public void adquirirParaReserva(int asistentes, Reserva.Equipo equipo)
+    public void adquirirParaReserva(int asistentes, Reservation.Equipo equipo)
             throws InterruptedException {
 
         semCapacidad.acquire(asistentes);
 
         try {
             adquirirEquipo(equipo);
-
         } catch (InterruptedException e) {
             semCapacidad.release(asistentes);
             throw e;
         }
     }
-    
-    public void liberarDeReserva(int asistentes, Reserva.Equipo equipo) {
+
+    public void liberarDeReserva(int asistentes, Reservation.Equipo equipo) {
+
         liberarEquipo(equipo);
+
         if (asistentes > 0) {
             semCapacidad.release(asistentes);
         }
     }
 
-    private void adquirirEquipo(Reserva.Equipo equipo)
+    private void adquirirEquipo(Reservation.Equipo equipo)
             throws InterruptedException {
+
+        if (equipo == null) return;
 
         switch (equipo) {
 
@@ -110,18 +92,8 @@ public class GestorSincronizacion {
 
             case COMPLETO:
                 semProyector.acquire();
-                try {
-                    semMicrofono.acquire();
-                    try {
-                        semSonido.acquire();
-                    } catch (InterruptedException e) {
-                        semMicrofono.release();
-                        throw e;
-                    }
-                } catch (InterruptedException e) {
-                    semProyector.release();
-                    throw e;
-                }
+                semMicrofono.acquire();
+                semSonido.acquire();
                 break;
 
             case NINGUNO:
@@ -130,7 +102,9 @@ public class GestorSincronizacion {
         }
     }
 
-    private void liberarEquipo(Reserva.Equipo equipo) {
+    private void liberarEquipo(Reservation.Equipo equipo) {
+
+        if (equipo == null) return;
 
         switch (equipo) {
 
@@ -157,21 +131,14 @@ public class GestorSincronizacion {
                 break;
         }
     }
-    
-    // Nuevo método: solo adquiere equipo (sin semáforo de capacidad)
-    public void adquirirSoloEquipo(Reserva.Equipo equipo)
-            throws InterruptedException {
-        adquirirEquipo(equipo);
+
+    public ReentrantLock getMutexTTL() {
+        return mutexTTL;
     }
 
-    // Nuevo método: solo libera equipo (sin semáforo de capacidad)  
-    public void liberarSoloEquipo(Reserva.Equipo equipo) {
-        liberarEquipo(equipo);
+    public ReentrantLock getMutexBitacora() {
+        return mutexBitacora;
     }
-
-    // ─────────────────────────────
-    // ESTADO
-    // ─────────────────────────────
 
     public int proyectoresDisponibles() {
         return semProyector.availablePermits();

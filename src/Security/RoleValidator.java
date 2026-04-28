@@ -1,4 +1,4 @@
-package jchat;
+package Security;
 
 import java.io.*;
 import java.util.HashSet;
@@ -11,7 +11,7 @@ import java.util.Set;
  * Formato de archivos: una cédula por línea, sin espacios
  * Ubicación: raíz del proyecto (donde corre el servidor)
  */
-public class VerificadorRoles {
+public class RoleValidator {
 
     private static final String ARCHIVO_PROFESORES = "profesores.txt";
     private static final String ARCHIVO_DECANOS    = "decanos.txt";
@@ -43,15 +43,16 @@ public class VerificadorRoles {
                 if (!linea.isEmpty()) set.add(linea);
             }
         } catch (IOException e) {
-            System.out.println("[ROLES] Error leyendo " + archivo + ": " + e.getMessage());
+            System.out.println("[ROLES] Error leyendo " + archivo + ": " 
+                    + e.getMessage());
         }
         return set;
     }
 
     /**
-     * Verifica si la cédula puede usar el rol solicitado.ESTUDIANTE: siempre permitido
- DOCENTE: debe estar en profesores.txt
- DECANATURA: debe estar en decanos.txt
+     * Verifica la cédula para usar el rol solicitado.ESTUDIANTE:permitido
+        DOCENTE: debe estar en profesores.txt
+        DECANATURA: debe estar en decanos.txt
      * @param cedula
      * @param rol
      * @return 

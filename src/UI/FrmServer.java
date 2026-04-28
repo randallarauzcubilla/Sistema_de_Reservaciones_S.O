@@ -1,5 +1,11 @@
-package jchat;
+package UI;
 
+import Server.ClientHandler;
+import Core.Reservation;
+import Persistence.ReservationPersistence;
+import Concurrency.ReservationTTLThread;
+import Security.RoleValidator;
+import Server.ServerApp;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.*;
@@ -8,8 +14,10 @@ import java.awt.event.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class FrmServidor extends JFrame {
+public class FrmServer extends JFrame {
 
     // === PALETA ===
     private static final Color BG_DARK      = new Color(13, 17, 28);
@@ -52,7 +60,7 @@ public class FrmServidor extends JFrame {
     // === BITÁCORA ===
     private JTextArea txtBitacora;
 
-    public FrmServidor() {
+    public FrmServer() {
         setTitle("FrmServidor — Panel de Administración");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(980, 720);
@@ -66,8 +74,9 @@ public class FrmServidor extends JFrame {
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent e) {
-                PersistenciaReservas.guardar(Servidor.calendario);
-                System.out.println("[CIERRE] Reservas guardadas antes de cerrar.");
+                ReservationPersistence.guardar(ServerApp.calendario);
+                System.out.println(
+                        "[CIERRE] Reservas guardadas antes de cerrar.");
             }
         });
     }
@@ -84,7 +93,8 @@ public class FrmServidor extends JFrame {
         JPanel sidebar = new JPanel(new BorderLayout());
         sidebar.setPreferredSize(new Dimension(320, 0));
         sidebar.setBackground(BG_PANEL);
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER_COLOR));
+        sidebar.setBorder(BorderFactory.createMatteBorder(
+                0,0,0,1,BORDER_COLOR));
 
         JPanel logoPanel = new JPanel(new GridLayout(2, 1));
         logoPanel.setBackground(BG_PANEL);
@@ -118,25 +128,25 @@ public class FrmServidor extends JFrame {
         lblSonidoValor.setForeground(TEXT_PRIMARY);
         lblCompletoValor.setForeground(TEXT_PRIMARY);
 
-        cards.add(crearCard("Estado del<br>servidor",  lblEstadoValor,    "●"));
-        cards.add(crearCard("Capacidad<br>libre",      lblCapacidadValor, "◈"));
-        cards.add(crearCard("Reservas<br>Activas",     lblReservasValor,  "◉"));
-        cards.add(crearCard("Proyectores<br>libres",   lblEquipoValor,    "◆"));
-        cards.add(crearCard("Micrófonos<br>libres",    lblMicrofonoValor, "🎤"));
-        cards.add(crearCard("Sonido<br>libre",         lblSonidoValor,    "🔊"));
-        cards.add(crearCard("Completo<br>libre",       lblCompletoValor,  "🧩"));
+        cards.add(crearCard("Estado del<br>servidor", lblEstadoValor,    "●"));
+        cards.add(crearCard("Capacidad<br>libre",     lblCapacidadValor, "◈"));
+        cards.add(crearCard("Reservas<br>Activas",    lblReservasValor,  "◉"));
+        cards.add(crearCard("Proyectores<br>libres",  lblEquipoValor,    "◆"));
+        cards.add(crearCard("Micrófonos<br>libres",   lblMicrofonoValor, "🎤"));
+        cards.add(crearCard("Sonido<br>libre",        lblSonidoValor,    "🔊"));
+        cards.add(crearCard("Completo<br>libre",      lblCompletoValor,  "🧩"));
         sidebar.add(cards, BorderLayout.CENTER);
 
         // === BOTONES ===
-        JPanel btnPanel = new JPanel(new GridLayout(5, 1, 0, 8)); // era 3, ahora 5
+        JPanel btnPanel = new JPanel(new GridLayout(5, 1, 0, 8));
         btnPanel.setBackground(BG_PANEL);
         btnPanel.setBorder(new EmptyBorder(10, 12, 24, 12));
 
         btnIniciar  = crearBotonSide("▶   Iniciar Servidor", ACCENT_GREEN);
         btnDetener  = crearBotonSide("■   Detener Servidor", ACCENT_RED);
         btnBitacora = crearBotonSide("≡   Actualizar Vista", ACCENT_BLUE);
-        btnEditarReserva   = crearBotonSide("✏   Editar Reserva",   ACCENT_AMBER);
-        btnCancelarReserva = crearBotonSide("✖   Cancelar Reserva", ACCENT_RED);
+        btnEditarReserva   = crearBotonSide("✏   Editar Reserva",ACCENT_AMBER);
+        btnCancelarReserva = crearBotonSide("✖   Cancelar Reserva",ACCENT_RED);
 
         btnDetener.setEnabled(false);
         btnEditarReserva.setEnabled(false);
@@ -145,8 +155,15 @@ public class FrmServidor extends JFrame {
         btnIniciar.addActionListener(e         -> iniciarServidor());
         btnDetener.addActionListener(e         -> detenerServidor());
         btnBitacora.addActionListener(e        -> actualizarVista());
-        btnEditarReserva.addActionListener(e   -> editarReservaSeleccionada());
-        btnCancelarReserva.addActionListener(e -> cancelarReservaSeleccionada());
+        btnEditarReserva.addActionListener(e   -> {
+            try {
+                editarReservaSeleccionada();
+            } catch (InterruptedException ex) {
+                Logger.getLogger(FrmServer.class.getName()
+                ).log(Level.SEVERE,null, ex);
+            }
+        });
+        btnCancelarReserva.addActionListener(e ->cancelarReservaSeleccionada());
 
         btnPanel.add(btnIniciar);
         btnPanel.add(btnDetener);
@@ -176,20 +193,24 @@ public class FrmServidor extends JFrame {
     private JButton crearBotonSide(String texto, Color color) {
         JButton btn = new JButton(texto);
         btn.setFont(new Font("Monospaced", Font.BOLD, 12));
-        btn.setBackground(new Color(color.getRed(), color.getGreen(), color.getBlue(), 25));
+        btn.setBackground(new Color(color.getRed(), color.getGreen(), 
+                color.getBlue(), 25));
         btn.setForeground(color);
         btn.setFocusPainted(false);
         btn.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(
-                    new Color(color.getRed(), color.getGreen(), color.getBlue(), 80), 1),
+                    new Color(color.getRed(), color.getGreen(), 
+                            color.getBlue(), 80), 1),
                 new EmptyBorder(8, 10, 8, 10)));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) {
-                btn.setBackground(new Color(color.getRed(), color.getGreen(), color.getBlue(), 55));
+                btn.setBackground(new Color(color.getRed(), color.getGreen(), 
+                        color.getBlue(), 55));
             }
             public void mouseExited(MouseEvent e) {
-                btn.setBackground(new Color(color.getRed(), color.getGreen(), color.getBlue(), 25));
+                btn.setBackground(new Color(color.getRed(), color.getGreen(), 
+                        color.getBlue(), 25));
             }
         });
         return btn;
@@ -211,22 +232,26 @@ public class FrmServidor extends JFrame {
     }
 
     private JScrollPane crearPanelTabla() {
-        String[] cols = {"ID", "Solicitante", "Fecha", "Hora", "Estado", "Asistentes", "Equipo", "TTL"};
+        String[] cols = {"ID", "Solicitante", "Fecha", "Hora", "Estado",
+            "Asistentes", "Equipo", "TTL"};
         modeloTabla = new DefaultTableModel(cols, 0) {
             public boolean isCellEditable(int r, int c) { return false; }
         };
 
         tablaCalendario = new JTable(modeloTabla) {
-            public Component prepareRenderer(TableCellRenderer r, int row, int col) {
+            public Component prepareRenderer(TableCellRenderer r, int row, 
+                    int col) {
                 Component c = super.prepareRenderer(r, row, col);
                 c.setBackground(row % 2 == 0 ? BG_CARD : BG_PANEL);
                 c.setForeground(TEXT_PRIMARY);
                 ((JComponent) c).setBorder(new EmptyBorder(0, 8, 0, 8));
                 Object estado = modeloTabla.getValueAt(row, 4);
-                if ("CONFIRMADO".equals(estado))          c.setForeground(ACCENT_GREEN);
-                else if ("CANCELADO".equals(estado))      c.setForeground(ACCENT_RED);
-                else if ("RESERVADO_TEMPORAL".equals(estado)) c.setForeground(ACCENT_BLUE);
-                if (isRowSelected(row)) c.setBackground(new Color(64, 156, 255, 45));
+                if ("CONFIRMADO".equals(estado))  c.setForeground(ACCENT_GREEN);
+                else if ("CANCELADO".equals(estado))c.setForeground(ACCENT_RED);
+                else if ("RESERVADO_TEMPORAL".equals(estado)) 
+                    c.setForeground(ACCENT_BLUE);
+                if (isRowSelected(row)) c.setBackground
+                    (new Color(64, 156, 255, 45));
                 return c;
             }
         };
@@ -298,15 +323,16 @@ public class FrmServidor extends JFrame {
         log("Servidor INICIADO en puerto 8000.");
 
         hiloServidor = new Thread(() -> {
-            VerificadorRoles.cargar();
+            RoleValidator.cargar();
 
-            List<Reserva> restauradas = PersistenciaReservas.cargar();
-            for (Reserva r : restauradas) {
-                Servidor.calendario.cargarReservaRestaurada(r);
+            List<Reservation> restauradas = ReservationPersistence.cargar();
+            for (Reservation r : restauradas) {
+                ServerApp.calendario.cargarReservaRestaurada(r);
             }
             SwingUtilities.invokeLater(() -> {
                 if (!restauradas.isEmpty()) {
-                    log("✔ " + restauradas.size() + " reserva(s) restauradas desde disco.");
+                    log("✔ " + restauradas.size() 
+                            + " reserva(s) restauradas desde disco.");
                 } else {
                     log("No hay reservas previas que restaurar.");
                 }
@@ -315,29 +341,32 @@ public class FrmServidor extends JFrame {
             try {
                 serverSocketActivo = new java.net.ServerSocket(8000);
 
-                HiloTTL hiloTTL = new HiloTTL(
-                    Servidor.calendario, Servidor.recursos,
-                    Servidor.colaTTL, Servidor.bitacora
+                ReservationTTLThread hiloTTL = new ReservationTTLThread(
+                    ServerApp.calendario, ServerApp.recursos,
+                    ServerApp.colaTTL, ServerApp.bitacora
                 );
                 hiloTTL.setDaemon(true);
                 hiloTTL.start();
 
-                System.out.println("[SERVIDOR] Puerto 8000 abierto, esperando clientes...");
+                System.out.println("[SERVIDOR] Puerto 8000 abierto, "
+                        + "esperando clientes...");
 
                 while (!Thread.currentThread().isInterrupted()
                         && !serverSocketActivo.isClosed()) {
                     java.net.Socket clienteSocket = serverSocketActivo.accept();
-                    java.io.DataInputStream entrada = new java.io.DataInputStream(
-                        new java.io.BufferedInputStream(clienteSocket.getInputStream()));
+                    java.io.DataInputStream entrada = 
+                            new java.io.DataInputStream(
+                        new java.io.BufferedInputStream(
+                                clienteSocket.getInputStream()));
                     String datosCliente = entrada.readUTF();
                     System.out.println("[SERVIDOR] Cliente: " + datosCliente);
 
-                    HiloReserva hilo = new HiloReserva(
+                    ClientHandler hilo = new ClientHandler(
                         clienteSocket, datosCliente,
-                        Servidor.calendario, Servidor.recursos,
-                        Servidor.colaTTL, Servidor.bitacora
+                        ServerApp.calendario, ServerApp.recursos,
+                        ServerApp.colaTTL, ServerApp.bitacora
                     );
-                    Servidor.clientesConectados.add(hilo);
+                    ServerApp.clientesConectados.add(hilo);
                     hilo.start();
                 }
             } catch (java.io.IOException e) {
@@ -356,22 +385,21 @@ public class FrmServidor extends JFrame {
 
     private void detenerServidor() {
         servidorActivo = false;
-        if (timerActualizacion != null) timerActualizacion.stop();
 
-        PersistenciaReservas.guardar(Servidor.calendario);
+        if (timerActualizacion != null)
+            timerActualizacion.stop();
+
+        ReservationPersistence.guardar(ServerApp.calendario);
         log("Reservas confirmadas guardadas en disco.");
 
-        synchronized (Servidor.clientesConectados) {
-            for (HiloReserva hilo : Servidor.clientesConectados) {
-                try {
-                    hilo.flujoEscritura.writeUTF("ERROR|SERVIDOR_DETENIDO");
-                    hilo.flujoEscritura.flush();
-                } catch (java.io.IOException ignored) {}
-                try {
-                    hilo.socket.close();
-                } catch (java.io.IOException ignored) {}
+        synchronized (ServerApp.clientesConectados) {
+            for (ClientHandler hilo : ServerApp.clientesConectados) {
+
+                hilo.enviar("ERROR|SERVIDOR_DETENIDO");
+                hilo.cerrar();
             }
-            Servidor.clientesConectados.clear();
+
+            ServerApp.clientesConectados.clear();
         }
 
         try {
@@ -379,36 +407,42 @@ public class FrmServidor extends JFrame {
                 serverSocketActivo.close();
             }
         } catch (java.io.IOException ignored) {}
+
         serverSocketActivo = null;
 
-        if (hiloServidor != null) hiloServidor.interrupt();
+        if (hiloServidor != null)
+            hiloServidor.interrupt();
 
         lblEstadoValor.setText("INACTIVO");
         lblEstadoValor.setForeground(ACCENT_RED);
         lblReservasValor.setText("—");
         lblEquipoValor.setText("—");
+
         btnIniciar.setEnabled(true);
         btnDetener.setEnabled(false);
         btnEditarReserva.setEnabled(false);
         btnCancelarReserva.setEnabled(false);
+
         log("Servidor DETENIDO.");
     }
 
     private void actualizarVista() {
         if (!servidorActivo) return;
 
-        lblReservasValor.setText(Servidor.calendario.totalReservas() + " activas");
-        lblCapacidadValor.setText(String.valueOf(Servidor.gestor.getCapacidadMaxima()));
-        int proy = Servidor.gestor.proyectoresDisponibles();
-        int mic  = Servidor.gestor.microfonosDisponibles();
-        int son  = Servidor.gestor.sonidosDisponibles();
+        lblReservasValor.setText(ServerApp.calendario.totalReservas() 
+                + " activas");
+        lblCapacidadValor.setText(String.valueOf(
+                ServerApp.gestor.getCapacidadMaxima()));
+        int proy = ServerApp.gestor.proyectoresDisponibles();
+        int mic  = ServerApp.gestor.microfonosDisponibles();
+        int son  = ServerApp.gestor.sonidosDisponibles();
         lblEquipoValor.setText(String.valueOf(proy));
         lblMicrofonoValor.setText(String.valueOf(mic));
         lblSonidoValor.setText(String.valueOf(son));
         int completo = Math.min(proy, Math.min(mic, son));
         lblCompletoValor.setText(String.valueOf(completo));
 
-        List<String> entradas = Servidor.bitacora.getUltimas(100);
+        List<String> entradas = ServerApp.bitacora.getUltimas(100);
         txtBitacora.setText("");
         for (String e : entradas) {
             txtBitacora.append(e + "\n");
@@ -423,12 +457,13 @@ public class FrmServidor extends JFrame {
         }
 
         modeloTabla.setRowCount(0);
-        List<Reserva> todasReservas = Servidor.calendario.getTodasLasReservas();
+        List<Reservation> todasReservas = 
+                ServerApp.calendario.getTodasLasReservas();
         int filaARestaurar = -1;
         int contador = 0;
 
-        for (Reserva r : todasReservas) {
-            if (r.getEstado() == Reserva.Estado.CANCELADO) continue;
+        for (Reservation r : todasReservas) {
+            if (r.getEstado() == Reservation.Estado.CANCELADO) continue;
             modeloTabla.addRow(new Object[]{
                 r.getIdReserva(),
                 r.getIdCliente(),
@@ -437,9 +472,10 @@ public class FrmServidor extends JFrame {
                 r.getEstado().toString(),
                 r.getCantAsistentes(),
                 r.getEquipo().toString(),
-                r.getTTL() == Long.MAX_VALUE ? "—" : r.segundosRestantes() + "s"
+               r.getEstado() == Reservation.Estado.RESERVADO_TEMPORAL
+                ? r.segundosRestantes() + "s"
+                : "—"
             });
-            // Si esta fila era la que estaba seleccionada, recordar su índice nuevo
             if (r.getIdReserva().equals(idSeleccionado)) {
                 filaARestaurar = contador;
             }
@@ -448,27 +484,30 @@ public class FrmServidor extends JFrame {
 
         // ── Restaurar la selección si la reserva sigue existiendo ──
         if (filaARestaurar >= 0) {
-            tablaCalendario.setRowSelectionInterval(filaARestaurar, filaARestaurar);
+            tablaCalendario.setRowSelectionInterval(
+                    filaARestaurar,filaARestaurar);
         }
     }
     // ── EDITAR RESERVA DESDE SERVIDOR ────────────────────────
-    private void editarReservaSeleccionada() {
+    private void editarReservaSeleccionada() throws InterruptedException {
         int fila = tablaCalendario.getSelectedRow();
         if (fila < 0) return;
 
         String idReserva   = (String) modeloTabla.getValueAt(fila, 0);
         String idCliente   = (String) modeloTabla.getValueAt(fila, 1);
         String fechaActual = (String) modeloTabla.getValueAt(fila, 2);
-        String horario     = (String) modeloTabla.getValueAt(fila, 3); // "HH:mm-HH:mm"
+        String horario     = (String) modeloTabla.getValueAt(fila, 3);
         String[] horas     = horario.split("-");
 
         // Formulario con datos actuales precargados
         JTextField fFecha  = new JTextField(fechaActual);
         JTextField fInicio = new JTextField(horas.length > 0 ? horas[0] : "");
         JTextField fFin    = new JTextField(horas.length > 1 ? horas[1] : "");
-        JTextField fAsis   = new JTextField(modeloTabla.getValueAt(fila, 5).toString());
+        JTextField fAsis   = new JTextField(modeloTabla.getValueAt(
+                fila, 5).toString());
         JComboBox<String> fEquipo = new JComboBox<>(
-            new String[]{"NINGUNO", "PROYECTOR", "MICROFONO", "SONIDO", "COMPLETO"});
+            new String[]{"NINGUNO","PROYECTOR","MICROFONO",
+                "SONIDO","COMPLETO"});
         fEquipo.setSelectedItem(modeloTabla.getValueAt(fila, 6).toString());
 
         JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
@@ -498,7 +537,7 @@ public class FrmServidor extends JFrame {
         }
 
         // Buscar la reserva original para conservar prioridad y cliente
-        Reserva original = Servidor.calendario.getReservaPorId(idReserva);
+        Reservation original = ServerApp.calendario.getReservaPorId(idReserva);
         if (original == null) {
             JOptionPane.showMessageDialog(this, "Reserva no encontrada.",
                 "Error", JOptionPane.ERROR_MESSAGE);
@@ -506,59 +545,60 @@ public class FrmServidor extends JFrame {
         }
 
         // Cancelar la vieja y crear una nueva confirmada
-        Servidor.calendario.cancelarReserva(idReserva);
-        Servidor.colaTTL.remover(idReserva);
+        ServerApp.calendario.cancelarReserva(idReserva);
+        ServerApp.colaTTL.remover(idReserva);
 
-        Reserva nueva;
+        Reservation nueva;
         try {
-            nueva = Servidor.calendario.reservarTemporal(
+            nueva = ServerApp.calendario.reservarTemporal(
                 idCliente, nuevaFecha, nuevaInicio, nuevaFin,
                 Integer.parseInt(nuevaAsis),
-                Reserva.Equipo.valueOf(nuevoEquipo),
+                Reservation.Equipo.valueOf(nuevoEquipo),
                 original.getPrioridad()
             );
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Asistentes debe ser un número.",
+            JOptionPane.showMessageDialog(this,
+                    "Asistentes debe ser un número.",
                 "Error", JOptionPane.ERROR_MESSAGE);
             // Restaurar la original si falla
-            Servidor.calendario.reservarTemporal(
+            ServerApp.calendario.reservarTemporal(
                 idCliente, original.getFecha(),
                 original.getHoraInicio(), original.getHoraFin(),
-                original.getCantAsistentes(), original.getEquipo(), original.getPrioridad()
+                original.getCantAsistentes(), original.getEquipo(), 
+                original.getPrioridad()
             );
             return;
         }
 
         if (nueva == null) {
-            JOptionPane.showMessageDialog(this, "La nueva franja ya está ocupada.",
+            JOptionPane.showMessageDialog(this, 
+                    "La nueva franja ya está ocupada.",
                 "Conflicto", JOptionPane.ERROR_MESSAGE);
             // Restaurar la original
-            Reserva rest = Servidor.calendario.reservarTemporal(
+            Reservation rest = ServerApp.calendario.reservarTemporal(
                 idCliente, original.getFecha(),
                 original.getHoraInicio(), original.getHoraFin(),
-                original.getCantAsistentes(), original.getEquipo(), original.getPrioridad()
+                original.getCantAsistentes(), original.getEquipo(), 
+                original.getPrioridad()
             );
-            if (rest != null) Servidor.calendario.confirmarReserva(rest.getIdReserva());
+            if (rest != null) ServerApp.calendario.confirmarReserva(
+                    rest.getIdReserva());
             return;
         }
 
-        Servidor.calendario.confirmarReserva(nueva.getIdReserva());
-        PersistenciaReservas.guardar(Servidor.calendario);
-        Servidor.bitacora.log("EDICION-SERVIDOR",
+        ServerApp.calendario.confirmarReserva(nueva.getIdReserva());
+        ReservationPersistence.guardar(ServerApp.calendario);
+        ServerApp.bitacora.log("EDICION-SERVIDOR",
             "Servidor editó reserva " + idReserva + " → " + nueva.getIdReserva()
             + " | cliente: " + idCliente);
 
         // Notificar al cliente si está conectado
-        synchronized (Servidor.clientesConectados) {
-            for (HiloReserva hilo : Servidor.clientesConectados) {
+        synchronized (ServerApp.clientesConectados) {
+            for (ClientHandler hilo : ServerApp.clientesConectados) {
                 if (hilo.getIdCliente().equals(idCliente)) {
                     try {
-                        synchronized (hilo.flujoEscritura) {
-                            hilo.flujoEscritura.writeUTF(
-                                "OK|EDITADO|" + nueva.getIdReserva());
-                            hilo.flujoEscritura.flush();
-                        }
-                    } catch (java.io.IOException ignored) {}
+                        hilo.enviar("OK|EDITADO|" + nueva.getIdReserva());
+                    } catch (Exception ignored) {}
                     break;
                 }
             }
@@ -578,33 +618,32 @@ public class FrmServidor extends JFrame {
         String idCliente = (String) modeloTabla.getValueAt(fila, 1);
 
         int confirm = JOptionPane.showConfirmDialog(this,
-            "¿Cancelar la reserva " + idReserva + " del cliente " + idCliente + "?",
-            "Confirmar cancelación",
+            "¿Cancelar la reserva " + idReserva + " del cliente " + idCliente 
+                    + "?", "Confirmar cancelación",
             JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        boolean ok = Servidor.calendario.cancelarReserva(idReserva);
+        boolean ok = ServerApp.calendario.cancelarReserva(idReserva);
         if (!ok) {
-            JOptionPane.showMessageDialog(this, "No se pudo cancelar la reserva.",
+            JOptionPane.showMessageDialog(this, 
+                    "No se pudo cancelar la reserva.",
                 "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        Servidor.colaTTL.remover(idReserva);
-        PersistenciaReservas.guardar(Servidor.calendario);
-        Servidor.bitacora.log("CANCELACION-SERVIDOR",
-            "Servidor canceló reserva " + idReserva + " del cliente " + idCliente);
+        ServerApp.colaTTL.remover(idReserva);
+        ReservationPersistence.guardar(ServerApp.calendario);
+        ServerApp.bitacora.log("CANCELACION-SERVIDOR",
+            "Servidor canceló reserva " + idReserva + " del cliente " 
+                    + idCliente);
 
         // Notificar al cliente si está conectado
-        synchronized (Servidor.clientesConectados) {
-            for (HiloReserva hilo : Servidor.clientesConectados) {
+        synchronized (ServerApp.clientesConectados) {
+            for (ClientHandler hilo : ServerApp.clientesConectados) {
                 if (hilo.getIdCliente().equals(idCliente)) {
                     try {
-                        synchronized (hilo.flujoEscritura) {
-                            hilo.flujoEscritura.writeUTF("OK|CANCELADO|" + idReserva);
-                            hilo.flujoEscritura.flush();
-                        }
-                    } catch (java.io.IOException ignored) {}
+                        hilo.enviar("OK|CANCELADO|" + idReserva);
+                    } catch (Exception ignored) {}
                     break;
                 }
             }
@@ -615,19 +654,11 @@ public class FrmServidor extends JFrame {
     }
 
     public void log(String msg) {
-        String t = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+        String t = LocalDateTime.now().format(DateTimeFormatter.ofPattern(
+                "HH:mm:ss"));
         SwingUtilities.invokeLater(() -> {
             txtBitacora.append("[" + t + "]  " + msg + "\n");
             txtBitacora.setCaretPosition(txtBitacora.getDocument().getLength());
-        });
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignored) {}
-            new FrmServidor().setVisible(true);
         });
     }
 }
