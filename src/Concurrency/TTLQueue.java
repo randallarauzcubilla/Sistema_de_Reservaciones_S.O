@@ -1,26 +1,27 @@
-package jchat;
+package Concurrency;
 
+import Core.Reservation;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
 
-public class ColaTTL {
+public class TTLQueue {
 
-    private final List<Reserva> cola = new ArrayList<>();
-    private final GestorSincronizacion gestor;
+    private final List<Reservation> cola = new ArrayList<>();
+    private final SynchronizationManager gestor;
     private final Condition condicion;
 
-    public ColaTTL(GestorSincronizacion gestor) {
-        this.gestor    = gestor;
+    public TTLQueue(SynchronizationManager gestor) {
+        this.gestor = gestor;
         this.condicion = gestor.getMutexTTL().newCondition();
     }
 
-    public void agregar(Reserva reserva) {
+    public void agregar(Reservation reserva) {
         gestor.getMutexTTL().lock();
         try {
             cola.add(reserva);
-            cola.sort(Comparator.comparingLong(Reserva::getTTL));
+            cola.sort(Comparator.comparingLong(Reservation::getTTL));
             condicion.signalAll();
         } finally {
             gestor.getMutexTTL().unlock();
@@ -31,23 +32,6 @@ public class ColaTTL {
         gestor.getMutexTTL().lock();
         try {
             return cola.removeIf(r -> r.getIdReserva().equals(idReserva));
-        } finally {
-            gestor.getMutexTTL().unlock();
-        }
-    }
-
-    public List<Reserva> obtenerVencidas() {
-        gestor.getMutexTTL().lock();
-        try {
-            List<Reserva> vencidas  = new ArrayList<>();
-            List<Reserva> vigentes  = new ArrayList<>();
-            for (Reserva r : cola) {
-                if (r.estaVencida()) vencidas.add(r);
-                else                 vigentes.add(r);
-            }
-            cola.clear();
-            cola.addAll(vigentes);
-            return vencidas;
         } finally {
             gestor.getMutexTTL().unlock();
         }
@@ -77,13 +61,19 @@ public class ColaTTL {
 
     public boolean isEmpty() {
         gestor.getMutexTTL().lock();
-        try { return cola.isEmpty(); }
-        finally { gestor.getMutexTTL().unlock(); }
+        try {
+            return cola.isEmpty();
+        } finally {
+            gestor.getMutexTTL().unlock();
+        }
     }
 
-    public List<Reserva> getCopia() {
+    public List<Reservation> getCopia() {
         gestor.getMutexTTL().lock();
-        try { return new ArrayList<>(cola); }
-        finally { gestor.getMutexTTL().unlock(); }
+        try {
+            return new ArrayList<>(cola);
+        } finally {
+            gestor.getMutexTTL().unlock();
+        }
     }
 }

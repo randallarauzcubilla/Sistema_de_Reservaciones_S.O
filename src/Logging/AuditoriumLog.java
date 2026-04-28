@@ -1,9 +1,6 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-
-package jchat;
+package Logging;
+import Concurrency.SynchronizationManager;
+import Core.Reservation;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -16,16 +13,17 @@ import java.util.List;
  *
  * @author KeilorM
  */
-public class Bitacora {
+public class AuditoriumLog {
 
-    private final GestorSincronizacion gestor;
+    private final SynchronizationManager gestor;
     private final List<String> entradas = new ArrayList<>();
     private final String archivoLog     = "bitacora_auditorio.txt";
-    private final SimpleDateFormat sdf  = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+    private final SimpleDateFormat sdf  = 
+            new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 
-    public Bitacora(GestorSincronizacion gestor) {
+    public AuditoriumLog(SynchronizationManager gestor) {
         this.gestor = gestor;
-        log("SISTEMA", "Bitácora inicializada");
+        log("SISTEMA", "Bitacora inicializada");
     }
 
     // SC-07: Escritura con mutex_bitacora (Nivel 5)
@@ -50,21 +48,21 @@ public class Bitacora {
         log("DESCONEXION", cliente + " desconectado");
     }
 
-    public void logReserva(Reserva r) {
+    public void logReserva(Reservation r) {
         log("RESERVA_TEMPORAL", r.toString());
     }
 
-    public void logConfirmacion(Reserva r) {
+    public void logConfirmacion(Reservation r) {
         log("CONFIRMACION", "Reserva " + r.getIdReserva()
                 + " confirmada por " + r.getIdCliente());
     }
 
-    public void logCancelacion(Reserva r, String motivo) {
+    public void logCancelacion(Reservation r, String motivo) {
         log("CANCELACION", "Reserva " + r.getIdReserva()
                 + " cancelada. Motivo: " + motivo);
     }
 
-    public void logExpiracion(Reserva r) {
+    public void logExpiracion(Reservation r) {
         log("EXPIRACION_TTL", "Reserva " + r.getIdReserva()
                 + " expirada. Cliente: " + r.getIdCliente());
     }
@@ -101,5 +99,3 @@ public class Bitacora {
         }
     }
 }
-    
-
