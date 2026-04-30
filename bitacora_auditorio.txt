@@ -774,3 +774,33 @@
 [30/04/2026 01:44:15] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como DOCENTE
 [30/04/2026 01:44:19] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
 [30/04/2026 01:44:27] [SEGURIDAD       ] RANDALL ANEL ARAUZ CUBILLA intentó acceder como DECANATURA sin autorización
+[30/04/2026 02:00:45] [SISTEMA         ] Bitacora inicializada
+[30/04/2026 02:00:50] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 02:01:01] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[30/04/2026 02:01:12] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:01:23] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:01:25] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:01:25] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:01:25] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:01:26] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:01:26] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:01:26] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:01:26] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:01:26] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:01:45] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 02:02:08] [CANCELACION-SERVIDOR] Servidor canceló reserva 98d0bfee del cliente 604940262
+[30/04/2026 02:02:14] [RESERVA_TEMPORAL] [a68049b0] 604940262 | 2026-04-30 08:00-10:30 | 200 personas | NINGUNO | RESERVADO_TEMPORAL | TTL: 29s
+[30/04/2026 02:02:17] [CONFIRMACION    ] Reserva a68049b0 confirmada por 604940262
+[30/04/2026 02:02:30] [RESERVA_TEMPORAL] [2e655c6c] 604940262 | 2026-05-04 08:00-08:30 | 200 personas | NINGUNO | RESERVADO_TEMPORAL | TTL: 30s
+[30/04/2026 02:02:40] [CONFIRMACION    ] Reserva 2e655c6c confirmada por 604940262
+[30/04/2026 02:02:47] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[30/04/2026 02:03:14] [EDICION-SERVIDOR] Servidor editó reserva 2e655c6c → ddc737a7 | cliente: 604940262
+[30/04/2026 02:03:36] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 02:04:04] [SISTEMA         ] Bitacora inicializada
+[30/04/2026 02:04:09] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 02:04:45] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 02:04:51] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 02:04:54] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 02:05:00] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 02:06:26] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 02:06:29] [SISTEMA         ] HiloTTL iniciado
