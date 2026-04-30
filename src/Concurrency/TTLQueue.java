@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.concurrent.locks.Condition;
 
 /**
- * Thread-safe queue that manages reservations with time-to-live (TTL).
- * It ensures reservations are ordered by expiration time and provides
+ * Thread-safe queue that manages reservations with time-to-live (TTL). It
+ * ensures reservations are ordered by expiration time and provides
  * synchronization mechanisms for safe concurrent access.
  */
 public class TTLQueue {
@@ -18,10 +18,10 @@ public class TTLQueue {
     private final Condition condition;
 
     /**
-     * Creates a new TTLQueue instance using the provided synchronization 
+     * Creates a new TTLQueue instance using the provided synchronization
      * manager.
      *
-     * @param manager the synchronization manager responsible for thread 
+     * @param manager the synchronization manager responsible for thread
      * coordination
      */
     public TTLQueue(SynchronizationManager manager) {
@@ -30,8 +30,8 @@ public class TTLQueue {
     }
 
     /**
-     * Adds a reservation to the queue and orders it by TTL.
-     * Notifies waiting threads after insertion.
+     * Adds a reservation to the queue and orders it by TTL. Notifies waiting
+     * threads after insertion.
      *
      * @param reservation the reservation to add
      */
@@ -55,8 +55,8 @@ public class TTLQueue {
     public boolean remove(String reservationId) {
         manager.getTtlMutex().lock();
         try {
-            return queue.removeIf(r -> 
-                    r.getReservationId().equals(reservationId));
+            return queue.removeIf(r
+                    -> r.getReservationId().equals(reservationId));
         } finally {
             manager.getTtlMutex().unlock();
         }
@@ -82,13 +82,15 @@ public class TTLQueue {
     /**
      * Calculates the remaining time until the next reservation expires.
      *
-     * @return milliseconds until the next TTL expiration, or default 
-     * value if empty
+     * @return milliseconds until the next TTL expiration, or default value if
+     * empty
      */
     public long millisUntilNext() {
         manager.getTtlMutex().lock();
         try {
-            if (queue.isEmpty()) return 5000;
+            if (queue.isEmpty()) {
+                return 5000;
+            }
             long remaining = queue.get(0).getTTL() - System.currentTimeMillis();
             return Math.max(100, remaining);
         } finally {
@@ -111,8 +113,8 @@ public class TTLQueue {
     }
 
     /**
-     * Returns a snapshot copy of the current queue.
-     * The returned list is independent of the internal structure.
+     * Returns a snapshot copy of the current queue. The returned list is
+     * independent of the internal structure.
      *
      * @return a copy of the reservation queue
      */
