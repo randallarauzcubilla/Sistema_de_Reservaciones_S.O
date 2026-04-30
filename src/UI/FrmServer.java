@@ -10,7 +10,9 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.*;
 import java.awt.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.logging.Level;
@@ -664,6 +666,10 @@ public class FrmServer extends JFrame {
         lblEstadoValor.setForeground(COLOR_INACTIV);
         lblReservasValor.setText("—");
         lblEquipoValor.setText("—");
+        lblCapacidadValor.setText("—");
+        lblMicrofonoValor.setText("—");
+        lblSonidoValor.setText("—");
+        lblCompletoValor.setText("—");
 
         btnIniciar.setEnabled(true);
         btnDetener.setEnabled(false);
@@ -821,8 +827,7 @@ public class FrmServer extends JFrame {
         String nuevaInicio = fInicio.getText().trim();
         String nuevaFin = fFin.getText().trim();
         String nuevaAsis = fAsis.getText().trim();
-        String nuevoEquipo
-                = (String) fEquipo.getSelectedItem();
+        String nuevoEquipo = (String) fEquipo.getSelectedItem();
 
         if (nuevaFecha.isEmpty() || nuevaInicio.isEmpty()
                 || nuevaFin.isEmpty()
@@ -834,14 +839,137 @@ public class FrmServer extends JFrame {
             return;
         }
 
-        Reservation original
-                = ServerApp.calendar
-                        .getReservationById(idReserva);
+        // Validar año actual
+        LocalDate fecha;
+        try {
+            fecha = LocalDate.parse(nuevaFecha);
+            if (fecha.getYear() != LocalDate.now().getYear()) {
+                JOptionPane.showMessageDialog(this,
+                    "Solo se permiten reservas dentro del año actual (" 
+                    + LocalDate.now().getYear() + ").",
+                    "Año no permitido", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (fecha.isBefore(LocalDate.now())) {
+                JOptionPane.showMessageDialog(this,
+                    "No se pueden hacer reservas en fechas pasadas.",
+                    "Fecha inválida", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                "Formato de fecha inválido. Use YYYY-MM-DD.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Validar horas
+        LocalTime inicio, fin;
+        try {
+            inicio = LocalTime.parse(nuevaInicio);
+            fin    = LocalTime.parse(nuevaFin);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                "Hora inválida. Use HH:mm.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (!inicio.isBefore(fin)) {
+            JOptionPane.showMessageDialog(this,
+                "La hora de inicio debe ser menor a la hora fin.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Validar asistentes
+        int asistentes;
+        try {
+            asistentes = Integer.parseInt(nuevaAsis);
+            if (asistentes < 0 || asistentes > 200) {
+                JOptionPane.showMessageDialog(this,
+                    "Los asistentes deben estar entre 0 y 200.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this,
+                "Asistentes debe ser un número.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Reservation original = ServerApp.calendar.getReservationById(idReserva);
         if (original == null) {
             JOptionPane.showMessageDialog(this,
                     "Reserva no encontrada.",
                     "Error", JOptionPane.ERROR_MESSAGE);
             return;
+        }
+
+        LocalDateTime ahora = LocalDateTime.now();
+
+        // Nuevos valores
+        LocalDateTime inicioNuevo = LocalDateTime.of(fecha, inicio);
+        LocalDateTime finNuevo    = LocalDateTime.of(fecha, fin);
+
+        // Valores originales
+        LocalDateTime inicioOriginal = LocalDateTime.of(
+                LocalDate.parse(original.getDate()),
+                LocalTime.parse(original.getStartTime()));
+
+        LocalDateTime finOriginal = LocalDateTime.of(
+                LocalDate.parse(original.getDate()),
+                LocalTime.parse(original.getEndTime()));
+
+        // YA TERMINÓ
+        if (finOriginal.isBefore(ahora)) {
+            JOptionPane.showMessageDialog(this,
+                "La reserva ya finalizó. Debes crear una nueva.",
+                "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // EN CURSO
+        if (inicioOriginal.isBefore(ahora) && finOriginal.isAfter(ahora)) {
+
+            if (!fecha.equals(inicioOriginal.toLocalDate())) {
+                JOptionPane.showMessageDialog(this,
+                    "No puedes cambiar la fecha de una reserva en curso.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (!inicioNuevo.equals(inicioOriginal)) {
+                JOptionPane.showMessageDialog(this,
+                    "No puedes modificar la hora de inicio de una reserva en curso.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            if (finNuevo.isBefore(ahora)) {
+                JOptionPane.showMessageDialog(this,
+                    "No puedes poner una hora fin que ya pasó.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // CORREGIDO: aquí va esta validación
+            if (finNuevo.isBefore(inicioOriginal)) {
+                JOptionPane.showMessageDialog(this,
+                    "La hora fin no puede ser anterior al inicio original.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
+
+        // FUTURA
+        if (inicioOriginal.isAfter(ahora)) {
+            if (inicioNuevo.isBefore(ahora)) {
+                JOptionPane.showMessageDialog(this,
+                    "No puedes usar fechas u horas pasadas.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
         }
 
         ServerApp.calendar.cancelReservation(idReserva);

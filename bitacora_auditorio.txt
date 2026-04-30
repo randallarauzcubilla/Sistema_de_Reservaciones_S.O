@@ -804,3 +804,64 @@
 [30/04/2026 02:05:00] [SISTEMA         ] HiloTTL iniciado
 [30/04/2026 02:06:26] [SISTEMA         ] HiloTTL iniciado
 [30/04/2026 02:06:29] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 09:48:21] [SISTEMA         ] Bitacora inicializada
+[30/04/2026 09:49:03] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 09:54:40] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 09:54:52] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 09:57:23] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 09:58:39] [SISTEMA         ] Bitacora inicializada
+[30/04/2026 09:59:14] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 09:59:30] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 09:59:32] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 09:59:38] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[30/04/2026 10:00:30] [ERROR           ] 604940262 sin capacidad en franja: 2026-04-30
+[30/04/2026 10:00:55] [RESERVA_TEMPORAL] [7cd5cf71] 604940262 | 2027-02-02 14:30-15:00 | 10 personas | COMPLETO | RESERVADO_TEMPORAL | TTL: 29s
+[30/04/2026 10:01:05] [CANCELACION     ] Reserva 7cd5cf71 cancelada. Motivo: Cancelado por cliente
+[30/04/2026 10:01:23] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[30/04/2026 10:01:40] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 10:01:49] [EDICION-SERVIDOR] Servidor editó reserva c5600e2d → 1224753c | cliente: 604940262
+[30/04/2026 10:02:15] [EDICION-SERVIDOR] Servidor editó reserva 1224753c → 1f7153df | cliente: 604940262
+[30/04/2026 10:03:44] [SISTEMA         ] Bitacora inicializada
+[30/04/2026 10:03:53] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 10:04:05] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[30/04/2026 10:04:25] [EDICION-SERVIDOR] Servidor editó reserva 9bfee3fc → 25448417 | cliente: 604940262
+[30/04/2026 10:04:40] [EDICION-SERVIDOR] Servidor editó reserva 25448417 → 5839d627 | cliente: 604940262
+[30/04/2026 10:05:03] [EDICION-SERVIDOR] Servidor editó reserva 5839d627 → 26248de2 | cliente: 604940262
+[30/04/2026 10:05:26] [EDICION-SERVIDOR] Servidor editó reserva 26248de2 → 5dcc7ebc | cliente: 604940262
+[30/04/2026 10:12:17] [EDICION-SERVIDOR] Servidor editó reserva 5dcc7ebc → 1735da72 | cliente: 604940262
+[30/04/2026 10:19:10] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[30/04/2026 10:20:26] [SISTEMA         ] Bitacora inicializada
+[30/04/2026 10:20:37] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 10:20:40] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[30/04/2026 10:22:40] [EDICION-SERVIDOR] Servidor editó reserva 0cbb2884 → cbda0f63 | cliente: 604940262
+[30/04/2026 10:24:41] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[30/04/2026 10:24:42] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 10:24:57] [SISTEMA         ] Bitacora inicializada
+[30/04/2026 10:25:01] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 10:25:27] [EDICION-SERVIDOR] Servidor editó reserva b4490010 → 6fdfb28a | cliente: 604940262
+[30/04/2026 10:28:02] [SISTEMA         ] Bitacora inicializada
+[30/04/2026 10:28:15] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 10:57:32] [SISTEMA         ] Bitacora inicializada
+[30/04/2026 10:57:59] [SISTEMA         ] HiloTTL iniciado
+[30/04/2026 10:58:10] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[30/04/2026 10:58:37] [ERROR           ] 604940262 intentó reservar hora pasada hoy: 10:00
+[30/04/2026 10:58:53] [RESERVA_TEMPORAL] [14678ebe] 604940262 | 2026-04-30 11:00-12:00 | 2 personas | NINGUNO | RESERVADO_TEMPORAL | TTL: 29s
+[30/04/2026 10:58:56] [CONFIRMACION    ] Reserva 14678ebe confirmada por 604940262
+[30/04/2026 11:00:29] [RESERVA_TEMPORAL] [5981fd1d] 604940262 | 2026-05-01 10:00-12:00 | 0 personas | NINGUNO | RESERVADO_TEMPORAL | TTL: 30s
+[30/04/2026 11:00:32] [CONFIRMACION    ] Reserva 5981fd1d confirmada por 604940262
+[30/04/2026 11:00:43] [EDICION-SERVIDOR] Servidor editó reserva 5981fd1d → 77c8e498 | cliente: 604940262
+[30/04/2026 11:01:11] [EDICION-SERVIDOR] Servidor editó reserva 77c8e498 → 757960d2 | cliente: 604940262
+[30/04/2026 11:03:51] [EDICION-SERVIDOR] Servidor editó reserva 14678ebe → 7df83835 | cliente: 604940262
+[30/04/2026 11:04:19] [EDICION-SERVIDOR] Servidor editó reserva 7df83835 → 4b0189bb | cliente: 604940262
+[30/04/2026 11:10:06] [CONEXION        ] KEILOR JAFET MUÑOZ CHAVARRIA conectado como ESTUDIANTE
+[30/04/2026 11:11:13] [RESERVA_TEMPORAL] [e1a25bec] 402520321 | 2026-05-02 08:00-10:00 | 5 personas | NINGUNO | RESERVADO_TEMPORAL | TTL: 30s
+[30/04/2026 11:11:16] [ERROR           ] 604940262 franja ocupada: 2026-05-02 08:30
+[30/04/2026 11:11:18] [ERROR           ] 604940262 franja ocupada: 2026-05-02 08:30
+[30/04/2026 11:11:43] [EXPIRACION_TTL  ] Reserva e1a25bec expirada. Cliente: 402520321
+[30/04/2026 11:11:49] [DESCONEXION     ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) desconectado
+[30/04/2026 11:11:52] [RESERVA_TEMPORAL] [fa81fdc3] 604940262 | 2026-05-02 08:30-11:00 | 6 personas | COMPLETO | RESERVADO_TEMPORAL | TTL: 30s
+[30/04/2026 11:12:14] [CANCELACION     ] Reserva fa81fdc3 cancelada. Motivo: Cancelado por cliente
+[30/04/2026 11:14:00] [CANCELACION-SERVIDOR] Servidor canceló reserva ecfd3ddd del cliente 604940262
+[30/04/2026 11:14:37] [RESERVA_TEMPORAL] [61a5098d] 604940262 | 2026-05-12 08:00-08:30 | 0 personas | NINGUNO | RESERVADO_TEMPORAL | TTL: 30s
+[30/04/2026 11:14:42] [CANCELACION     ] Reserva 61a5098d cancelada. Motivo: Cancelado por cliente
+[30/04/2026 11:15:54] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
