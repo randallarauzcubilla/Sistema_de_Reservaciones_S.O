@@ -7,64 +7,94 @@ import Core.Reservation;
 import Server.ServerApp;
 import Core.ReservationCalendar;
 
+/**
+ * Thread responsible for monitoring reservation time-to-live (TTL).
+ * It periodically checks for expired reservations and handles their
+ * removal and client notification.
+ */
 public class ReservationTTLThread extends Thread {
 
-    private final ReservationCalendar calendario;
-    private final AuditoriumManager recursos;
-    private final TTLQueue colaTTL;
-    private final AuditoriumLog bitacora;
-    private volatile boolean activo = true;
+    private final ReservationCalendar calendar;
+    private final AuditoriumManager resources;
+    private final TTLQueue ttlQueue;
+    private final AuditoriumLog log;
+    private volatile boolean active = true;
 
-    public ReservationTTLThread(ReservationCalendar calendario, 
-            AuditoriumManager recursos, TTLQueue colaTTL, 
-            AuditoriumLog bitacora) {
-        this.calendario = calendario;
-        this.recursos = recursos;
-        this.colaTTL = colaTTL;
-        this.bitacora = bitacora;
-        setName("HiloTTL");
+    /**
+     * Creates a new TTL monitoring thread.
+     *
+     * @param calendar the reservation calendar used to manage reservations
+     * @param resources the auditorium resource manager
+     * @param ttlQueue the queue that manages TTL timing
+     * @param log the system log used for auditing events
+     */
+    public ReservationTTLThread(ReservationCalendar calendar,
+            AuditoriumManager resources, TTLQueue ttlQueue,
+            AuditoriumLog log) {
+        this.calendar = calendar;
+        this.resources = resources;
+        this.ttlQueue = ttlQueue;
+        this.log = log;
+        setName("TTLThread");
     }
 
+    /**
+     * Main execution loop of the TTL thread.
+     * Continuously checks for expired reservations and processes them.
+     */
     @Override
     public void run() {
-        bitacora.log("SISTEMA", "HiloTTL iniciado");
-        while (activo) {
-            try {
-                long espera = colaTTL.msHastaProxima();
-                colaTTL.esperarConTimeout(espera);
-                java.util.List<Reservation> expiradas = 
-                        calendario.expirarVencidas();
+        log.log("SISTEMA", "HiloTTL iniciado");
 
-                for (Reservation r : expiradas) {
-                    colaTTL.remover(r.getIdReserva());
-                    bitacora.logExpiracion(r);
-                    System.out.println("[TTL] Expirada: " + r.getIdReserva());
-                    notificarClienteExpiracion(r);
+        while (active) {
+            try {
+                long waitTime = ttlQueue.millisUntilNext();
+                ttlQueue.awaitWithTimeout(waitTime);
+
+                java.util.List<Reservation> expiredReservations =
+                        calendar.expireOverdue();
+
+                for (Reservation r : expiredReservations) {
+                    ttlQueue.remove(r.getReservationId());
+                    log.logExpiration(r);
+                    System.out.println("[TTL] Expirada: " + 
+                            r.getReservationId());
+                    notifyClientExpiration(r);
                 }
+
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                activo = false;
+                active = false;
             }
         }
-        bitacora.log("SISTEMA", "HiloTTL detenido");
-    }
-    
-    private void notificarClienteExpiracion(Reservation r) {
-    for (ClientHandler hilo : ServerApp.clientesConectados) {
-        if (hilo.getIdCliente().equals(r.getIdCliente())) {
-            try {
-                hilo.enviar("EXPIRACION|" + r.getIdReserva());
-            } catch (Exception ignored) {
-                System.out.println("[TTL-DEBUG] Error al enviar: " 
-                        + ignored.getMessage());
-            }
-            break;
-        }
-    }
-}
 
-    public void detener() {
-        activo = false;
+        log.log("SISTEMA", "HiloTTL detenido");
+    }
+
+    /**
+     * Notifies the client that a reservation has expired.
+     *
+     * @param r the expired reservation
+     */
+    private void notifyClientExpiration(Reservation r) {
+        for (ClientHandler hilo : ServerApp.connectedClients) {
+            if (hilo.getClientId().equals(r.getClientId())) {
+                try {
+                    hilo.send("EXPIRACION|" + r.getReservationId());
+                } catch (Exception ignored) {
+                    System.out.println("[TTL-DEBUG] Error al enviar: "
+                            + ignored.getMessage());
+                }
+                break;
+            }
+        }
+    }
+
+    /**
+     * Stops the TTL thread safely.
+     */
+    public void stopThread() {
+        active = false;
         interrupt();
     }
 }

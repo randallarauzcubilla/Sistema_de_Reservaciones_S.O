@@ -6,74 +6,122 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
 
+/**
+ * Thread-safe queue that manages reservations with time-to-live (TTL).
+ * It ensures reservations are ordered by expiration time and provides
+ * synchronization mechanisms for safe concurrent access.
+ */
 public class TTLQueue {
 
-    private final List<Reservation> cola = new ArrayList<>();
-    private final SynchronizationManager gestor;
-    private final Condition condicion;
+    private final List<Reservation> queue = new ArrayList<>();
+    private final SynchronizationManager manager;
+    private final Condition condition;
 
-    public TTLQueue(SynchronizationManager gestor) {
-        this.gestor = gestor;
-        this.condicion = gestor.getMutexTTL().newCondition();
+    /**
+     * Creates a new TTLQueue instance using the provided synchronization 
+     * manager.
+     *
+     * @param manager the synchronization manager responsible for thread 
+     * coordination
+     */
+    public TTLQueue(SynchronizationManager manager) {
+        this.manager = manager;
+        this.condition = manager.getTtlMutex().newCondition();
     }
 
-    public void agregar(Reservation reserva) {
-        gestor.getMutexTTL().lock();
+    /**
+     * Adds a reservation to the queue and orders it by TTL.
+     * Notifies waiting threads after insertion.
+     *
+     * @param reservation the reservation to add
+     */
+    public void add(Reservation reservation) {
+        manager.getTtlMutex().lock();
         try {
-            cola.add(reserva);
-            cola.sort(Comparator.comparingLong(Reservation::getTTL));
-            condicion.signalAll();
+            queue.add(reservation);
+            queue.sort(Comparator.comparingLong(Reservation::getTTL));
+            condition.signalAll();
         } finally {
-            gestor.getMutexTTL().unlock();
+            manager.getTtlMutex().unlock();
         }
     }
 
-    public boolean remover(String idReserva) {
-        gestor.getMutexTTL().lock();
+    /**
+     * Removes a reservation from the queue by its identifier.
+     *
+     * @param reservationId the id of the reservation to remove
+     * @return true if the reservation was removed, false otherwise
+     */
+    public boolean remove(String reservationId) {
+        manager.getTtlMutex().lock();
         try {
-            return cola.removeIf(r -> r.getIdReserva().equals(idReserva));
+            return queue.removeIf(r -> 
+                    r.getReservationId().equals(reservationId));
         } finally {
-            gestor.getMutexTTL().unlock();
+            manager.getTtlMutex().unlock();
         }
     }
 
-    public void esperarConTimeout(long ms) throws InterruptedException {
-        gestor.getMutexTTL().lock();
+    /**
+     * Waits until the next reservation TTL expires or until timeout occurs.
+     *
+     * @param ms maximum time to wait in milliseconds
+     * @throws InterruptedException if the thread is interrupted while waiting
+     */
+    public void awaitWithTimeout(long ms) throws InterruptedException {
+        manager.getTtlMutex().lock();
         try {
-            if (cola.isEmpty()) {
-                condicion.await(ms, java.util.concurrent.TimeUnit.MILLISECONDS);
+            if (queue.isEmpty()) {
+                condition.await(ms, java.util.concurrent.TimeUnit.MILLISECONDS);
             }
         } finally {
-            gestor.getMutexTTL().unlock();
+            manager.getTtlMutex().unlock();
         }
     }
 
-    public long msHastaProxima() {
-        gestor.getMutexTTL().lock();
+    /**
+     * Calculates the remaining time until the next reservation expires.
+     *
+     * @return milliseconds until the next TTL expiration, or default 
+     * value if empty
+     */
+    public long millisUntilNext() {
+        manager.getTtlMutex().lock();
         try {
-            if (cola.isEmpty()) return 5000;
-            long restante = cola.get(0).getTTL() - System.currentTimeMillis();
-            return Math.max(100, restante);
+            if (queue.isEmpty()) return 5000;
+            long remaining = queue.get(0).getTTL() - System.currentTimeMillis();
+            return Math.max(100, remaining);
         } finally {
-            gestor.getMutexTTL().unlock();
+            manager.getTtlMutex().unlock();
         }
     }
 
+    /**
+     * Checks whether the queue is empty.
+     *
+     * @return true if there are no pending reservations, false otherwise
+     */
     public boolean isEmpty() {
-        gestor.getMutexTTL().lock();
+        manager.getTtlMutex().lock();
         try {
-            return cola.isEmpty();
+            return queue.isEmpty();
         } finally {
-            gestor.getMutexTTL().unlock();
+            manager.getTtlMutex().unlock();
         }
     }
 
-    public List<Reservation> getCopia() {
-        gestor.getMutexTTL().lock();
+    /**
+     * Returns a snapshot copy of the current queue.
+     * The returned list is independent of the internal structure.
+     *
+     * @return a copy of the reservation queue
+     */
+    public List<Reservation> getCopy() {
+        manager.getTtlMutex().lock();
         try {
-            return new ArrayList<>(cola);
+            return new ArrayList<>(queue);
         } finally {
-            gestor.getMutexTTL().unlock();
+            manager.getTtlMutex().unlock();
         }
     }
 }

@@ -15,39 +15,61 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Individual worker thread responsible for managing a single client connection.
+ * This class implements the communication protocol between the client and 
+ * the server, handling requests such as making, confirming, and canceling 
+ * reservations. 
+ * It acts as a bridge between the network sockets and the core business 
+ * logic (Calendar, Resources, and TTL Queue), ensuring thread-safe operations
+ * via the {@code SynchronizationManager} provided by the calendar.
+ */
 public class ClientHandler extends Thread {
 
     final Socket socket;
-    private final String idCliente;
-    private final String nombreCliente;
-    private final String rolCliente;
-    private final ReservationCalendar calendario;
-    private final AuditoriumManager recursos;
-    private final TTLQueue colaTTL;
-    private final AuditoriumLog bitacora;
+    private final String clientId;
+    private final String clientName;
+    private final String clientRole;
+    private final ReservationCalendar calendar;
+    private final AuditoriumManager resources;
+    private final TTLQueue ttlQueue;
+    private final AuditoriumLog log;
 
-    DataInputStream flujoLectura;
-    DataOutputStream flujoEscritura;
+    DataInputStream inputStream;
+    DataOutputStream outputStream;
 
-    public ClientHandler(Socket socket, String datosCliente, 
-            ReservationCalendar calendario, AuditoriumManager recursos,
-            TTLQueue colaTTL, AuditoriumLog bitacora) {
+    /**
+     * Constructs a ClientHandler to manage a specific client connection.
+     * Parses client information (name, ID, and role) from a delimited string
+     * and initializes the buffered communication streams.
+     *
+     * @param socket     the client's connection socket.
+     * @param clientData formatted string containing client info separated 
+     * by "|".
+     * @param calendar   reference to the global reservation calendar.
+     * @param resources  reference to the auditorium resource manager.
+     * @param ttlQueue   queue for handling temporary reservation expirations.
+     * @param log        system logger for recording operations.
+     */
+    public ClientHandler(Socket socket, String clientData, 
+            ReservationCalendar calendar, AuditoriumManager resources,
+            TTLQueue ttlQueue, AuditoriumLog log) {
         this.socket = socket;
-        this.calendario = calendario;
-        this.recursos = recursos;
-        this.colaTTL = colaTTL;
-        this.bitacora = bitacora;
+        this.calendar = calendar;
+        this.resources = resources;
+        this.ttlQueue = ttlQueue;
+        this.log = log;
 
-        String[] partes = datosCliente.split("\\|", 3);
-        this.nombreCliente = partes[0].trim();
-        this.idCliente = partes.length >= 
-                2 ? partes[1].trim() : partes[0].trim();
-        this.rolCliente = partes.length >= 3 ? partes[2].trim() : "ESTUDIANTE";
+        String[] parts = clientData.split("\\|", 3);
+        this.clientName = parts[0].trim();
+        this.clientId = parts.length >= 
+                2 ? parts[1].trim() : parts[0].trim();
+        this.clientRole = parts.length >= 3 ? parts[2].trim() : "ESTUDIANTE";
 
         try {
-            flujoLectura = new DataInputStream(new BufferedInputStream
+            inputStream = new DataInputStream(new BufferedInputStream
         (socket.getInputStream()));
-            flujoEscritura = new DataOutputStream(new BufferedOutputStream
+            outputStream = new DataOutputStream(new BufferedOutputStream
         (socket.getOutputStream()));
         } catch (IOException e) {
         System.out.println("[ERROR] HiloReserva constructor: " 
@@ -55,13 +77,17 @@ public class ClientHandler extends Thread {
         }
     }
 
+    /**
+     * Main execution loop for the client handler.
+     * Validates roles, manages the connection lifecycle, and dispatches 
+     * commands.
+     */
     @Override
     public void run() {
-        // Verificar si el rol es válido para esta cédula
-        if (!RoleValidator.puedeUsarRol(idCliente, rolCliente)) {
-            responder("ERROR|ROL_NO_AUTORIZADO");
-            bitacora.log("SEGURIDAD", nombreCliente + " intentó acceder como "
-                    + rolCliente + " sin autorización");
+        if (!RoleValidator.canUseRole(clientId, clientRole)) {
+            sendResponse("ERROR|ROL_NO_AUTORIZADO");
+            log.log("SEGURIDAD", clientName + " intentó acceder como "
+                    + clientRole + " sin autorización");
             try {
                 socket.close();
             } catch (IOException ignored) {
@@ -69,27 +95,27 @@ public class ClientHandler extends Thread {
             return;
         }
 
-        bitacora.log("CONEXION",nombreCliente+" conectado como " + rolCliente);
-        responder("OK|CONECTADO");
-        enviarHistorial();
+        log.log("CONEXION",clientName+" conectado como " + clientRole);
+        sendResponse("OK|CONECTADO");
+        sendHistory();
 
         while (true) {
             try {
-                String mensaje = flujoLectura.readUTF().trim();
-                if (mensaje.isEmpty()) {
+                String message = inputStream.readUTF().trim();
+                if (message.isEmpty()) {
                     continue;
                 }
 
-                String[] partes = mensaje.split("\\|");
-                String comando = partes[0];
+                String[] parts = message.split("\\|");
+                String command = parts[0];
 
-                switch (comando) {
+                switch (command) {
                     case "CONSULTAR":
-                        procesarConsulta(partes);
+                        processQuery(parts);
                         break;
                     case "RESERVAR": {
                         try {
-                            procesarReserva(partes);
+                            processReservation(parts);
                         } catch (InterruptedException ex) {
                             Logger.getLogger(ClientHandler.class.getName()
                             ).log(Level.SEVERE, null, ex);
@@ -98,17 +124,17 @@ public class ClientHandler extends Thread {
                     break;
 
                     case "CONFIRMAR":
-                        procesarConfirmacion(partes);
+                        processConfirmation(parts);
                         break;
                     case "CANCELAR":
-                        procesarCancelacion(partes);
+                        processCancellation(parts);
                         break;
                     case "ESTADO":
-                        procesarEstado(partes);
+                        processStatus(parts);
                         break;
                     case "EDITAR_RESERVA": {
                         try {
-                            procesarEdicion(partes);
+                            processEdition(parts);
                         } catch (InterruptedException ex) {
                             Logger.getLogger(ClientHandler.class.getName()
                             ).log(Level.SEVERE, null, ex);
@@ -116,365 +142,436 @@ public class ClientHandler extends Thread {
                     }
                     break;
                     default:
-                        responder("ERROR|COMANDO_DESCONOCIDO");
+                        sendResponse("ERROR|COMANDO_DESCONOCIDO");
                         break;
                 }
             } catch (IOException e) {
-                ServerApp.clientesConectados.remove(this);
-                bitacora.log("DESCONEXION", nombreCliente + " (DNI: " + 
-                        idCliente + ") desconectado");
-                System.out.println("[HILO] " + nombreCliente+ " desconectado.");
+                ServerApp.connectedClients.remove(this);
+                log.log("DESCONEXION", clientName + " (DNI: " + 
+                        clientId + ") desconectado");
+                System.out.println("[HILO] " + clientName+ " desconectado.");
                 break;
             }
         }
     }
 
-    private void enviarHistorial() {
-        List<Reservation> todas = calendario.getTodasLasReservas();
+    /**
+     * Sends the client's active reservation history.
+     * Filters the global calendar for reservations belonging to this client 
+     * that haven't been cancelled.
+     */
+    private void sendHistory() {
+        List<Reservation> allReservations = calendar.getAllReservations();
         StringBuilder sb = new StringBuilder("HISTORIAL");
 
-        for (Reservation r : todas) {
-            if (!r.getIdCliente().equals(idCliente)) {
+        for (Reservation r : allReservations) {
+            if (!r.getClientId().equals(clientId)) {
                 continue;
             }
-            if (r.getEstado() == Reservation.Estado.CANCELADO) {
+            if (r.getStatus() == Reservation.Status.CANCELADO) {
                 continue;
             }
 
             sb.append("|")
-                    .append(r.getIdReserva()).append(",")
-                    .append(r.getFecha()).append(",")
-                    .append(r.getHoraInicio()).append(",")
-                    .append(r.getHoraFin()).append(",")
-                    .append(r.getEstado().toString());
+                    .append(r.getReservationId()).append(",")
+                    .append(r.getDate()).append(",")
+                    .append(r.getStartTime()).append(",")
+                    .append(r.getEndTime()).append(",")
+                    .append(r.getStatus().toString());
         }
 
-        responder(sb.toString());
+        sendResponse(sb.toString());
     }
 
-    private void procesarConsulta(String[] p) {
+    /**
+     * Processes a availability query request.
+     * Verifies if a specific date and time range is free for booking.
+     *
+     * @param parts the message parts containing [COMMAND, DATE, START_TIME, 
+     * END_TIME]
+     */
+    private void processQuery(String[] p) {
         if (p.length < 4) {
-            responder("ERROR|PARAMETROS_INSUFICIENTES");
+            sendResponse("ERROR|PARAMETROS_INSUFICIENTES");
             return;
         }
-        boolean disponible = calendario.estaDisponible(p[1], p[2], p[3]);
-        bitacora.log("CONSULTA", idCliente + " consultó " + 
+        boolean isAvailable = calendar.isAvailable(p[1], p[2], p[3]);
+        log.log("CONSULTA", clientId + " consultó " + 
                 p[1] + " " + p[2] + "-" + p[3]);
-        responder(disponible ? "OK|DISPONIBLE" : "ERROR|FRANJA_OCUPADA");
+        sendResponse(isAvailable ? "OK|DISPONIBLE" : "ERROR|FRANJA_OCUPADA");
     }
 
-    private void procesarReserva(String[] p) throws InterruptedException {
+    /**
+     * Processes a new reservation request.
+     * Performs strict validation on dates, times, capacity, and equipment 
+     * availability
+     * before creating a temporary reservation entry.
+     *
+     * @param parts the message parts containing reservation details
+     * @throws InterruptedException if the reservation process is interrupted
+     */
+    private void processReservation(String[] p) throws InterruptedException {
         if (p.length < 6) {
-            responder("ERROR|PARAMETROS_INSUFICIENTES");
+            sendResponse("ERROR|PARAMETROS_INSUFICIENTES");
             return;
         }
 
         try {
-            String fecha = p[1];
-            String horaInicio = p[2];
-            String horaFin = p[3];
-            int asistentes = Integer.parseInt(p[4]);
-            Reservation.Equipo equipo = Reservation.Equipo.valueOf(p[5]);
-            Reservation.Prioridad prioridad = Reservation.Prioridad.ESTUDIANTE;
+            String date = p[1];
+            String startTime = p[2];
+            String endTime = p[3];
+            int attendees = Integer.parseInt(p[4]);
+            Reservation.Equipment equipment = 
+                    Reservation.Equipment.valueOf(p[5]);
+            Reservation.Priority priority = Reservation.Priority.ESTUDIANTE;
 
             if (p.length >= 7) {
                 try {
-                    prioridad = Reservation.Prioridad.valueOf(p[6]);
+                    priority = Reservation.Priority.valueOf(p[6]);
                 } catch (IllegalArgumentException ignored) {
                 }
             }
 
-            LocalDate fechaReserva;
+            LocalDate reservationDate;
             try {
-                fechaReserva = LocalDate.parse(fecha);
+                reservationDate = LocalDate.parse(date);
             } catch (Exception e) {
-                responder("ERROR|FECHA_INVALIDA");
+                sendResponse("ERROR|FECHA_INVALIDA");
                 return;
             }
 
-            LocalDate hoy = LocalDate.now();
-            if (fechaReserva.isBefore(hoy)) {
-                bitacora.log("ERROR", idCliente + 
-                        " intentó reservar en fecha pasada: " + fecha);
-                responder("ERROR|FECHA_EN_EL_PASADO");
+            LocalDate today = LocalDate.now();
+            if (reservationDate.isBefore(today)) {
+                log.log("ERROR", clientId + 
+                        " intentó reservar en fecha pasada: " + date);
+                sendResponse("ERROR|FECHA_EN_EL_PASADO");
                 return;
             }
 
-            if (!esHoraValida(horaInicio) || !esHoraValida(horaFin)) {
-                responder("ERROR|HORA_INVALIDA");
+            if (!isValidTime(startTime) || !isValidTime(endTime)) {
+                sendResponse("ERROR|HORA_INVALIDA");
                 return;
             }
 
-            if (fechaReserva.isEqual(hoy)) {
-                LocalTime ahora = LocalTime.now();
-                LocalTime inicioTime = LocalTime.parse(horaInicio);
-                if (inicioTime.isBefore(ahora)) {
-                    bitacora.log("ERROR", idCliente + 
-                            " intentó reservar hora pasada hoy: " + horaInicio);
-                    responder("ERROR|HORA_EN_EL_PASADO");
+            if (reservationDate.isEqual(today)) {
+                LocalTime nowTime = LocalTime.now();
+                LocalTime startLocalTime = LocalTime.parse(startTime);
+                if (startLocalTime.isBefore(nowTime)) {
+                    log.log("ERROR", clientId + 
+                            " intentó reservar hora pasada hoy: " + startTime);
+                    sendResponse("ERROR|HORA_EN_EL_PASADO");
                     return;
                 }
             }
 
-            LocalTime tInicio = LocalTime.parse(horaInicio);
-            LocalTime tFin = LocalTime.parse(horaFin);
-            if (!tFin.isAfter(tInicio)) {
-                responder("ERROR|HORA_FIN_INVALIDA");
+            LocalTime tStart = LocalTime.parse(startTime);
+            LocalTime tEnd = LocalTime.parse(endTime);
+            if (!tEnd.isAfter(tStart)) {
+                sendResponse("ERROR|HORA_FIN_INVALIDA");
                 return;
             }
 
-            int ocupada = calendario.capacidadOcupadaEnRango
-        (fecha, horaInicio, horaFin);
-            if (ocupada + asistentes > ServerApp.gestor.getCapacidadMaxima()) {
-                bitacora.log("ERROR", idCliente 
-                        + " sin capacidad en franja: " + fecha);
-                responder("ERROR|SIN_CAPACIDAD");
+            int occupiedCapacity = calendar.getOccupiedCapacityInRange
+        (date, startTime, endTime);
+            if (occupiedCapacity + attendees > 
+                    ServerApp.manager.getMaxCapacity()) {
+                log.log("ERROR", clientId 
+                        + " sin capacidad en franja: " + date);
+                sendResponse("ERROR|SIN_CAPACIDAD");
                 return;
             }
 
-            if (!recursos.hayEquipo(equipo)) {
-                bitacora.log("ERROR", idCliente + " equipo no disponible: " 
-                        + equipo);
-                responder("ERROR|EQUIPO_NO_DISPONIBLE");
+            if (!resources.hasEquipment(equipment)) {
+                log.log("ERROR", clientId + " equipo no disponible: " 
+                        + equipment);
+                sendResponse("ERROR|EQUIPO_NO_DISPONIBLE");
                 return;
             }
 
-            Reservation reserva = calendario.reservarTemporal(
-                    idCliente, fecha, horaInicio, horaFin,
-                    asistentes, equipo, prioridad
+            Reservation reservation = calendar.reserveTemporarily(clientId,
+                    date, startTime, endTime,
+                    attendees, equipment, priority
             );
 
-            if (reserva == null) {
-                bitacora.log("ERROR", idCliente + " franja ocupada: " 
-                        + fecha + " " + horaInicio);
-                responder("ERROR|FRANJA_OCUPADA");
+            if (reservation == null) {
+                log.log("ERROR", clientId + " franja ocupada: " 
+                        + date + " " + startTime);
+                sendResponse("ERROR|FRANJA_OCUPADA");
                 return;
             }
 
-            colaTTL.agregar(reserva);
-            bitacora.logReserva(reserva);
-            responder("OK|TEMPORAL|" + reserva.getIdReserva() + "|TTL:" 
-                    + reserva.segundosRestantes());
+            ttlQueue.add(reservation);
+            log.logReservation(reservation);
+            sendResponse("OK|TEMPORAL|" + reservation.getReservationId()
+                    + "|TTL:" 
+                    + reservation.getRemainingSeconds());
             System.out.println("[HILO] Reserva temporal creada: " 
-                    + reserva.getIdReserva());
+                    + reservation.getReservationId());
 
         } catch (NumberFormatException e) {
-            responder("ERROR|ASISTENTES_INVALIDOS");
+            sendResponse("ERROR|ASISTENTES_INVALIDOS");
         } catch (IllegalArgumentException e) {
-            responder("ERROR|EQUIPO_INVALIDO");
+            sendResponse("ERROR|EQUIPO_INVALIDO");
         }
     }
 
-    private boolean esHoraValida(String hora) {
-        if (hora == null || !hora.matches("\\d{2}:\\d{2}")) {
+    /**
+     * Validates if a string follows the "HH:mm" format and represents a 
+     * real time.
+     * @param time the string to validate
+     * @return true if the format is correct and the time is valid
+     */
+    private boolean isValidTime(String time) {
+        if (time == null || !time.matches("\\d{2}:\\d{2}")) {
             return false;
         }
         try {
-            LocalTime.parse(hora);
+            LocalTime.parse(time);
             return true;
         } catch (Exception e) {
             return false;
         }
     }
 
-    private void procesarConfirmacion(String[] p) {
+    /**
+     * Confirms a temporary reservation, making it permanent and removing it 
+     * from the TTL queue.
+     * Validates that the reservation belongs to the requesting client and is 
+     * not expired.
+     *
+     * @param parts the message parts containing [COMMAND, RESERVATION_ID]
+     */
+    private void processConfirmation(String[] p) {
         if (p.length < 2) {
-            responder("ERROR|PARAMETROS_INSUFICIENTES");
+            sendResponse("ERROR|PARAMETROS_INSUFICIENTES");
             return;
         }
-        String idReserva = p[1];
+        String reservationId = p[1];
 
-        Reservation reserva = calendario.getReservaPorId(idReserva);
-        if (reserva == null) {
-            responder("ERROR|RESERVA_NO_ENCONTRADA");
+        Reservation reservation = calendar.getReservationById(reservationId);
+        if (reservation == null) {
+            sendResponse("ERROR|RESERVA_NO_ENCONTRADA");
             return;
         }
-        if (!reserva.getIdCliente().equals(idCliente)) {
-            responder("ERROR|NO_AUTORIZADO");
+        if (!reservation.getClientId().equals(clientId)) {
+            sendResponse("ERROR|NO_AUTORIZADO");
             return;
         }
-        if (reserva.estaVencida()) {
-            responder("ERROR|RESERVA_EXPIRADA");
-            bitacora.log("ERROR", idCliente + " confirmó reserva expirada: " 
-                    + idReserva);
+        if (reservation.isExpired()) {
+            sendResponse("ERROR|RESERVA_EXPIRADA");
+            log.log("ERROR", clientId + " confirmó reserva expirada: " 
+                    + reservationId);
             return;
         }
 
-        boolean confirmado = calendario.confirmarReserva(idReserva);
-        if (confirmado) {
-            colaTTL.remover(idReserva);
-            bitacora.logConfirmacion(reserva);
-            responder("OK|CONFIRMADO|" + idReserva);
-            System.out.println("[HILO] Reserva confirmada: " + idReserva);
+        boolean isConfirmed = calendar.confirmReservation(reservationId);
+        if (isConfirmed) {
+            ttlQueue.remove(reservationId);
+            log.logConfirmation(reservation);
+            sendResponse("OK|CONFIRMADO|" + reservationId);
+            System.out.println("[HILO] Reserva confirmada: " + reservationId);
         } else {
-            responder("ERROR|NO_SE_PUDO_CONFIRMAR");
+            sendResponse("ERROR|NO_SE_PUDO_CONFIRMAR");
         }
     }
 
-    private void procesarCancelacion(String[] p) {
+    /**
+     * Cancels an existing reservation and releases its resources.
+     * Verifies ownership and existence before proceeding with the cancellation.
+     *
+     * @param parts the message parts containing [COMMAND, RESERVATION_ID]
+     */
+    private void processCancellation(String[] p) {
         if (p.length < 2) {
-            responder("ERROR|PARAMETROS_INSUFICIENTES");
+            sendResponse("ERROR|PARAMETROS_INSUFICIENTES");
             return;
         }
-        String idReserva = p[1];
+        String reservationId = p[1];
 
-        Reservation reserva = calendario.getReservaPorId(idReserva);
-        if (reserva == null) {
-            responder("ERROR|RESERVA_NO_ENCONTRADA");
+        Reservation reservation = calendar.getReservationById(reservationId);
+        if (reservation == null) {
+            sendResponse("ERROR|RESERVA_NO_ENCONTRADA");
             return;
         }
-        if (!reserva.getIdCliente().equals(idCliente)) {
-            responder("ERROR|NO_AUTORIZADO");
+        if (!reservation.getClientId().equals(clientId)) {
+            sendResponse("ERROR|NO_AUTORIZADO");
             return;
         }
 
-        boolean cancelado = calendario.cancelarReserva(idReserva);
-        if (cancelado) {
-            colaTTL.remover(idReserva);
-            bitacora.logCancelacion(reserva, "Cancelado por cliente");
-            responder("OK|CANCELADO|" + idReserva);
-            System.out.println("[HILO] Reserva cancelada: " + idReserva);
+        boolean isCancelled = calendar.cancelReservation(reservationId);
+        if (isCancelled) {
+            ttlQueue.remove(reservationId);
+            log.logCancellation(reservation, "Cancelado por cliente");
+            sendResponse("OK|CANCELADO|" + reservationId);
+            System.out.println("[HILO] Reserva cancelada: " + reservationId);
         } else {
-            responder("ERROR|NO_SE_PUDO_CANCELAR");
+            sendResponse("ERROR|NO_SE_PUDO_CANCELAR");
         }
     }
 
-    private void procesarEstado(String[] p) {
+    /**
+     * Retrieves the current status and remaining time-to-live (TTL) of a 
+     * specific reservation.
+     *
+     * @param parts the message parts containing [COMMAND, RESERVATION_ID]
+     */
+    private void processStatus(String[] p) {
         if (p.length < 2) {
-            responder("ERROR|PARAMETROS_INSUFICIENTES");
+            sendResponse("ERROR|PARAMETROS_INSUFICIENTES");
             return;
         }
-        String idReserva = p[1];
+        String reservationId = p[1];
 
-        Reservation reserva = calendario.getReservaPorId(idReserva);
-        if (reserva == null) {
-            responder("ERROR|RESERVA_NO_ENCONTRADA");
+        Reservation reservation = calendar.getReservationById(reservationId);
+        if (reservation == null) {
+            sendResponse("ERROR|RESERVA_NO_ENCONTRADA");
             return;
         }
-        responder("OK|ESTADO|" + reserva.getEstado() + "|TTL:" 
-                + reserva.segundosRestantes());
+        sendResponse("OK|ESTADO|" + reservation.getStatus() + "|TTL:" 
+                + reservation.getRemainingSeconds());
     }
 
-    private void procesarEdicion(String[] p) throws InterruptedException {
+    /**
+     * Processes the modification of an existing reservation.
+     * Cancels the original reservation and attempts to create a new one with 
+     * updated details.
+     * If the new slot is unavailable, it attempts to restore the original 
+     * reservation.
+     *
+     * @param parts the message parts containing [COMMAND, ID, DATE, START,
+     * END, ATTENDEES, EQUIP]
+     * @throws InterruptedException if the process is interrupted
+     */
+    private void processEdition(String[] p) throws InterruptedException {
         if (p.length < 7) {
-            responder("ERROR|PARAMETROS_INSUFICIENTES");
+            sendResponse("ERROR|PARAMETROS_INSUFICIENTES");
             return;
         }
 
-        String idReserva = p[1];
-        String nuevaFecha = p[2];
-        String nuevaHoraInicio = p[3];
-        String nuevaHoraFin = p[4];
-        int nuevosAsistentes;
-        Reservation.Equipo nuevoEquipo;
+        String reservationId = p[1];
+        String newDate = p[2];
+        String newStartTime = p[3];
+        String newEndTime = p[4];
+        int newAttendees;
+        Reservation.Equipment newEquipment;
 
         try {
-            nuevosAsistentes = Integer.parseInt(p[5]);
-            nuevoEquipo = Reservation.Equipo.valueOf(p[6]);
+            newAttendees = Integer.parseInt(p[5]);
+            newEquipment = Reservation.Equipment.valueOf(p[6]);
         } catch (Exception e) {
-            responder("ERROR|PARAMETROS_INVALIDOS");
+            sendResponse("ERROR|PARAMETROS_INVALIDOS");
             return;
         }
 
-        Reservation original = calendario.getReservaPorId(idReserva);
+        Reservation original = calendar.getReservationById(reservationId);
         if (original == null) {
-            responder("ERROR|RESERVA_NO_ENCONTRADA");
+            sendResponse("ERROR|RESERVA_NO_ENCONTRADA");
             return;
         }
 
-        // Validar fecha
-        LocalDate fechaParsed;
+        LocalDate parsedDate;
         try {
-            fechaParsed = LocalDate.parse(nuevaFecha);
+            parsedDate = LocalDate.parse(newDate);
         } catch (Exception e) {
-            responder("ERROR|FECHA_INVALIDA");
+            sendResponse("ERROR|FECHA_INVALIDA");
             return;
         }
-        if (fechaParsed.isBefore(LocalDate.now())) {
-            responder("ERROR|FECHA_EN_EL_PASADO");
-            return;
-        }
-
-        // Validar horas
-        if (!esHoraValida(nuevaHoraInicio) || !esHoraValida(nuevaHoraFin)) {
-            responder("ERROR|HORA_INVALIDA");
-            return;
-        }
-        LocalTime tInicio = LocalTime.parse(nuevaHoraInicio);
-        LocalTime tFin = LocalTime.parse(nuevaHoraFin);
-        if (!tFin.isAfter(tInicio)) {
-            responder("ERROR|HORA_FIN_INVALIDA");
+        if (parsedDate.isBefore(LocalDate.now())) {
+            sendResponse("ERROR|FECHA_EN_EL_PASADO");
             return;
         }
 
-        // Cancelar la vieja y crear una nueva
-        calendario.cancelarReserva(idReserva);
-        colaTTL.remover(idReserva);
+        if (!isValidTime(newStartTime) || !isValidTime(newEndTime)) {
+            sendResponse("ERROR|HORA_INVALIDA");
+            return;
+        }
+        LocalTime tStart = LocalTime.parse(newStartTime);
+        LocalTime tEnd=  LocalTime.parse(newEndTime);
+        if (!tEnd.isAfter(tStart)) {
+            sendResponse("ERROR|HORA_FIN_INVALIDA");
+            return;
+        }
 
-        Reservation nueva = calendario.reservarTemporal(
-                original.getIdCliente(),
-                nuevaFecha, nuevaHoraInicio, nuevaHoraFin,
-                nuevosAsistentes, nuevoEquipo,
-                original.getPrioridad()
+        calendar.cancelReservation(reservationId);
+        ttlQueue.remove(reservationId);
+
+        Reservation newRes = calendar.reserveTemporarily(
+                original.getClientId(),
+                newDate, newStartTime, newEndTime,
+                newAttendees, newEquipment,
+                original.getPriority()
         );
 
-        if (nueva == null) {
-            // Franja ocupada — restaurar la original
-            Reservation rest = calendario.reservarTemporal(
-                    original.getIdCliente(),
-                    original.getFecha(), original.getHoraInicio(), 
-                    original.getHoraFin(),
-                    original.getCantAsistentes(), original.getEquipo(), 
-                    original.getPrioridad()
+        if (newRes == null) {
+            Reservation restored = calendar.reserveTemporarily(
+                    original.getClientId(),
+                    original.getDate(), original.getStartTime(), 
+                    original.getEndTime(),
+                    original.getAttendeeCount(), 
+                    original.getEquipment(),
+                    original.getPriority()
             );
-            if (rest != null) {
-                calendario.confirmarReserva(rest.getIdReserva());
+            if (restored != null) {
+                calendar.confirmReservation(restored.getReservationId());
             }
-            responder("ERROR|FRANJA_OCUPADA");
+            sendResponse("ERROR|FRANJA_OCUPADA");
             return;
         }
 
-        calendario.confirmarReserva(nueva.getIdReserva());
-        ReservationPersistence.guardar(calendario);
-        bitacora.log("EDICION", "Reserva " + idReserva + " editada → "
-                + nueva.getIdReserva() + " | " + nuevaFecha
-                + " " + nuevaHoraInicio + "-" + nuevaHoraFin);
+        calendar.confirmReservation(newRes.getReservationId());
+        ReservationPersistence.save(calendar);
+        log.log("EDICION", "Reserva " + reservationId + " editada → "
+                + newRes.getReservationId() + " | " + newDate
+                + " " + newStartTime + "-" + newEndTime);
 
-        responder("OK|EDITADO|" + nueva.getIdReserva());
-        System.out.println("[HILO] Reserva editada: " + idReserva + " → " 
-                + nueva.getIdReserva());
+        sendResponse("OK|EDITADO|" + newRes.getReservationId());
+        System.out.println("[HILO] Reserva editada: " + reservationId + " - " 
+                + newRes.getReservationId());
     }
 
-    private void responder(String mensaje) {
+    /**
+     * Sends a synchronized response to the client.
+     * * @param message the formatted string to send
+     */
+    private void sendResponse(String message) {
         try {
-            synchronized (flujoEscritura) {
-                flujoEscritura.writeUTF(mensaje);
-                flujoEscritura.flush();
+            synchronized (outputStream) {
+                outputStream.writeUTF(message);
+                outputStream.flush();
             }
         } catch (IOException e) {
-            System.out.println("[ERROR] Responder a " + idCliente + ": " 
+            System.out.println("[ERROR] Responder a " + clientId + ": " 
                     + e.getMessage());
         }
     }
 
-    public String getIdCliente() {
-        return idCliente;
+    // --- Getters ---
+    public String getClientId() {
+        return clientId;
     }
 
-    public String getNombreCliente() {
-        return nombreCliente;
+    public String getClientName() {
+        return clientName;
     }
 
-    public void enviar(String msg) {
+    /**
+     * Public method to send a message to the client.
+     * Useful for broadcasting or external notifications.
+     * @param msg the message to send
+     */
+    public void send(String msg) {
         try {
-            synchronized (flujoEscritura) {
-                flujoEscritura.writeUTF(msg);
-                flujoEscritura.flush();
+            synchronized (outputStream) {
+                outputStream.writeUTF(msg);
+                outputStream.flush();
             }
         } catch (IOException ignored) {}
     }
 
-    public void cerrar() {
+    /**
+     * Safely closes the client socket and terminates the connection.
+     */
+    public void close() {
         try {
             socket.close();
         } catch (IOException ignored) {}
