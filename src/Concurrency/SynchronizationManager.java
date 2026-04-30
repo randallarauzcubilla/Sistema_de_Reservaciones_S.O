@@ -6,14 +6,14 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * Manages synchronization for shared resources in the reservation system.
- * It controls access to calendar operations, capacity limits, and equipment
- * using locks and semaphores to ensure thread safety.
+ * Manages synchronization for shared resources in the reservation system. It
+ * controls access to calendar operations, capacity limits, and equipment using
+ * locks and semaphores to ensure thread safety.
  */
 public class SynchronizationManager {
 
-    private final ReentrantReadWriteLock rwlockCalendar =
-            new ReentrantReadWriteLock(true);
+    private final ReentrantReadWriteLock rwlockCalendar
+            = new ReentrantReadWriteLock(true);
 
     /**
      * Provides the read lock for calendar access.
@@ -52,9 +52,9 @@ public class SynchronizationManager {
      * @param soundUnits number of available sound systems
      */
     public SynchronizationManager(int maxCapacity,
-                               int projectorUnits,
-                               int microphoneUnits,
-                               int soundUnits) {
+            int projectorUnits,
+            int microphoneUnits,
+            int soundUnits) {
 
         this.maxCapacity = maxCapacity;
 
@@ -85,7 +85,7 @@ public class SynchronizationManager {
      * @param equipment required equipment type
      * @throws InterruptedException if the thread is interrupted while waiting
      */
-    public void acquireForReservation(int attendees, 
+    public void acquireForReservation(int attendees,
             Reservation.Equipment equipment)
             throws InterruptedException {
 
@@ -99,16 +99,23 @@ public class SynchronizationManager {
         }
     }
 
-    /** Acquires only the equipment semaphore — capacity is managed per time range.
+    /**
+     * Acquires only the equipment semaphore — capacity is managed per time
+     * range.
+     *
      * @param equipment
-     * @throws java.lang.InterruptedException */
+     * @throws java.lang.InterruptedException
+     */
     public void acquireEquipmentOnly(Reservation.Equipment equipment)
             throws InterruptedException {
         acquireEquipment(equipment);
     }
 
-    /** Releases only the equipment semaphore.
-     * @param equipment */
+    /**
+     * Releases only the equipment semaphore.
+     *
+     * @param equipment
+     */
     public void releaseEquipmentOnly(Reservation.Equipment equipment) {
         releaseEquipment(equipment);
     }
@@ -119,8 +126,8 @@ public class SynchronizationManager {
      * @param attendees number of attendees to release
      * @param equipment equipment type to release
      */
-    public void releaseFromReservation(int attendees, Reservation.Equipment 
-            equipment) {
+    public void releaseFromReservation(int attendees, 
+            Reservation.Equipment equipment) {
 
         releaseEquipment(equipment);
 
@@ -138,7 +145,9 @@ public class SynchronizationManager {
     private void acquireEquipment(Reservation.Equipment equipment)
             throws InterruptedException {
 
-        if (equipment == null) return;
+        if (equipment == null) {
+            return;
+        }
 
         switch (equipment) {
 
@@ -173,7 +182,9 @@ public class SynchronizationManager {
      */
     private void releaseEquipment(Reservation.Equipment equipment) {
 
-        if (equipment == null) return;
+        if (equipment == null) {
+            return;
+        }
 
         switch (equipment) {
 

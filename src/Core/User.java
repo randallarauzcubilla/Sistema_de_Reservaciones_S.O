@@ -1,8 +1,7 @@
 package Core;
 
 /**
- * @class User
- * Represents a system user with a specific role.
+ * @class User Represents a system user with a specific role.
  */
 public class User {
 

@@ -18,78 +18,86 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Server Management Dashboard (GUI). Provides a real-time interface to monitor
+ * auditorium capacity, equipment availability, and system logs.
+ */
 public class FrmServer extends JFrame {
 
-    // === PALETA ===    
-    private static final Color UNA_ROJO = new Color(0xCD, 0x17, 0x19);
-    private static final Color UNA_AZUL = new Color(0x03, 0x49, 0x91);
-    private static final Color UNA_GRIS = new Color(0xA7, 0xA7, 0xA9);
-    private static final Color UNA_BLANCO = new Color(0xFF, 0xFF, 0xFF);
-    private static final Color UNA_NEGRO = new Color(0x1A, 0x1A, 0x1A);
+    // === INSTITUTIONAL COLOR PALETTE (UNA) === 
+    private static final Color UNA_RED = new Color(0xCD, 0x17, 0x19);
+    private static final Color UNA_BLUE = new Color(0x03, 0x49, 0x91);
+    private static final Color UNA_GRAY = new Color(0xA7, 0xA7, 0xA9);
+    private static final Color UNA_WHITE = new Color(0xFF, 0xFF, 0xFF);
+    private static final Color UNA_BLACK = new Color(0x1A, 0x1A, 0x1A);
 
-    private static final Color BG_PRINCIPAL = new Color(0xF5, 0xF5, 0xF5);
+    private static final Color BG_MAIN = new Color(0xF5, 0xF5, 0xF5);
     private static final Color BG_SIDEBAR = new Color(0xFF, 0xFF, 0xFF);
     private static final Color BG_HEADER = new Color(0xCD, 0x17, 0x19);
     private static final Color BG_CARD = new Color(0xFF, 0xFF, 0xFF);
-    private static final Color BG_TABLA_PAR = new Color(0xFF, 0xFF, 0xFF);
-    private static final Color BG_TABLA_IMP = new Color(0xF0, 0xF4, 0xF9);
-    private static final Color BG_BITACORA = new Color(0xFF, 0xFF, 0xFF);
-    private static final Color BG_CAMPO = new Color(0xF8, 0xF8, 0xF8);
+    private static final Color BG_ROW_EVEN = new Color(0xFF, 0xFF, 0xFF);
+    private static final Color BG_ROW_ODD = new Color(0xF0, 0xF4, 0xF9);
+    private static final Color BG_LOG = new Color(0xFF, 0xFF, 0xFF);
+    private static final Color BG_FIELD = new Color(0xF8, 0xF8, 0xF8);
 
-    // Texto
+    // === TEXT COLORS ===
     private static final Color TEXT_HEADER = new Color(0xFF, 0xFF, 0xFF);
-    private static final Color TEXT_OSCURO = new Color(0x1A, 0x1A, 0x1A);
-    private static final Color TEXT_MEDIO = new Color(0x55, 0x55, 0x66);
+    private static final Color TEXT_DARK = new Color(0x1A, 0x1A, 0x1A);
+    private static final Color TEXT_MEDIUM = new Color(0x55, 0x55, 0x66);
     private static final Color TEXT_MUTED = new Color(0x88, 0x88, 0x99);
-    private static final Color TEXT_BITA = new Color(0x8B, 0x00, 0x00);
+    private static final Color TEXT_LOG = new Color(0x8B, 0x00, 0x00);
 
-    // Bordes
-    private static final Color BORDE_CARD = new Color(0xE0, 0xE4, 0xEA);
-    private static final Color BORDE_TABLA = new Color(0xD0, 0xD8, 0xE8);
+    // === BORDERS ===
+    private static final Color BORDER_CARD = new Color(0xE0, 0xE4, 0xEA);
+    private static final Color BORDER_TABLE = new Color(0xD0, 0xD8, 0xE8);
 
-    // Acentos funcionales (derivados de la paleta UNA)
-    private static final Color COLOR_ACTIVO = new Color(0x03, 0x49, 0x91);
-    private static final Color COLOR_INACTIV = new Color(0xCD, 0x17, 0x19);
+    // === FUNCTIONAL ACCENTS ===
+    private static final Color COLOR_ACTIVE = new Color(0x03, 0x49, 0x91);
+    private static final Color COLOR_INACTIVE = new Color(0xCD, 0x17, 0x19);
     private static final Color COLOR_CONFIRM = new Color(0x22, 0x8B, 0x22);
     private static final Color COLOR_TEMP = new Color(0xD4, 0x7B, 0x00);
     private static final Color COLOR_AMBAR = new Color(0xD4, 0x7B, 0x00);
 
-    // === ESTADO ===
-    private boolean servidorActivo = false;
-    private Thread hiloServidor;
-    private Timer timerActualizacion;
-    private java.net.ServerSocket serverSocketActivo;
+    // === STATUS ===
+    private boolean isServerRunning = false;
+    private Thread serverThread;
+    private Timer updateTimer;
+    private java.net.ServerSocket activeSocket;
 
     // === LABELS ===
-    private JLabel lblEstadoValor;
-    private JLabel lblCapacidadValor;
-    private JLabel lblReservasValor;
-    private JLabel lblEquipoValor;
-    private JLabel lblMicrofonoValor;
-    private JLabel lblSonidoValor;
-    private JLabel lblCompletoValor;
+    private JLabel lblStatusValue;
+    private JLabel lblCapacityValue;
+    private JLabel lblReservationsValue;
+    private JLabel lblProjectorValue;
+    private JLabel lblMicrophoneValue;
+    private JLabel lblSoundValue;
+    private JLabel lblFullSetValue;
 
-    // === TABLA ===
-    private JTable tablaCalendario;
-    private DefaultTableModel modeloTabla;
+    // === TABLES ===
+    private JTable calendarTable;
+    private DefaultTableModel tableModel;
 
-    // === BOTONES ===
-    private JButton btnIniciar;
-    private JButton btnDetener;
-    private JButton btnBitacora;
-    private JButton btnEditarReserva;
-    private JButton btnCancelarReserva;
+    // === BUTTONS ===
+    private JButton btnStart;
+    private JButton btnStop;
+    private JButton btnLog;
+    private JButton btnEditReservation;
+    private JButton btnCancelReservation;
 
-    // === BITÁCORA ===
-    private JTextArea txtBitacora;
+    // === LOG ===
+    private JTextArea txtLogArea;
 
+    /**
+     * Initializes the Server Frame. Sets up the window properties,
+     * institutional branding, and ensures data persistence upon closing.
+     */
     public FrmServer() {
         setTitle("Universidad Nacional — Panel de Administración");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1040, 740);
         setMinimumSize(new Dimension(900, 620));
         setLocationRelativeTo(null);
-        setBackground(BG_PRINCIPAL);
+        setBackground(BG_MAIN);
         initComponents();
         log("Sistema iniciado. Presione 'Iniciar Servidor' para comenzar.");
 
@@ -104,21 +112,32 @@ public class FrmServer extends JFrame {
         });
     }
 
+    /**
+     * Orchestrates the GUI layout construction. Builds the root container using
+     * a BorderLayout to organize the header, navigation sidebar, and the main
+     * content area (dashboard).
+     */
     private void initComponents() {
         JPanel root = new JPanel(new BorderLayout(0, 0));
-        root.setBackground(BG_PRINCIPAL);
+        root.setBackground(BG_MAIN);
         root.add(crearHeader(), BorderLayout.NORTH);
 
         JPanel centro = new JPanel(new BorderLayout(0, 0));
-        centro.setBackground(BG_PRINCIPAL);
+        centro.setBackground(BG_MAIN);
         centro.add(crearSidebar(), BorderLayout.WEST);
-        centro.add(crearCuerpo(), BorderLayout.CENTER);
+        centro.add(createMainBody(), BorderLayout.CENTER);
 
         root.add(centro, BorderLayout.CENTER);
         add(root);
     }
 
-    // --- HEADER SUPERIOR CON LOGO UNA ------------
+    /**
+     * Creates the top header panel with institutional branding. Includes custom
+     * graphics rendering for geometric background accents and a real-time clock
+     * synchronization.
+     *
+     * @return A styled JPanel with the system title and current time.
+     */
     private JPanel crearHeader() {
         JPanel header = new JPanel(new BorderLayout()) {
             @Override
@@ -128,14 +147,14 @@ public class FrmServer extends JFrame {
                 g2.setRenderingHint(
                         RenderingHints.KEY_ANTIALIASING,
                         RenderingHints.VALUE_ANTIALIAS_ON);
-                // Fondo rojo UNA
+
                 g2.setColor(BG_HEADER);
                 g2.fillRect(0, 0, getWidth(), getHeight());
-                // Franja gris sutil inferior
+
                 g2.setColor(new Color(0, 0, 0, 30));
                 g2.fillRect(0, getHeight() - 3,
                         getWidth(), 3);
-                // Motivo triangular decorativo (motivo UNA)
+
                 g2.setColor(new Color(0xFF, 0xFF, 0xFF, 18));
                 int[] xp = {getWidth() - 120, getWidth(),
                     getWidth()};
@@ -153,152 +172,173 @@ public class FrmServer extends JFrame {
         header.setBackground(BG_HEADER);
         header.setBorder(new EmptyBorder(0, 20, 0, 24));
 
-        // Título central
         JPanel titPanel = new JPanel(
                 new FlowLayout(FlowLayout.CENTER, 0, 0));
         titPanel.setOpaque(false);
-        JLabel titulo = new JLabel("PANEL DE ADMINISTRACIÓN");
-        titulo.setFont(new Font("Serif", Font.BOLD, 15));
-        titulo.setForeground(new Color(0xFF, 0xFF, 0xFF, 220));
-        titulo.setHorizontalAlignment(SwingConstants.CENTER);
-        titPanel.add(titulo);
+        JLabel lblTitle = new JLabel("PANEL DE ADMINISTRACIÓN");
+        lblTitle.setFont(new Font("Serif", Font.BOLD, 15));
+        lblTitle.setForeground(new Color(0xFF, 0xFF, 0xFF, 220));
+        lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
+        titPanel.add(lblTitle);
         header.add(titPanel, BorderLayout.CENTER);
 
-        // Reloj / info derecha
-        JLabel lblHora = new JLabel("");
-        lblHora.setFont(new Font("Monospaced", Font.PLAIN, 11));
-        lblHora.setForeground(new Color(0xFF, 0xFF, 0xFF, 160));
-        header.add(lblHora, BorderLayout.EAST);
+        JLabel lblClock = new JLabel("");
+        lblClock.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        lblClock.setForeground(new Color(0xFF, 0xFF, 0xFF, 160));
+        header.add(lblClock, BorderLayout.EAST);
 
-        Timer reloj = new Timer(1000, e -> {
-            lblHora.setText(LocalDateTime.now().format(
+        Timer clockTimer = new Timer(1000, e -> {
+            lblClock.setText(LocalDateTime.now().format(
                     DateTimeFormatter.ofPattern("HH:mm:ss")));
         });
-        reloj.start();
+        clockTimer.start();
 
         return header;
     }
 
+    /**
+     * Builds the side control panel. Contains real-time resource monitoring
+     * cards and system action buttons. Uses a vertical layout to separate
+     * header info, metrics, and controls.
+     *
+     * @return A sidebar JPanel with integrated monitoring and controls.
+     */
     private JPanel crearSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());
         sidebar.setPreferredSize(new Dimension(320, 0));
         sidebar.setBackground(BG_SIDEBAR);
         sidebar.setBorder(BorderFactory.createMatteBorder(
-                0, 0, 0, 1, BORDE_CARD));
+                0, 0, 0, 1, BORDER_CARD));
 
-        // Subtítulo sidebar
-        JPanel subPanel = new JPanel(new BorderLayout(0, 8));
-        subPanel.setBackground(BG_SIDEBAR);
-        subPanel.setBorder(new EmptyBorder(14, 18, 12, 18));
+        JPanel infoHeader = new JPanel(new BorderLayout(0, 8));
+        infoHeader.setBackground(BG_SIDEBAR);
+        infoHeader.setBorder(new EmptyBorder(14, 18, 12, 18));
 
-        JPanel textos = new JPanel(new GridLayout(2, 1));
-        textos.setBackground(BG_SIDEBAR);
-        JLabel lSub1 = new JLabel("Reservas de Sala");
-        lSub1.setFont(new Font("Serif", Font.BOLD, 14));
-        lSub1.setForeground(UNA_ROJO);
-        JLabel lSub2 = new JLabel("Monitor de Recursos");
-        lSub2.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        lSub2.setForeground(TEXT_MUTED);
-        textos.add(lSub1);
-        textos.add(lSub2);
-        subPanel.add(textos, BorderLayout.CENTER);
+        JPanel labelContainer = new JPanel(new GridLayout(2, 1));
+        labelContainer.setBackground(BG_SIDEBAR);
+        JLabel lblMainInfo = new JLabel("Reservas de Sala");
+        lblMainInfo.setFont(new Font("Serif", Font.BOLD, 14));
+        lblMainInfo.setForeground(UNA_RED);
+        JLabel lblSubInfo = new JLabel("Monitor de Recursos");
+        lblSubInfo.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        lblSubInfo.setForeground(TEXT_MUTED);
+        labelContainer.add(lblMainInfo);
+        labelContainer.add(lblSubInfo);
+        infoHeader.add(labelContainer, BorderLayout.CENTER);
 
-        sidebar.add(subPanel, BorderLayout.NORTH);
+        sidebar.add(infoHeader, BorderLayout.NORTH);
 
-        // Tarjetas de estado
-        JPanel cards = new JPanel(new GridLayout(0, 2, 8, 8));
-        cards.setBackground(BG_SIDEBAR);
-        cards.setBorder(new EmptyBorder(6, 12, 6, 12));
+        JPanel cardsContainer = new JPanel(new GridLayout(0, 2, 8, 8));
+        cardsContainer.setBackground(BG_SIDEBAR);
+        cardsContainer.setBorder(new EmptyBorder(6, 12, 6, 12));
 
-        lblEstadoValor = new JLabel("INACTIVO");
-        lblReservasValor = new JLabel("—");
-        lblCapacidadValor = new JLabel("—");
-        lblEquipoValor = new JLabel("—");
-        lblMicrofonoValor = new JLabel("—");
-        lblSonidoValor = new JLabel("—");
-        lblCompletoValor = new JLabel("—");
+        lblStatusValue = new JLabel("INACTIVO");
+        lblReservationsValue = new JLabel("—");
+        lblCapacityValue = new JLabel("—");
+        lblProjectorValue = new JLabel("—");
+        lblMicrophoneValue = new JLabel("—");
+        lblSoundValue = new JLabel("—");
+        lblFullSetValue = new JLabel("—");
 
-        lblEstadoValor.setForeground(COLOR_INACTIV);
+        lblStatusValue.setForeground(COLOR_INACTIVE);
 
-        cards.add(crearCard("Estado", lblEstadoValor, "●"));
-        cards.add(crearCard("Capacidad", lblCapacidadValor, "◈"));
-        cards.add(crearCard("Reservas", lblReservasValor, "◉"));
-        cards.add(crearCard("Proyectores", lblEquipoValor, "▣"));
-        cards.add(crearCard("Micrófonos", lblMicrofonoValor, "♪"));
-        cards.add(crearCard("Sonido", lblSonidoValor, "◎"));
-        cards.add(crearCard("Completo", lblCompletoValor, "✦"));
-        sidebar.add(cards, BorderLayout.CENTER);
+        cardsContainer.add(crearCard("Estado", lblStatusValue, "●"));
+        cardsContainer.add(crearCard("Capacidad", lblCapacityValue, "◈"));
+        cardsContainer.add(crearCard("Reservas", lblReservationsValue, "◉"));
+        cardsContainer.add(crearCard("Proyectores", lblProjectorValue, "▣"));
+        cardsContainer.add(crearCard("Micrófonos", lblMicrophoneValue, "♪"));
+        cardsContainer.add(crearCard("Sonido", lblSoundValue, "◎"));
+        cardsContainer.add(crearCard("Completo", lblFullSetValue, "✦"));
+        sidebar.add(cardsContainer, BorderLayout.CENTER);
 
-        // Botones de acción
-        JPanel btnPanel = new JPanel(new GridLayout(5, 1, 0, 6));
-        btnPanel.setBackground(BG_SIDEBAR);
-        btnPanel.setBorder(new EmptyBorder(10, 12, 18, 12));
+        JPanel actionPanel = new JPanel(new GridLayout(5, 1, 0, 6));
+        actionPanel.setBackground(BG_SIDEBAR);
+        actionPanel.setBorder(new EmptyBorder(10, 12, 18, 12));
 
-        btnIniciar = crearBoton(
-                "▶  Iniciar Servidor", UNA_AZUL, false);
-        btnDetener = crearBoton(
-                "■  Detener Servidor", UNA_ROJO, false);
-        btnBitacora = crearBoton(
-                "↻  Actualizar Vista", UNA_GRIS, true);
-        btnEditarReserva = crearBoton(
+        btnStart = createButton(
+                "▶  Iniciar Servidor", UNA_BLUE, false);
+        btnStop = createButton(
+                "■  Detener Servidor", UNA_RED, false);
+        btnLog = createButton(
+                "↻  Actualizar Vista", UNA_GRAY, true);
+        btnEditReservation = createButton(
                 "✎  Editar Reserva", COLOR_AMBAR, true);
-        btnCancelarReserva = crearBoton(
-                "✖  Cancelar Reserva", UNA_ROJO, true);
+        btnCancelReservation = createButton(
+                "✖  Cancelar Reserva", UNA_RED, true);
 
-        btnDetener.setEnabled(false);
-        btnEditarReserva.setEnabled(false);
-        btnCancelarReserva.setEnabled(false);
+        btnStop.setEnabled(false);
+        btnEditReservation.setEnabled(false);
+        btnCancelReservation.setEnabled(false);
 
-        btnIniciar.addActionListener(e -> iniciarServidor());
-        btnDetener.addActionListener(e -> detenerServidor());
-        btnBitacora.addActionListener(e -> actualizarVista());
-        btnEditarReserva.addActionListener(e -> {
+        btnStart.addActionListener(e -> startServer());
+        btnStop.addActionListener(e -> stopServer());
+        btnLog.addActionListener(e -> refreshView());
+        btnEditReservation.addActionListener(e -> {
             try {
-                editarReservaSeleccionada();
+                editSelectedReservation();
             } catch (InterruptedException ex) {
                 Logger.getLogger(FrmServer.class.getName())
                         .log(Level.SEVERE, null, ex);
             }
         });
-        btnCancelarReserva.addActionListener(
-                e -> cancelarReservaSeleccionada());
+        btnCancelReservation.addActionListener(
+                e -> cancelSelectedReservation());
 
-        btnPanel.add(btnIniciar);
-        btnPanel.add(btnDetener);
-        btnPanel.add(btnBitacora);
-        btnPanel.add(btnEditarReserva);
-        btnPanel.add(btnCancelarReserva);
-        sidebar.add(btnPanel, BorderLayout.SOUTH);
+        actionPanel.add(btnStart);
+        actionPanel.add(btnStop);
+        actionPanel.add(btnLog);
+        actionPanel.add(btnEditReservation);
+        actionPanel.add(btnCancelReservation);
+        sidebar.add(actionPanel, BorderLayout.SOUTH);
 
         return sidebar;
     }
 
+    /**
+     * Factory method for creating monitoring cards. Each card displays a
+     * specific resource metric with a title, icon, and dynamic value.
+     *
+     * @param title The descriptive name of the resource.
+     * @param valueLabel The JLabel that will hold the dynamic data.
+     * @param icon A symbolic character or icon for visual reference.
+     * @return A styled JPanel acting as a data card.
+     */
     private JPanel crearCard(
-            String titulo, JLabel valorLabel, String icon) {
+            String title, JLabel valueLabel, String icon) {
         JPanel card = new JPanel(new BorderLayout(3, 3));
         card.setBackground(BG_CARD);
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDE_CARD, 1),
+                BorderFactory.createLineBorder(BORDER_CARD, 1),
                 new EmptyBorder(8, 10, 8, 10)));
 
-        JLabel lblIco = new JLabel(icon + "  " + titulo);
-        lblIco.setFont(new Font("SansSerif", Font.PLAIN, 9));
-        lblIco.setForeground(TEXT_MUTED);
+        JLabel lblHeader = new JLabel(icon + "  " + title);
+        lblHeader.setFont(new Font("SansSerif", Font.PLAIN, 9));
+        lblHeader.setForeground(TEXT_MUTED);
 
-        valorLabel.setFont(new Font("Serif", Font.BOLD, 13));
-        if (valorLabel.getForeground().equals(
+        valueLabel.setFont(new Font("Serif", Font.BOLD, 13));
+        if (valueLabel.getForeground().equals(
                 new Color(0, 0, 0))) {
-            valorLabel.setForeground(TEXT_OSCURO);
+            valueLabel.setForeground(TEXT_DARK);
         }
 
-        card.add(lblIco, BorderLayout.NORTH);
-        card.add(valorLabel, BorderLayout.CENTER);
+        card.add(lblHeader, BorderLayout.NORTH);
+        card.add(valueLabel, BorderLayout.CENTER);
         return card;
     }
 
-    private JButton crearBoton(
-            String texto, Color color, boolean esSecundario) {
-        JButton btn = new JButton(texto) {
+    /**
+     * Factory method for high-fidelity custom buttons. Overrides paintComponent
+     * to provide rounded corners, anti-aliased rendering, and dynamic visual
+     * feedback for hover, press, and disabled states.
+     *
+     * @param text The button label.
+     * @param color The theme color for the button.
+     * @param isSecondary If true, renders a subtle, semi-transparent style.
+     * @return A customized JButton with advanced graphics.
+     */
+    private JButton createButton(
+            String text, Color color, boolean isSecondary) {
+        JButton btn = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -311,14 +351,14 @@ public class FrmServer extends JFrame {
                     g2.setColor(color.darker());
                 } else if (getModel().isRollover()) {
                     g2.setColor(
-                            esSecundario
+                            isSecondary
                                     ? new Color(color.getRed(),
                                             color.getGreen(),
                                             color.getBlue(), 30)
                                     : color.brighter());
                 } else {
                     g2.setColor(
-                            esSecundario
+                            isSecondary
                                     ? new Color(color.getRed(),
                                             color.getGreen(),
                                             color.getBlue(), 15)
@@ -331,10 +371,10 @@ public class FrmServer extends JFrame {
             }
         };
         btn.setFont(new Font("SansSerif", Font.BOLD, 11));
-        if (esSecundario) {
+        if (isSecondary) {
             btn.setForeground(color.darker());
         } else {
-            btn.setForeground(UNA_BLANCO);
+            btn.setForeground(UNA_WHITE);
         }
         btn.setOpaque(false);
         btn.setContentAreaFilled(false);
@@ -343,85 +383,98 @@ public class FrmServer extends JFrame {
                 BorderFactory.createLineBorder(
                         new Color(color.getRed(), color.getGreen(),
                                 color.getBlue(),
-                                esSecundario ? 100 : 180), 1),
+                                isSecondary ? 100 : 180), 1),
                 new EmptyBorder(7, 10, 7, 10)));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         return btn;
     }
 
-    private JPanel crearCuerpo() {
+    /**
+     * Constructs the main body of the dashboard. Organizes the reservation
+     * table and the system log area with decorative institutional accents.
+     *
+     * @return A JPanel containing the central workspace.
+     */
+    private JPanel createMainBody() {
         JPanel body = new JPanel(new BorderLayout(0, 12));
-        body.setBackground(BG_PRINCIPAL);
+        body.setBackground(BG_MAIN);
         body.setBorder(new EmptyBorder(18, 18, 18, 18));
 
-        // Título sección
-        JPanel titPanel = new JPanel(
+        JPanel titlePanel = new JPanel(
                 new FlowLayout(FlowLayout.LEFT, 0, 0));
-        titPanel.setOpaque(false);
-        JLabel header = new JLabel("Calendario de Reservas");
-        header.setFont(new Font("Serif", Font.BOLD, 16));
-        header.setForeground(TEXT_OSCURO);
+        titlePanel.setOpaque(false);
+        JLabel lblSectionTitle = new JLabel("Calendario de Reservas");
+        lblSectionTitle.setFont(new Font("Serif", Font.BOLD, 16));
+        lblSectionTitle.setForeground(TEXT_DARK);
 
-        // Línea decorativa roja bajo el título
-        JPanel titWrap = new JPanel(new BorderLayout(0, 4));
-        titWrap.setOpaque(false);
-        titWrap.setBorder(new EmptyBorder(0, 0, 8, 0));
-        titWrap.add(header, BorderLayout.NORTH);
-        JPanel lineaDec = new JPanel() {
+        JPanel titleWrapper = new JPanel(new BorderLayout(0, 4));
+        titleWrapper.setOpaque(false);
+        titleWrapper.setBorder(new EmptyBorder(0, 0, 8, 0));
+        titleWrapper.add(lblSectionTitle, BorderLayout.NORTH);
+        // Custom painting for the UNA-styled decorative line
+        JPanel decorativeLine = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
-                g.setColor(UNA_ROJO);
+                g.setColor(UNA_RED);
                 g.fillRect(0, 0, 40, 3);
-                g.setColor(UNA_GRIS);
+                g.setColor(UNA_GRAY);
                 g.fillRect(44, 0, 20, 3);
             }
         };
-        lineaDec.setOpaque(false);
-        lineaDec.setPreferredSize(new Dimension(0, 6));
-        titWrap.add(lineaDec, BorderLayout.SOUTH);
+        decorativeLine.setOpaque(false);
+        decorativeLine.setPreferredSize(new Dimension(0, 6));
+        titleWrapper.add(decorativeLine, BorderLayout.SOUTH);
 
-        body.add(titWrap, BorderLayout.NORTH);
-        body.add(crearPanelTabla(), BorderLayout.CENTER);
-        body.add(crearPanelBitacora(), BorderLayout.SOUTH);
+        body.add(titleWrapper, BorderLayout.NORTH);
+        body.add(createTablePanel(), BorderLayout.CENTER);
+        body.add(createLogPanel(), BorderLayout.SOUTH);
         return body;
     }
 
-    private JScrollPane crearPanelTabla() {
+    /**
+     * Initializes the reservation table panel. Configures the data model,
+     * custom cell rendering for status-based coloring, and selection listeners
+     * to manage action button states.
+     *
+     * @return A JScrollPane containing the styled JTable.
+     */
+    private JScrollPane createTablePanel() {
         String[] cols = {
-            "ID", "Solicitante", "Fecha",
-            "Horario", "Estado", "Asistentes",
-            "Equipo", "TTL"
+            "ID", "Requester", "Date",
+            "Schedule", "Status", "Attendees",
+            "Equipment", "TTL"
         };
-        modeloTabla = new DefaultTableModel(cols, 0) {
+        tableModel = new DefaultTableModel(cols, 0) {
+            @Override
             public boolean isCellEditable(int r, int c) {
                 return false;
             }
         };
 
-        tablaCalendario = new JTable(modeloTabla) {
+        calendarTable = new JTable(tableModel) {
             @Override
             public Component prepareRenderer(
                     TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
-                boolean sel = isRowSelected(row);
-                if (sel) {
+                boolean selected = isRowSelected(row);
+                if (selected) {
                     c.setBackground(
                             new Color(0x03, 0x49, 0x91, 38));
-                    c.setForeground(UNA_AZUL);
+                    c.setForeground(UNA_BLUE);
                 } else {
                     c.setBackground(row % 2 == 0
-                            ? BG_TABLA_PAR : BG_TABLA_IMP);
-                    c.setForeground(UNA_NEGRO);
-                    // Color por estado 
-                    Object est
-                            = modeloTabla.getValueAt(row, 4);
-                    if ("CONFIRMADO".equals(est)) {
+                            ? BG_ROW_EVEN : BG_ROW_ODD);
+                    c.setForeground(UNA_BLACK);
+
+                    Object status
+                            = tableModel.getValueAt(row, 4);
+                    if ("CONFIRMADO".equals(status)) {
                         c.setForeground(COLOR_CONFIRM);
-                    } else if ("CANCELADO".equals(est)) {
-                        c.setForeground(UNA_GRIS);
-                    } else if ("EXPIRADO".equals(est)) {
+                    } else if ("CANCELADO".equals(status)) {
+                        c.setForeground(UNA_GRAY);
+                    } else if ("EXPIRADO".equals(status)) {
                         c.setForeground(COLOR_AMBAR);
-                    } else if ("RESERVADO_TEMPORAL".equals(est)) {
+                    } else if ("RESERVADO_TEMPORAL".equals(status)) {
                         c.setForeground(COLOR_TEMP);
                     }
                 }
@@ -433,38 +486,37 @@ public class FrmServer extends JFrame {
             }
         };
 
-        tablaCalendario.setFont(
+        calendarTable.setFont(
                 new Font("SansSerif", Font.PLAIN, 12));
-        tablaCalendario.setRowHeight(30);
-        tablaCalendario.setBackground(BG_TABLA_PAR);
-        tablaCalendario.setForeground(TEXT_OSCURO);
-        tablaCalendario.setGridColor(BORDE_TABLA);
-        tablaCalendario.setShowVerticalLines(false);
-        tablaCalendario.setIntercellSpacing(
+        calendarTable.setRowHeight(30);
+        calendarTable.setBackground(BG_ROW_EVEN);
+        calendarTable.setForeground(TEXT_DARK);
+        calendarTable.setGridColor(BORDER_TABLE);
+        calendarTable.setShowVerticalLines(false);
+        calendarTable.setIntercellSpacing(
                 new Dimension(0, 1));
-        tablaCalendario.setSelectionBackground(
+        calendarTable.setSelectionBackground(
                 new Color(0x03, 0x49, 0x91, 38));
-        tablaCalendario.setSelectionForeground(UNA_AZUL);
+        calendarTable.setSelectionForeground(UNA_BLUE);
 
-        JTableHeader th = tablaCalendario.getTableHeader();
-        th.setBackground(UNA_ROJO);
-        th.setForeground(UNA_BLANCO);
-        th.setFont(new Font("SansSerif", Font.BOLD, 11));
-        th.setBorder(BorderFactory.createMatteBorder(
+        JTableHeader header = calendarTable.getTableHeader();
+        header.setBackground(UNA_RED);
+        header.setForeground(UNA_WHITE);
+        header.setFont(new Font("SansSerif", Font.BOLD, 11));
+        header.setBorder(BorderFactory.createMatteBorder(
                 0, 0, 2, 0,
                 new Color(0xAA, 0x10, 0x10)));
-        th.setPreferredSize(new Dimension(0, 34));
+        header.setPreferredSize(new Dimension(0, 34));
 
-        // ← AGREGAR ESTO:
-        th.setDefaultRenderer(new DefaultTableCellRenderer() {
+        header.setDefaultRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(
                     JTable table, Object value, boolean isSelected,
                     boolean hasFocus, int row, int column) {
                 JLabel lbl = (JLabel) super.getTableCellRendererComponent(
                         table, value, isSelected, hasFocus, row, column);
-                lbl.setBackground(UNA_ROJO);
-                lbl.setForeground(UNA_BLANCO);
+                lbl.setBackground(UNA_RED);
+                lbl.setForeground(UNA_WHITE);
                 lbl.setFont(new Font("SansSerif", Font.BOLD, 11));
                 lbl.setHorizontalAlignment(SwingConstants.LEFT);
                 lbl.setBorder(new EmptyBorder(0, 10, 0, 10));
@@ -472,95 +524,103 @@ public class FrmServer extends JFrame {
                 return lbl;
             }
         });
-        // Al seleccionar una fila, habilitar botones de acción
-        tablaCalendario.getSelectionModel()
+        calendarTable.getSelectionModel()
                 .addListSelectionListener(e -> {
                     if (!e.getValueIsAdjusting()) {
-                        boolean hayFila
-                                = tablaCalendario.getSelectedRow() >= 0;
-                        btnEditarReserva.setEnabled(
-                                hayFila && servidorActivo);
-                        btnCancelarReserva.setEnabled(
-                                hayFila && servidorActivo);
+                        boolean hasSelection
+                                = calendarTable.getSelectedRow() >= 0;
+                        btnEditReservation.setEnabled(
+                                hasSelection && isServerRunning);
+                        btnCancelReservation.setEnabled(
+                                hasSelection && isServerRunning);
                     }
                 });
-        JScrollPane scroll
-                = new JScrollPane(tablaCalendario);
-        scroll.setBorder(BorderFactory.createLineBorder(
-                BORDE_TABLA, 1));
-        scroll.getViewport().setBackground(BG_TABLA_PAR);
+        JScrollPane scrollPane
+                = new JScrollPane(calendarTable);
+        scrollPane.setBorder(BorderFactory.createLineBorder(
+                BORDER_TABLE, 1));
+        scrollPane.getViewport().setBackground(BG_ROW_EVEN);
 
-        // Scrollbar styling
-        scroll.getVerticalScrollBar()
-                .setBackground(BG_PRINCIPAL);
-        return scroll;
+        scrollPane.getVerticalScrollBar()
+                .setBackground(BG_MAIN);
+        return scrollPane;
     }
 
-    private JPanel crearPanelBitacora() {
+    /**
+     * Initializes the system log panel. Features a real-time JTextArea for
+     * operational monitoring, styled with institutional accents and a
+     * specialized scroll pane.
+     *
+     * @return A JPanel containing the system's log console.
+     */
+    private JPanel createLogPanel() {
         JPanel panel = new JPanel(new BorderLayout(0, 6));
-        panel.setBackground(BG_PRINCIPAL);
+        panel.setBackground(BG_MAIN);
         panel.setPreferredSize(new Dimension(0, 190));
 
-        // Cabecera bitácora con acento rojo
-        JPanel cabBita = new JPanel(
+        JPanel logHeader = new JPanel(
                 new FlowLayout(FlowLayout.LEFT, 0, 0));
-        cabBita.setOpaque(false);
-        cabBita.setBorder(new EmptyBorder(0, 0, 4, 0));
+        logHeader.setOpaque(false);
+        logHeader.setBorder(new EmptyBorder(0, 0, 4, 0));
 
-        JPanel marcaRoja = new JPanel();
-        marcaRoja.setBackground(UNA_ROJO);
-        marcaRoja.setPreferredSize(new Dimension(4, 16));
+        JPanel redAccent = new JPanel();
+        redAccent.setBackground(UNA_RED);
+        redAccent.setPreferredSize(new Dimension(4, 16));
 
-        JLabel lblBita = new JLabel("  Bitácora en tiempo real");
-        lblBita.setFont(new Font("SansSerif", Font.BOLD, 11));
-        lblBita.setForeground(TEXT_MEDIO);
-        cabBita.add(marcaRoja);
-        cabBita.add(lblBita);
+        JLabel lblLogTitle = new JLabel("  Bitácora en tiempo real");
+        lblLogTitle.setFont(new Font("SansSerif", Font.BOLD, 11));
+        lblLogTitle.setForeground(TEXT_MEDIUM);
+        logHeader.add(redAccent);
+        logHeader.add(lblLogTitle);
 
-        panel.add(cabBita, BorderLayout.NORTH);
+        panel.add(logHeader, BorderLayout.NORTH);
 
-        txtBitacora = new JTextArea();
-        txtBitacora.setEditable(false);
-        txtBitacora.setFont(new Font("Monospaced", Font.PLAIN, 11));
-        txtBitacora.setBackground(BG_BITACORA);
-        txtBitacora.setForeground(TEXT_BITA);
-        txtBitacora.setCaretColor(TEXT_BITA);
-        txtBitacora.setLineWrap(true);
-        txtBitacora.setWrapStyleWord(true);
-        txtBitacora.setBorder(
+        txtLogArea = new JTextArea();
+        txtLogArea.setEditable(false);
+        txtLogArea.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        txtLogArea.setBackground(BG_LOG);
+        txtLogArea.setForeground(TEXT_LOG);
+        txtLogArea.setCaretColor(TEXT_LOG);
+        txtLogArea.setLineWrap(true);
+        txtLogArea.setWrapStyleWord(true);
+        txtLogArea.setBorder(
                 new EmptyBorder(10, 14, 10, 14));
 
-        JScrollPane scroll = new JScrollPane(txtBitacora);
-        scroll.setBorder(BorderFactory.createCompoundBorder(
+        JScrollPane logScroll = new JScrollPane(txtLogArea);
+        logScroll.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(
                         new Color(0xCD, 0x17, 0x19, 80), 1),
                 BorderFactory.createEmptyBorder()));
-        panel.add(scroll, BorderLayout.CENTER);
+        panel.add(logScroll, BorderLayout.CENTER);
 
         return panel;
     }
 
-    // ── ACCIONES ─────────────────────────────────────────────
-    private void iniciarServidor() {
-        servidorActivo = true;
-        lblEstadoValor.setText("ACTIVO");
-        lblEstadoValor.setForeground(COLOR_ACTIVO);
-        btnIniciar.setEnabled(false);
-        btnDetener.setEnabled(true);
+    /**
+     * Starts the server engine. Initializes role validation, restores persisted
+     * data, manages the main server socket, and starts the TTL management
+     * thread.
+     */
+    private void startServer() {
+        isServerRunning = true;
+        lblStatusValue.setText("ACTIVO");
+        lblStatusValue.setForeground(COLOR_ACTIVE);
+        btnStart.setEnabled(false);
+        btnStop.setEnabled(true);
         log("Servidor INICIADO en puerto 8000.");
 
-        hiloServidor = new Thread(() -> {
+        serverThread = new Thread(() -> {
             RoleValidator.load();
 
-            List<Reservation> restauradas
+            List<Reservation> restoredList
                     = ReservationPersistence.load();
-            for (Reservation r : restauradas) {
+            for (Reservation r : restoredList) {
                 ServerApp.calendar
                         .loadRestoredReservation(r);
             }
             SwingUtilities.invokeLater(() -> {
-                if (!restauradas.isEmpty()) {
-                    log("✔ " + restauradas.size()
+                if (!restoredList.isEmpty()) {
+                    log("✔ " + restoredList.size()
                             + " reserva(s) restauradas "
                             + "desde disco.");
                 } else {
@@ -570,17 +630,17 @@ public class FrmServer extends JFrame {
             });
 
             try {
-                serverSocketActivo
+                activeSocket
                         = new java.net.ServerSocket(8000);
 
-                ReservationTTLThread hiloTTL
+                ReservationTTLThread ttlHandler
                         = new ReservationTTLThread(
                                 ServerApp.calendar,
                                 ServerApp.resources,
                                 ServerApp.ttlQueue,
                                 ServerApp.log);
-                hiloTTL.setDaemon(true);
-                hiloTTL.start();
+                ttlHandler.setDaemon(true);
+                ttlHandler.start();
 
                 System.out.println(
                         "[SERVIDOR] Puerto 8000 abierto, "
@@ -588,51 +648,56 @@ public class FrmServer extends JFrame {
 
                 while (!Thread.currentThread()
                         .isInterrupted()
-                        && !serverSocketActivo.isClosed()) {
+                        && !activeSocket.isClosed()) {
 
-                    java.net.Socket clienteSocket
-                            = serverSocketActivo.accept();
-                    java.io.DataInputStream entrada
+                    java.net.Socket clientSocket
+                            = activeSocket.accept();
+                    java.io.DataInputStream inputStream
                             = new java.io.DataInputStream(
                                     new java.io.BufferedInputStream(
-                                            clienteSocket
+                                            clientSocket
                                                     .getInputStream()));
-                    String datosCliente
-                            = entrada.readUTF();
+                    String clientData
+                            = inputStream.readUTF();
                     System.out.println(
                             "[SERVIDOR] Cliente: "
-                            + datosCliente);
+                            + clientData);
 
-                    ClientHandler hilo = new ClientHandler(
-                            clienteSocket, datosCliente,
+                    ClientHandler handler = new ClientHandler(
+                            clientSocket, clientData,
                             ServerApp.calendar,
                             ServerApp.resources,
                             ServerApp.ttlQueue,
                             ServerApp.log);
-                    ServerApp.connectedClients.add(hilo);
-                    hilo.start();
+                    ServerApp.connectedClients.add(handler);
+                    handler.start();
                 }
             } catch (java.io.IOException e) {
-                if (servidorActivo) {
+                if (isServerRunning) {
                     log("[ERROR] Servidor: "
                             + e.getMessage());
                 }
             }
         });
-        hiloServidor.setDaemon(true);
-        hiloServidor.start();
+        serverThread.setDaemon(true);
+        serverThread.start();
 
-        timerActualizacion
-                = new Timer(2000, e -> actualizarVista());
-        timerActualizacion.start();
-        actualizarVista();
+        updateTimer
+                = new Timer(2000, e -> refreshView());
+        updateTimer.start();
+        refreshView();
     }
 
-    private void detenerServidor() {
-        servidorActivo = false;
+    /**
+     * Safely shuts down the server. Stops the UI timer, persists data to disk,
+     * notifies and disconnects all active clients, and releases the network
+     * port.
+     */
+    private void stopServer() {
+        isServerRunning = false;
 
-        if (timerActualizacion != null) {
-            timerActualizacion.stop();
+        if (updateTimer != null) {
+            updateTimer.stop();
         }
 
         ReservationPersistence.save(
@@ -640,94 +705,101 @@ public class FrmServer extends JFrame {
         log("Reservas confirmadas guardadas en disco.");
 
         synchronized (ServerApp.connectedClients) {
-            for (ClientHandler hilo
+            for (ClientHandler handler
                     : ServerApp.connectedClients) {
-                hilo.send("ERROR|SERVIDOR_DETENIDO");
-                hilo.close();
+                handler.send("ERROR|SERVIDOR_DETENIDO");
+                handler.close();
             }
             ServerApp.connectedClients.clear();
         }
 
         try {
-            if (serverSocketActivo != null
-                    && !serverSocketActivo.isClosed()) {
-                serverSocketActivo.close();
+            if (activeSocket != null
+                    && !activeSocket.isClosed()) {
+                activeSocket.close();
             }
         } catch (java.io.IOException ignored) {
+            // Silently ignore during shutdown
         }
 
-        serverSocketActivo = null;
+        activeSocket = null;
 
-        if (hiloServidor != null) {
-            hiloServidor.interrupt();
+        if (serverThread != null) {
+            serverThread.interrupt();
         }
 
-        lblEstadoValor.setText("INACTIVO");
-        lblEstadoValor.setForeground(COLOR_INACTIV);
-        lblReservasValor.setText("—");
-        lblEquipoValor.setText("—");
-        lblCapacidadValor.setText("—");
-        lblMicrofonoValor.setText("—");
-        lblSonidoValor.setText("—");
-        lblCompletoValor.setText("—");
+        lblStatusValue.setText("INACTIVO");
+        lblStatusValue.setForeground(COLOR_INACTIVE);
+        lblReservationsValue.setText("—");
+        lblProjectorValue.setText("—");
+        lblCapacityValue.setText("—");
+        lblMicrophoneValue.setText("—");
+        lblSoundValue.setText("—");
+        lblFullSetValue.setText("—");
 
-        btnIniciar.setEnabled(true);
-        btnDetener.setEnabled(false);
-        btnEditarReserva.setEnabled(false);
-        btnCancelarReserva.setEnabled(false);
+        btnStart.setEnabled(true);
+        btnStop.setEnabled(false);
+        btnEditReservation.setEnabled(false);
+        btnCancelReservation.setEnabled(false);
 
         log("Servidor DETENIDO.");
     }
 
-    private void actualizarVista() {
-        if (!servidorActivo) {
+    /**
+     * Synchronizes the UI components with the current server state. Updates
+     * dashboard metrics, the real-time log area, and populates the reservation
+     * table while maintaining the user's current selection.
+     */
+    private void refreshView() {
+        if (!isServerRunning) {
             return;
         }
 
-        lblReservasValor.setText(
+        lblReservationsValue.setText(
                 ServerApp.calendar.getTotalReservations()
                 + " activas");
-        lblCapacidadValor.setText(
+        lblCapacityValue.setText(
                 String.valueOf(
                         ServerApp.manager.getAvailableCapacity()));
-        int proy
+        int proyCount
                 = ServerApp.manager.getAvailableProjectors();
-        int mic
+        int micCount
                 = ServerApp.manager.getAvailableMicrophones();
-        int son
+        int soundCount
                 = ServerApp.manager.getAvailableSound();
-        lblEquipoValor.setText(String.valueOf(proy));
-        lblMicrofonoValor.setText(String.valueOf(mic));
-        lblSonidoValor.setText(String.valueOf(son));
-        int completo = Math.min(proy, Math.min(mic, son));
-        lblCompletoValor.setText(String.valueOf(completo));
 
-        List<String> entradas
+        lblProjectorValue.setText(String.valueOf(proyCount));
+        lblMicrophoneValue.setText(String.valueOf(micCount));
+        lblSoundValue.setText(String.valueOf(soundCount));
+
+        int fullSets = Math.min(proyCount, Math.min(micCount, soundCount));
+        lblFullSetValue.setText(String.valueOf(fullSets));
+
+        List<String> logEntries
                 = ServerApp.log.getLast(100);
-        txtBitacora.setText("");
-        for (String e : entradas) {
-            txtBitacora.append(e + "\n");
+        txtLogArea.setText("");
+        for (String e : logEntries) {
+            txtLogArea.append(e + "\n");
         }
-        txtBitacora.setCaretPosition(
-                txtBitacora.getDocument().getLength());
+        txtLogArea.setCaretPosition(
+                txtLogArea.getDocument().getLength());
 
-        // Preservar fila seleccionada
-        String idSeleccionado = null;
-        int filaActual = tablaCalendario.getSelectedRow();
-        if (filaActual >= 0) {
-            idSeleccionado
-                    = (String) modeloTabla.getValueAt(
-                            filaActual, 0);
+        String selectedId = null;
+        int currentRow = calendarTable.getSelectedRow();
+        if (currentRow >= 0) {
+            selectedId
+                    = (String) tableModel.getValueAt(
+                            currentRow, 0);
         }
 
-        modeloTabla.setRowCount(0);
-        List<Reservation> todasReservas
+        tableModel.setRowCount(0);
+        List<Reservation> allReservations
                 = ServerApp.calendar.getAllReservations();
-        int filaARestaurar = -1;
-        int contador = 0;
+        int rowToRestore = -1;
+        int rowCounter = 0;
 
-        for (Reservation r : todasReservas) {
-            modeloTabla.addRow(new Object[]{
+        for (Reservation r : allReservations) {
+            tableModel.addRow(new Object[]{
                 r.getReservationId(),
                 r.getClientId(),
                 r.getDate(),
@@ -740,98 +812,101 @@ public class FrmServer extends JFrame {
                 ? r.getRemainingSeconds() + "s"
                 : "—"
             });
-            if (r.getReservationId().equals(idSeleccionado)) {
-                filaARestaurar = contador;
+            if (r.getReservationId().equals(selectedId)) {
+                rowToRestore = rowCounter;
             }
-            contador++;
+            rowCounter++;
         }
 
-        if (filaARestaurar >= 0) {
-            tablaCalendario.setRowSelectionInterval(
-                    filaARestaurar, filaARestaurar);
+        if (rowToRestore >= 0) {
+            calendarTable.setRowSelectionInterval(
+                    rowToRestore, rowToRestore);
         }
-        int filaBtn = tablaCalendario.getSelectedRow();
-        boolean hayFila = filaBtn >= 0;
-        boolean esEditable = hayFila && servidorActivo
-                && !"CANCELADO".equals(modeloTabla.getValueAt(filaBtn, 4));
-        btnEditarReserva.setEnabled(esEditable);
-        btnCancelarReserva.setEnabled(esEditable);
+        int finalSelectedRow = calendarTable.getSelectedRow();
+        boolean hasSelection = finalSelectedRow >= 0;
+        boolean canEdit = hasSelection && isServerRunning
+             && !"CANCELADO".equals(tableModel.getValueAt(finalSelectedRow, 4));
+        btnEditReservation.setEnabled(canEdit);
+        btnCancelReservation.setEnabled(canEdit);
     }
 
-    // ── EDITAR RESERVA DESDE SERVIDOR ────────────────────────
-    private void editarReservaSeleccionada()
+    /**
+     * Opens a dialog to edit the selected reservation. Validates business rules
+     * for ongoing and future reservations, performs a rollback if the new slot
+     * is unavailable, and notifies the client.
+     */
+    private void editSelectedReservation()
             throws InterruptedException {
-        int fila = tablaCalendario.getSelectedRow();
-        if (fila < 0) {
+        int selectedRow = calendarTable.getSelectedRow();
+        if (selectedRow < 0) {
             return;
         }
 
-        String idReserva
-                = (String) modeloTabla.getValueAt(fila, 0);
-        String idCliente
-                = (String) modeloTabla.getValueAt(fila, 1);
-        String fechaActual
-                = (String) modeloTabla.getValueAt(fila, 2);
-        String horario
-                = (String) modeloTabla.getValueAt(fila, 3);
-        String[] horas = horario.split("-");
+        String resId
+                = (String) tableModel.getValueAt(selectedRow, 0);
+        String clientId
+                = (String) tableModel.getValueAt(selectedRow, 1);
+        String currentStrDate
+                = (String) tableModel.getValueAt(selectedRow, 2);
+        String schedule
+                = (String) tableModel.getValueAt(selectedRow, 3);
+        String[] hours = schedule.split("-");
 
-        JTextField fFecha = new JTextField(fechaActual);
-        JTextField fInicio = new JTextField(
-                horas.length > 0 ? horas[0] : "");
-        JTextField fFin = new JTextField(
-                horas.length > 1 ? horas[1] : "");
-        JTextField fAsis = new JTextField(
-                modeloTabla.getValueAt(fila, 5).toString());
-        JComboBox<String> fEquipo = new JComboBox<>(
+        JTextField txtDate = new JTextField(currentStrDate);
+        JTextField txtStart = new JTextField(
+                hours.length > 0 ? hours[0] : "");
+        JTextField txtEnd = new JTextField(
+                hours.length > 1 ? hours[1] : "");
+        JTextField txtAttendees = new JTextField(
+                tableModel.getValueAt(selectedRow, 5).toString());
+        JComboBox<String> cbEquipment = new JComboBox<>(
                 new String[]{
                     "NINGUNO", "PROYECTOR", "MICROFONO",
                     "SONIDO", "COMPLETO"
                 });
-        fEquipo.setSelectedItem(
-                modeloTabla.getValueAt(fila, 6).toString());
+        cbEquipment.setSelectedItem(
+                tableModel.getValueAt(selectedRow, 6).toString());
 
-        // Estilizar campos del diálogo
-        estilizarCampo(fFecha);
-        estilizarCampo(fInicio);
-        estilizarCampo(fFin);
-        estilizarCampo(fAsis);
+        styleFormField(txtDate);
+        styleFormField(txtStart);
+        styleFormField(txtEnd);
+        styleFormField(txtAttendees);
 
-        JPanel form = new JPanel(
+        JPanel formPanel = new JPanel(
                 new GridLayout(0, 2, 8, 10));
-        form.setBackground(BG_PRINCIPAL);
-        form.setBorder(new EmptyBorder(10, 10, 10, 10));
-        form.add(crearLabelForm("Fecha (YYYY-MM-DD):"));
-        form.add(fFecha);
-        form.add(crearLabelForm("Hora inicio (HH:mm):"));
-        form.add(fInicio);
-        form.add(crearLabelForm("Hora fin (HH:mm):"));
-        form.add(fFin);
-        form.add(crearLabelForm("Asistentes:"));
-        form.add(fAsis);
-        form.add(crearLabelForm("Equipo:"));
-        form.add(fEquipo);
+        formPanel.setBackground(BG_MAIN);
+        formPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        formPanel.add(createFormLabel("Fecha (YYYY-MM-DD):"));
+        formPanel.add(txtDate);
+        formPanel.add(createFormLabel("Hora inicio (HH:mm):"));
+        formPanel.add(txtStart);
+        formPanel.add(createFormLabel("Hora fin (HH:mm):"));
+        formPanel.add(txtEnd);
+        formPanel.add(createFormLabel("Asistentes:"));
+        formPanel.add(txtAttendees);
+        formPanel.add(createFormLabel("Equipo:"));
+        formPanel.add(cbEquipment);
 
-        int resultado = JOptionPane.showConfirmDialog(
-                this, form,
-                "Editar reserva " + idReserva
-                + "  |  cliente: " + idCliente,
+        int result = JOptionPane.showConfirmDialog(
+                this, formPanel,
+                "Editar reserva " + resId
+                + "  |  cliente: " + clientId,
                 JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.PLAIN_MESSAGE);
 
-        if (resultado != JOptionPane.OK_OPTION) {
+        if (result != JOptionPane.OK_OPTION) {
             return;
         }
 
-        String nuevaFecha = fFecha.getText().trim();
-        String nuevaInicio = fInicio.getText().trim();
-        String nuevaFin = fFin.getText().trim();
-        String nuevaAsis = fAsis.getText().trim();
-        String nuevoEquipo = (String) fEquipo.getSelectedItem();
+        String newDateStr = txtDate.getText().trim();
+        String newStartStr = txtStart.getText().trim();
+        String newEndStr = txtEnd.getText().trim();
+        String newAttStr = txtAttendees.getText().trim();
+        String newEquipStr = (String) cbEquipment.getSelectedItem();
 
-        if (nuevaFecha.isEmpty() || nuevaInicio.isEmpty()
-                || nuevaFin.isEmpty()
-                || nuevaAsis.isEmpty()) {
+        if (newDateStr.isEmpty() || newStartStr.isEmpty()
+                || newEndStr.isEmpty()
+                || newAttStr.isEmpty()) {
             JOptionPane.showMessageDialog(this,
                     "Complete todos los campos.",
                     "Campos vacíos",
@@ -839,66 +914,63 @@ public class FrmServer extends JFrame {
             return;
         }
 
-        // Validar año actual
-        LocalDate fecha;
+        LocalDate newDate;
         try {
-            fecha = LocalDate.parse(nuevaFecha);
-            if (fecha.getYear() != LocalDate.now().getYear()) {
+            newDate = LocalDate.parse(newDateStr);
+            if (newDate.getYear() != LocalDate.now().getYear()) {
                 JOptionPane.showMessageDialog(this,
-                    "Solo se permiten reservas dentro del año actual (" 
-                    + LocalDate.now().getYear() + ").",
-                    "Año no permitido", JOptionPane.ERROR_MESSAGE);
+                        "Solo se permiten reservas dentro del año actual ("
+                        + LocalDate.now().getYear() + ").",
+                        "Año no permitido", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            if (fecha.isBefore(LocalDate.now())) {
+            if (newDate.isBefore(LocalDate.now())) {
                 JOptionPane.showMessageDialog(this,
-                    "No se pueden hacer reservas en fechas pasadas.",
-                    "Fecha inválida", JOptionPane.ERROR_MESSAGE);
+                        "No se pueden hacer reservas en fechas pasadas.",
+                        "Fecha inválida", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-        } catch (Exception e) {
+        } catch (HeadlessException e) {
             JOptionPane.showMessageDialog(this,
-                "Formato de fecha inválido. Use YYYY-MM-DD.",
-                "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // Validar horas
-        LocalTime inicio, fin;
-        try {
-            inicio = LocalTime.parse(nuevaInicio);
-            fin    = LocalTime.parse(nuevaFin);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                "Hora inválida. Use HH:mm.",
-                "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        if (!inicio.isBefore(fin)) {
-            JOptionPane.showMessageDialog(this,
-                "La hora de inicio debe ser menor a la hora fin.",
-                "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // Validar asistentes
-        int asistentes;
-        try {
-            asistentes = Integer.parseInt(nuevaAsis);
-            if (asistentes < 0 || asistentes > 200) {
-                JOptionPane.showMessageDialog(this,
-                    "Los asistentes deben estar entre 0 y 200.",
+                    "Formato de fecha inválido. Use YYYY-MM-DD.",
                     "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        LocalTime newStart, newEnd;
+        try {
+            newStart = LocalTime.parse(newStartStr);
+            newEnd = LocalTime.parse(newEndStr);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                    "Hora inválida. Use HH:mm.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (!newStart.isBefore(newEnd)) {
+            JOptionPane.showMessageDialog(this,
+                    "La hora de inicio debe ser menor a la hora fin.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int attendees;
+        try {
+            attendees = Integer.parseInt(newAttStr);
+            if (attendees < 0 || attendees > 200) {
+                JOptionPane.showMessageDialog(this,
+                        "Los asistentes deben estar entre 0 y 200.",
+                        "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
-                "Asistentes debe ser un número.",
-                "Error", JOptionPane.ERROR_MESSAGE);
+                    "Asistentes debe ser un número.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        Reservation original = ServerApp.calendar.getReservationById(idReserva);
+        Reservation original = ServerApp.calendar.getReservationById(resId);
         if (original == null) {
             JOptionPane.showMessageDialog(this,
                     "Reserva no encontrada.",
@@ -906,89 +978,84 @@ public class FrmServer extends JFrame {
             return;
         }
 
-        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
 
-        // Nuevos valores
-        LocalDateTime inicioNuevo = LocalDateTime.of(fecha, inicio);
-        LocalDateTime finNuevo    = LocalDateTime.of(fecha, fin);
+        LocalDateTime newStartFull = LocalDateTime.of(newDate, newStart);
+        LocalDateTime newEndFull = LocalDateTime.of(newDate, newEnd);
 
-        // Valores originales
-        LocalDateTime inicioOriginal = LocalDateTime.of(
+        LocalDateTime oldStartFull = LocalDateTime.of(
                 LocalDate.parse(original.getDate()),
                 LocalTime.parse(original.getStartTime()));
 
-        LocalDateTime finOriginal = LocalDateTime.of(
+        LocalDateTime oldEndFull = LocalDateTime.of(
                 LocalDate.parse(original.getDate()),
                 LocalTime.parse(original.getEndTime()));
 
-        // YA TERMINÓ
-        if (finOriginal.isBefore(ahora)) {
+        if (oldEndFull.isBefore(now)) {
             JOptionPane.showMessageDialog(this,
-                "La reserva ya finalizó. Debes crear una nueva.",
-                "Error", JOptionPane.ERROR_MESSAGE);
+                    "La reserva ya finalizó. Debes crear una nueva.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        // EN CURSO
-        if (inicioOriginal.isBefore(ahora) && finOriginal.isAfter(ahora)) {
+        if (oldStartFull.isBefore(now) && oldEndFull.isAfter(now)) {
 
-            if (!fecha.equals(inicioOriginal.toLocalDate())) {
+            if (!newDate.equals(oldStartFull.toLocalDate())) {
                 JOptionPane.showMessageDialog(this,
-                    "No puedes cambiar la fecha de una reserva en curso.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+                        "No puedes cambiar la fecha de una reserva en curso.",
+                        "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
-            if (!inicioNuevo.equals(inicioOriginal)) {
+            if (!newStartFull.equals(oldStartFull)) {
                 JOptionPane.showMessageDialog(this,
-                    "No puedes modificar la hora de inicio de una reserva en curso.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+                        "No puedes modificar la hora de inicio de una reserva "
+                                + "en curso.",
+                        "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
-            if (finNuevo.isBefore(ahora)) {
+            if (newEndFull.isBefore(now)) {
                 JOptionPane.showMessageDialog(this,
-                    "No puedes poner una hora fin que ya pasó.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+                        "No puedes poner una hora fin que ya pasó.",
+                        "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
-            // CORREGIDO: aquí va esta validación
-            if (finNuevo.isBefore(inicioOriginal)) {
+            if (newEndFull.isBefore(oldStartFull)) {
                 JOptionPane.showMessageDialog(this,
-                    "La hora fin no puede ser anterior al inicio original.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-        }
-
-        // FUTURA
-        if (inicioOriginal.isAfter(ahora)) {
-            if (inicioNuevo.isBefore(ahora)) {
-                JOptionPane.showMessageDialog(this,
-                    "No puedes usar fechas u horas pasadas.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+                        "La hora fin no puede ser anterior al inicio original.",
+                        "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
         }
 
-        ServerApp.calendar.cancelReservation(idReserva);
-        ServerApp.ttlQueue.remove(idReserva);
+        if (oldStartFull.isAfter(now)) {
+            if (newStartFull.isBefore(now)) {
+                JOptionPane.showMessageDialog(this,
+                        "No puedes usar fechas u horas pasadas.",
+                        "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
 
-        Reservation nueva;
+        ServerApp.calendar.cancelReservation(resId);
+        ServerApp.ttlQueue.remove(resId);
+
+        Reservation newRes;
         try {
-            nueva = ServerApp.calendar.reserveTemporarily(
-                    idCliente, nuevaFecha,
-                    nuevaInicio, nuevaFin,
-                    Integer.parseInt(nuevaAsis),
-                    Reservation.Equipment.valueOf(nuevoEquipo),
+            newRes = ServerApp.calendar.reserveTemporarily(
+                    clientId, newDateStr,
+                    newStartStr, newEndStr,
+                    Integer.parseInt(newAttStr),
+                    Reservation.Equipment.valueOf(newEquipStr),
                     original.getPriority());
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this,
                     "Asistentes debe ser un número.",
                     "Error", JOptionPane.ERROR_MESSAGE);
             ServerApp.calendar.reserveTemporarily(
-                    idCliente, original.getDate(),
+                    clientId, original.getDate(),
                     original.getStartTime(),
                     original.getEndTime(),
                     original.getAttendeeCount(),
@@ -997,14 +1064,14 @@ public class FrmServer extends JFrame {
             return;
         }
 
-        if (nueva == null) {
+        if (newRes == null) {
             JOptionPane.showMessageDialog(this,
                     "La nueva franja ya está ocupada.",
                     "Conflicto",
                     JOptionPane.ERROR_MESSAGE);
             Reservation rest
                     = ServerApp.calendar.reserveTemporarily(
-                            idCliente, original.getDate(),
+                            clientId, original.getDate(),
                             original.getStartTime(),
                             original.getEndTime(),
                             original.getAttendeeCount(),
@@ -1018,22 +1085,22 @@ public class FrmServer extends JFrame {
         }
 
         ServerApp.calendar.confirmReservation(
-                nueva.getReservationId());
+                newRes.getReservationId());
         ReservationPersistence.save(
                 ServerApp.calendar);
         ServerApp.log.log("EDICION-SERVIDOR",
-                "Servidor editó reserva " + idReserva
-                + " → " + nueva.getReservationId()
-                + " | cliente: " + idCliente);
+                "Servidor editó reserva " + resId
+                + " - " + newRes.getReservationId()
+                + " | cliente: " + clientId);
 
         synchronized (ServerApp.connectedClients) {
-            for (ClientHandler hilo
+            for (ClientHandler handler
                     : ServerApp.connectedClients) {
-                if (hilo.getClientId()
-                        .equals(idCliente)) {
+                if (handler.getClientId()
+                        .equals(clientId)) {
                     try {
-                        hilo.send("OK|EDITADO|"
-                                + nueva.getReservationId());
+                        handler.send("OK|EDITADO|"
+                                + newRes.getReservationId());
                     } catch (Exception ignored) {
                     }
                     break;
@@ -1041,47 +1108,62 @@ public class FrmServer extends JFrame {
             }
         }
 
-        log("✎ Reserva " + idReserva + " editada → "
-                + nueva.getReservationId()
-                + " | cliente: " + idCliente);
-        actualizarVista();
+        log("✎ Reserva " + resId + " editada → "
+                + newRes.getReservationId()
+                + " | cliente: " + clientId);
+        refreshView();
     }
 
-    // --- UTILIDADES DE FORMULARIO ----------------
-    private void estilizarCampo(JTextField campo) {
-        campo.setFont(
+    /**
+     * Applies a consistent visual style to text input fields. Sets font,
+     * background colors, and a compound border for padding.
+     *
+     * @param field The JTextField to be styled.
+     */
+    private void styleFormField(JTextField field) {
+        field.setFont(
                 new Font("SansSerif", Font.PLAIN, 12));
-        campo.setBackground(BG_CAMPO);
-        campo.setForeground(TEXT_OSCURO);
-        campo.setCaretColor(UNA_ROJO);
-        campo.setBorder(BorderFactory.createCompoundBorder(
+        field.setBackground(BG_FIELD);
+        field.setForeground(TEXT_DARK);
+        field.setCaretColor(UNA_RED);
+        field.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(
-                        BORDE_CARD, 1),
+                        BORDER_CARD, 1),
                 new EmptyBorder(4, 8, 4, 8)));
     }
 
-    private JLabel crearLabelForm(String texto) {
-        JLabel lbl = new JLabel(texto);
-        lbl.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        lbl.setForeground(TEXT_MEDIO);
-        return lbl;
+    /**
+     * Creates a styled JLabel for form prompts.
+     *
+     * @param text The label text.
+     * @return A JLabel with the system's medium-text styling.
+     */
+    private JLabel createFormLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        label.setForeground(TEXT_MEDIUM);
+        return label;
     }
 
-    // --- CANCELAR RESERVA ------------------------
-    private void cancelarReservaSeleccionada() {
-        int fila = tablaCalendario.getSelectedRow();
-        if (fila < 0) {
+    /**
+     * Cancels the selected reservation from the server side. Prompts for
+     * confirmation, releases logical resources, removes from TTL queue,
+     * persists changes, and notifies the connected client.
+     */
+    private void cancelSelectedReservation() {
+        int selectedRow = calendarTable.getSelectedRow();
+        if (selectedRow < 0) {
             return;
         }
 
-        String idReserva
-                = (String) modeloTabla.getValueAt(fila, 0);
-        String idCliente
-                = (String) modeloTabla.getValueAt(fila, 1);
+        String resId
+                = (String) tableModel.getValueAt(selectedRow, 0);
+        String clientId
+                = (String) tableModel.getValueAt(selectedRow, 1);
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "¿Cancelar la reserva " + idReserva
-                + " del cliente " + idCliente + "?",
+                "¿Cancelar la reserva " + resId
+                + " del cliente " + clientId + "?",
                 "Confirmar cancelación",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
@@ -1089,10 +1171,10 @@ public class FrmServer extends JFrame {
             return;
         }
 
-        boolean ok
+        boolean success
                 = ServerApp.calendar
-                        .cancelReservation(idReserva);
-        if (!ok) {
+                        .cancelReservation(resId);
+        if (!success) {
             JOptionPane.showMessageDialog(this,
                     "No se pudo cancelar la reserva.",
                     "Error",
@@ -1100,42 +1182,49 @@ public class FrmServer extends JFrame {
             return;
         }
 
-        ServerApp.ttlQueue.remove(idReserva);
+        ServerApp.ttlQueue.remove(resId);
         ReservationPersistence.save(
                 ServerApp.calendar);
         ServerApp.log.log("CANCELACION-SERVIDOR",
-                "Servidor canceló reserva " + idReserva
-                + " del cliente " + idCliente);
+                "Servidor canceló reserva " + resId
+                + " del cliente " + clientId);
 
         synchronized (ServerApp.connectedClients) {
-            for (ClientHandler hilo
+            for (ClientHandler handler
                     : ServerApp.connectedClients) {
-                if (hilo.getClientId()
-                        .equals(idCliente)) {
+                if (handler.getClientId()
+                        .equals(clientId)) {
                     try {
-                        hilo.send("OK|CANCELADO|"
-                                + idReserva);
+                        handler.send("OK|CANCELADO|"
+                                + resId);
                     } catch (Exception ignored) {
+                        // Client might have disconnected
                     }
                     break;
                 }
             }
         }
 
-        log("✖ Reserva " + idReserva
+        log("✖ Reserva " + resId
                 + " cancelada por el servidor.");
-        actualizarVista();
+        refreshView();
     }
 
-    // --- LOG -------------------------------------
-    public void log(String msg) {
-        String t = LocalDateTime.now().format(
+    /**
+     * Appends a timestamped message to the server's graphical log console.
+     * Ensures thread-safety by using invokeLater for UI updates from background
+     * network threads.
+     *
+     * @param message The message to display.
+     */
+    public void log(String message) {
+        String timestamp = LocalDateTime.now().format(
                 DateTimeFormatter.ofPattern("HH:mm:ss"));
         SwingUtilities.invokeLater(() -> {
-            txtBitacora.append(
-                    "[" + t + "]  " + msg + "\n");
-            txtBitacora.setCaretPosition(
-                    txtBitacora.getDocument().getLength());
+            txtLogArea.append(
+                    "[" + timestamp + "]  " + message + "\n");
+            txtLogArea.setCaretPosition(
+                    txtLogArea.getDocument().getLength());
         });
     }
 }

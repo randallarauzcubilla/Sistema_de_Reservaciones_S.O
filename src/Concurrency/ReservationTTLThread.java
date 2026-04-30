@@ -8,9 +8,9 @@ import Server.ServerApp;
 import Core.ReservationCalendar;
 
 /**
- * Thread responsible for monitoring reservation time-to-live (TTL).
- * It periodically checks for expired reservations and handles their
- * removal and client notification.
+ * Thread responsible for monitoring reservation time-to-live (TTL). It
+ * periodically checks for expired reservations and handles their removal and
+ * client notification.
  */
 public class ReservationTTLThread extends Thread {
 
@@ -39,8 +39,8 @@ public class ReservationTTLThread extends Thread {
     }
 
     /**
-     * Main execution loop of the TTL thread.
-     * Continuously checks for expired reservations and processes them.
+     * Main execution loop of the TTL thread. Continuously checks for expired
+     * reservations and processes them.
      */
     @Override
     public void run() {
@@ -51,14 +51,14 @@ public class ReservationTTLThread extends Thread {
                 long waitTime = ttlQueue.millisUntilNext();
                 ttlQueue.awaitWithTimeout(waitTime);
 
-                java.util.List<Reservation> expiredReservations =
-                        calendar.expireOverdue();
+                java.util.List<Reservation> expiredReservations
+                        = calendar.expireOverdue();
 
                 for (Reservation r : expiredReservations) {
                     ttlQueue.remove(r.getReservationId());
                     log.logExpiration(r);
-                    System.out.println("[TTL] Expirada: " + 
-                            r.getReservationId());
+                    System.out.println("[TTL] Expirada: "
+                            + r.getReservationId());
                     notifyClientExpiration(r);
                 }
 

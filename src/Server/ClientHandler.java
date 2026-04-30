@@ -458,7 +458,7 @@ public class ClientHandler extends Thread {
         try {
             newAttendees = Integer.parseInt(p[5]);
             newEquipment = Reservation.Equipment.valueOf(p[6]);
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
             sendResponse("ERROR|PARAMETROS_INVALIDOS");
             return;
         }
@@ -520,7 +520,7 @@ public class ClientHandler extends Thread {
 
         calendar.confirmReservation(newRes.getReservationId());
         ReservationPersistence.save(calendar);
-        log.log("EDICION", "Reserva " + reservationId + " editada → "
+        log.log("EDICION", "Reserva " + reservationId + " editada - "
                 + newRes.getReservationId() + " | " + newDate
                 + " " + newStartTime + "-" + newEndTime);
 

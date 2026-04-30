@@ -11,17 +11,17 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * Handles logging operations for the auditorium system.
- * Stores log entries in memory and persists them to a file.
- * Provides thread-safe access using a synchronization manager.
+ * Handles logging operations for the auditorium system. Stores log entries in
+ * memory and persists them to a file. Provides thread-safe access using a
+ * synchronization manager.
  */
 public class AuditoriumLog {
 
     private final SynchronizationManager manager;
     private final List<String> entries = new ArrayList<>();
     private final String logFile = "bitacora_auditorio.txt";
-    private final SimpleDateFormat sdf  =
-            new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+    private final SimpleDateFormat sdf
+            = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 
     /**
      * Creates a new AuditoriumLog instance and initializes the system log.
@@ -34,8 +34,8 @@ public class AuditoriumLog {
     }
 
     /**
-     * Writes a log entry with type and description.
-     * Also stores it in memory and persists it to disk.
+     * Writes a log entry with type and description. Also stores it in memory
+     * and persists it to disk.
      *
      * @param type the type/category of the log entry
      * @param description the detailed message of the log entry
@@ -127,8 +127,11 @@ public class AuditoriumLog {
      */
     public List<String> getEntries() {
         manager.getLogMutex().lock();
-        try { return new ArrayList<>(entries); }
-        finally { manager.getLogMutex().unlock(); }
+        try {
+            return new ArrayList<>(entries);
+        } finally {
+            manager.getLogMutex().unlock();
+        }
     }
 
     /**
