@@ -6,220 +6,302 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Core class responsible for managing the auditorium's schedule.
+ * It handles the creation, confirmation, and cancellation of reservations 
+ * while ensuring thread-safety through a SynchronizationManager.
+ */
 public class ReservationCalendar {
 
-    private final Map<String, Reservation> franjas = new ConcurrentHashMap<>();
-    private final SynchronizationManager gestor;
+    /** Thread-safe storage for reservations, indexed by a time-based key. */
+    private final Map<String, Reservation> timeSlots = 
+            new ConcurrentHashMap<>();
+    
+    /** Coordinator for read/write locks and resource semaphores. */
+    private final SynchronizationManager manager;
 
-    public ReservationCalendar(SynchronizationManager gestor) {
-        this.gestor = gestor;
+    /**
+     * Constructs a new ReservationCalendar.
+     * @param manager the manager handling concurrency and resources.
+     */
+    public ReservationCalendar(SynchronizationManager manager) {
+        this.manager = manager;
     }
 
-    private String clave(String fecha, String horaInicio, String horaFin) {
-        return fecha + "-" + horaInicio + "-" + horaFin;
+    /**
+     * Generates a unique key based on the date and time range.
+     * @return a formatted string "date-startTime-endTime".
+     */
+    private String generateKey(String date, String startTime, String endTime) {
+        return date + "-" + startTime + "-" + endTime;
     }
 
-    // SC-01: Consultar disponibilidad (READ lock)
-    public boolean estaDisponible(String fecha, String horaInicio,
-            String horaFin) {
-        gestor.lockLecturaCalendario().lock();
+    /**
+     * Checks if a specific time slot is available for booking.
+     *
+     * @param date      the date to check
+     * @param startTime the start of the time range
+     * @param endTime   the end of the time range
+     * @return true if the slot is empty or marked as LIBRE or CANCELADO
+     */
+    public boolean isAvailable(String date, String startTime, String endTime) {
+        manager.lockReadCalendar().lock();
         try {
-            String key = clave(fecha, horaInicio, horaFin);
-            Reservation r = franjas.get(key);
+            String key = generateKey(date, startTime, endTime);
+            Reservation r = timeSlots.get(key);
 
             return r == null
-                    || r.getEstado() == Reservation.Estado.CANCELADO
-                    || r.getEstado() == Reservation.Estado.LIBRE;
+                    || r.getStatus() == Reservation.Status.CANCELADO
+                    || r.getStatus() == Reservation.Status.EXPIRADO
+                    || r.getStatus() == Reservation.Status.LIBRE;
 
         } finally {
-            gestor.lockLecturaCalendario().unlock();
+            manager.lockReadCalendar().unlock();
         }
     }
 
-    // SC-02: Reservar temporal (WRITE lock)
-    public Reservation reservarTemporal(String idCliente, String fecha,
-                                String horaInicio, String horaFin,
-                                int asistentes, Reservation.Equipo equipo,
-        Reservation.Prioridad prioridad) throws InterruptedException {
-        gestor.lockEscrituraCalendario().lock();
+    /**
+     * Attempts to create a temporary reservation.
+     * Validates overlaps and acquires necessary synchronization resources.
+     *
+     * @param clientId   identification of the requesting client
+     * @param date       reservation date
+     * @param startTime  start time of the event
+     * @param endTime    end time of the event
+     * @param attendees  number of people attending
+     * @param equipment  requested equipment type
+     * @param priority   priority level based on role
+     * @return the created Reservation object, or null if overlap occurs
+     * @throws InterruptedException if the thread is interrupted while waiting 
+     * for resources
+     */
+    public Reservation reserveTemporarily(String clientId, String date,
+                                          String startTime, String endTime,
+                                          int attendees, 
+                                          Reservation.Equipment equipment,
+                                          Reservation.Priority priority) 
+            throws InterruptedException {
+        manager.lockWriteCalendar().lock();
         try {
+            // Clean up any timed-out reservations before checking availability
+            expireOverdue();
 
-            expirarVencidas();
+            // Overlap validation
+            for (Reservation r : timeSlots.values()) {
+                if (r.getStatus() == Reservation.Status.CANCELADO ||
+                         r.getStatus() == Reservation.Status.EXPIRADO
+                        || r.isExpired()) continue;
+                if (!r.getDate().equals(date)) continue;
 
-        // validar solapamiento
-        for (Reservation r : franjas.values()) {
-
-            if (r.getEstado() == Reservation.Estado.CANCELADO || 
-                    r.estaVencida()) continue;
-            if (!r.getFecha().equals(fecha)) continue;
-
-            if (solapan(horaInicio, horaFin, r.getHoraInicio(),
-                    r.getHoraFin())) {
-                return null;
+                if (doOverlap(startTime, endTime, r.getStartTime(), 
+                        r.getEndTime())) {
+                    return null;
+                }
             }
-        }
 
-            gestor.adquirirParaReserva(asistentes, equipo);
+            // Acquire resources from the manager
+            manager.acquireForReservation(attendees, equipment);
 
-            Reservation reserva = new Reservation(idCliente, fecha, horaInicio,
-                    horaFin, asistentes, equipo, prioridad);
+            Reservation reservation = new Reservation(clientId, date, startTime,
+                    endTime, attendees, equipment, priority);
 
-            franjas.put(clave(fecha, horaInicio, horaFin), reserva);
+            timeSlots.put(generateKey(date, startTime, endTime), reservation);
 
-            return reserva;
+            return reservation;
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return null;
         } finally {
-            gestor.lockEscrituraCalendario().unlock();
+            manager.lockWriteCalendar().unlock();
         }
     }
 
-    // SC-03: Confirmar reserva
-    public boolean confirmarReserva(String idReserva) {
-        gestor.lockEscrituraCalendario().lock();
+    /**
+     * Confirms a temporary reservation, making it permanent and removing 
+     * its TTL.
+     *
+     * @param reservationId the unique 8-character ID of the reservation 
+     * to confirm
+     * @return true if the reservation was successfully found and confirmed
+     */
+    public boolean confirmReservation(String reservationId) {
+        manager.lockWriteCalendar().lock();
         try {
-            Reservation r = buscarPorId(idReserva);
+            Reservation r = findById(reservationId);
             if (r == null) return false;
-            if (r.getEstado() != Reservation.Estado.RESERVADO_TEMPORAL)
-                return false;
-            if (r.estaVencida()) return false;
+            if (r.getStatus() != Reservation.Status.RESERVADO_TEMPORAL) return false;
+            if (r.isExpired()) return false;
 
-            r.setEstado(Reservation.Estado.CONFIRMADO);
+            r.setStatus(Reservation.Status.CONFIRMADO);
             return true;
-
         } finally {
-            gestor.lockEscrituraCalendario().unlock();
+            manager.lockWriteCalendar().unlock();
         }
     }
 
-    // SC-04: Cancelar reserva
-    public boolean cancelarReserva(String idReserva) {
-        gestor.lockEscrituraCalendario().lock();
+    /**
+     * Cancels an active reservation and releases its resources back to 
+     * the manager.
+     * @param reservationId the unique identifier of the reservation to cancel
+     * @return true if the reservation was found and successfully cancelled
+     */
+    public boolean cancelReservation(String reservationId) {
+        manager.lockWriteCalendar().lock();
         try {
-            Reservation r = buscarPorId(idReserva);
+            Reservation r = findById(reservationId);
             if (r == null) return false;
-            if (r.getEstado() == Reservation.Estado.CANCELADO) return false;
+            if (r.getStatus() == Reservation.Status.CANCELADO) return false;
 
-            r.setEstado(Reservation.Estado.CANCELADO);
-
-            gestor.liberarDeReserva(r.getCantAsistentes(), r.getEquipo());
+            r.setStatus(Reservation.Status.CANCELADO);
+            manager.releaseFromReservation(r.getAttendeeCount(), 
+                    r.getEquipment());
 
             return true;
-
         } finally {
-            gestor.lockEscrituraCalendario().unlock();
+            manager.lockWriteCalendar().unlock();
         }
     }
 
-    // SC-08: Expirar reservas
-    public List<Reservation> expirarVencidas() {
-        List<Reservation> expiradas = new ArrayList<>();
-        gestor.lockEscrituraCalendario().lock();
+    /**
+     * Scans for and removes temporary reservations that have exceeded 
+     * their TTL.
+     * @return a list of newly expired reservations.
+     */
+    public List<Reservation> expireOverdue() {
+        List<Reservation> expiredReservations = new ArrayList<>();
+        manager.lockWriteCalendar().lock();
         try {
-            for (Reservation r : franjas.values()) {
-                if (r.estaVencida()) {
-                   r.setEstado(Reservation.Estado.CANCELADO);
-                   gestor.liberarDeReserva(r.getCantAsistentes(),r.getEquipo());
-                   expiradas.add(r);
+            for (Reservation r : timeSlots.values()) {
+                if (r.isExpired()) {
+                    r.setStatus(Reservation.Status.EXPIRADO);
+                    manager.releaseFromReservation(r.getAttendeeCount(), 
+                            r.getEquipment());
+                    expiredReservations.add(r);
                 }
             }
-            return expiradas;
+            return expiredReservations;
         } finally {
-            gestor.lockEscrituraCalendario().unlock();
+            manager.lockWriteCalendar().unlock();
         }
     }
 
-    // SC-09: Activas
-    public List<Reservation> getReservasActivas() {
-        gestor.lockLecturaCalendario().lock();
+    /** @return a list of all current reservations that are not cancelled. */
+    public List<Reservation> getActiveReservations() {
+        manager.lockReadCalendar().lock();
         try {
-            List<Reservation> activas = new ArrayList<>();
-            for (Reservation r : franjas.values()) {
-                if (r.getEstado() != Reservation.Estado.CANCELADO) {
-                    activas.add(r);
+            List<Reservation> activeReservations = new ArrayList<>();
+            for (Reservation r : timeSlots.values()) {
+                if (r.getStatus() != Reservation.Status.CANCELADO
+                    && r.getStatus() != Reservation.Status.EXPIRADO) {
+                    activeReservations.add(r);
                 }
             }
-            return activas;
+            return activeReservations;
         } finally {
-            gestor.lockLecturaCalendario().unlock();
+            manager.lockReadCalendar().unlock();
         }
     }
 
-    public Reservation getReservaPorId(String idReserva) {
-        gestor.lockLecturaCalendario().lock();
+    /**Retrieves a specific reservation by its unique identifier.
+     * @param reservationId the unique 8-character ID to search for
+     * @return the matching Reservation object, or null if not found
+     */
+    public Reservation getReservationById(String reservationId) {
+        manager.lockReadCalendar().lock();
         try {
-            return buscarPorId(idReserva);
+            return findById(reservationId);
         } finally {
-            gestor.lockLecturaCalendario().unlock();
+            manager.lockReadCalendar().unlock();
         }
     }
 
-    private Reservation buscarPorId(String idReserva) {
-        for (Reservation r : franjas.values()) {
-            if (r.getIdReserva().equals(idReserva)) {
+    /** Helper method to find a reservation in the values of the map. */
+    private Reservation findById(String reservationId) {
+        for (Reservation r : timeSlots.values()) {
+            if (r.getReservationId().equals(reservationId)) {
                 return r;
             }
         }
         return null;
     }
 
-    private boolean solapan(String ini1, String fin1, String ini2, String fin2){
-        return ini1.compareTo(fin2) < 0 && fin1.compareTo(ini2) > 0;
+    /** Logic to determine if two time intervals overlap. */
+    private boolean doOverlap(String start1, String end1, String start2, 
+            String end2){
+        return start1.compareTo(end2) < 0 && end1.compareTo(start2) > 0;
     }
 
-    public int capacidadOcupadaEnRango(String fecha, String inicio, String fin){
-        gestor.lockLecturaCalendario().lock();
+   /**
+     * Calculates the total number of attendees currently booked within a 
+     * specific time range.
+     * This is used to check if the auditorium's maximum capacity is being
+     * exceeded.
+     *
+     * @param date      the date to check the capacity for
+     * @param startTime the start of the time range
+     * @param endTime   the end of the time range
+     * @return the sum of attendee counts for all active reservations in the 
+     * given range
+     */
+    public int getOccupiedCapacityInRange(String date, String startTime, 
+            String endTime) {
+        manager.lockReadCalendar().lock();
         try {
-            int ocupada = 0;
+            int totalOccupied = 0;
+            for (Reservation r : timeSlots.values()) {
+                if (r.getStatus() == Reservation.Status.CANCELADO
+                    || r.getStatus() == Reservation.Status.EXPIRADO) continue;
+                if (!r.getDate().equals(date)) continue;
 
-            for (Reservation r : franjas.values()) {
-
-                if (r.getEstado() == Reservation.Estado.CANCELADO) continue;
-                if (!r.getFecha().equals(fecha)) continue;
-
-                if (solapan(inicio, fin, r.getHoraInicio(), r.getHoraFin())) {
-                    ocupada += r.getCantAsistentes();
+                if (doOverlap(startTime, endTime, r.getStartTime(), 
+                        r.getEndTime())) {
+                    totalOccupied += r.getAttendeeCount();
                 }
             }
-
-            return ocupada;
-
+            return totalOccupied;
         } finally {
-            gestor.lockLecturaCalendario().unlock();
+            manager.lockReadCalendar().unlock();
         }
     }
 
-    // carga persistencia  
-    public void cargarReservaRestaurada(Reservation r) {
-        gestor.lockEscrituraCalendario().lock();
+   /**
+     * Loads a reservation from a persistent source into the calendar.
+     * This is typically used during system startup to restore saved state.
+     *
+     * @param reservation the Reservation object to be restored into the
+     * memory map
+     */
+    public void loadRestoredReservation(Reservation reservation) {
+        manager.lockWriteCalendar().lock();
         try {
-            String key = clave(r.getFecha(), r.getHoraInicio(), r.getHoraFin());
-
-            if (!franjas.containsKey(key)) {
-                franjas.put(key, r);
+            String key = generateKey(reservation.getDate(), 
+                    reservation.getStartTime(), reservation.getEndTime());
+            if (!timeSlots.containsKey(key)) {
+                timeSlots.put(key, reservation);
             }
-
         } finally {
-            gestor.lockEscrituraCalendario().unlock();
+            manager.lockWriteCalendar().unlock();
         }
     }
 
-    public List<Reservation> getTodasLasReservas() {
-        gestor.lockLecturaCalendario().lock();
+    /** @return a copy of all reservations in the system. */
+    public List<Reservation> getAllReservations() {
+        manager.lockReadCalendar().lock();
         try {
-            return new ArrayList<>(franjas.values());
+            return new ArrayList<>(timeSlots.values());
         } finally {
-            gestor.lockLecturaCalendario().unlock();
+            manager.lockReadCalendar().unlock();
         }
     }
 
-    public int totalReservasActivas() {
-        return getReservasActivas().size();
+    /** @return the count of current non-cancelled reservations. */
+    public int getTotalActiveReservations() {
+        return getActiveReservations().size();
     }
 
-    public int totalReservas() {
-        return totalReservasActivas();
+    /** @return for getTotalActiveReservations. */
+    public int getTotalReservations() {
+        return getTotalActiveReservations();
     }
 }

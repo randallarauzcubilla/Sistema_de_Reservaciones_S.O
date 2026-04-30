@@ -5,95 +5,145 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * Manages synchronization for shared resources in the reservation system.
+ * It controls access to calendar operations, capacity limits, and equipment
+ * using locks and semaphores to ensure thread safety.
+ */
 public class SynchronizationManager {
 
-    private final ReentrantReadWriteLock rwlockCalendario =
+    private final ReentrantReadWriteLock rwlockCalendar =
             new ReentrantReadWriteLock(true);
 
-    public ReentrantReadWriteLock.ReadLock lockLecturaCalendario() {
-        return rwlockCalendario.readLock();
+    /**
+     * Provides the read lock for calendar access.
+     *
+     * @return the read lock of the calendar
+     */
+    public ReentrantReadWriteLock.ReadLock lockReadCalendar() {
+        return rwlockCalendar.readLock();
     }
 
-    public ReentrantReadWriteLock.WriteLock lockEscrituraCalendario() {
-        return rwlockCalendario.writeLock();
+    /**
+     * Provides the write lock for calendar access.
+     *
+     * @return the write lock of the calendar
+     */
+    public ReentrantReadWriteLock.WriteLock lockWriteCalendar() {
+        return rwlockCalendar.writeLock();
     }
 
-    private final int capacidadMaxima;
-    private final Semaphore semCapacidad;
+    private final int maxCapacity;
+    private final Semaphore capacitySemaphore;
 
-    private final Semaphore semProyector;
-    private final Semaphore semMicrofono;
-    private final Semaphore semSonido;
+    private final Semaphore projectorSemaphore;
+    private final Semaphore microphoneSemaphore;
+    private final Semaphore soundSemaphore;
 
-    private final ReentrantLock mutexTTL = new ReentrantLock(true);
-    private final ReentrantLock mutexBitacora = new ReentrantLock(true);
+    private final ReentrantLock ttlMutex = new ReentrantLock(true);
+    private final ReentrantLock logMutex = new ReentrantLock(true);
 
-    public SynchronizationManager(int capacidadMaxima,
-                               int unidadesProyector,
-                               int unidadesMicrofono,
-                               int unidadesSonido) {
+    /**
+     * Creates a new synchronization manager with resource limits.
+     *
+     * @param maxCapacity maximum number of attendees allowed
+     * @param projectorUnits number of available projectors
+     * @param microphoneUnits number of available microphones
+     * @param soundUnits number of available sound systems
+     */
+    public SynchronizationManager(int maxCapacity,
+                               int projectorUnits,
+                               int microphoneUnits,
+                               int soundUnits) {
 
-        this.capacidadMaxima = capacidadMaxima;
+        this.maxCapacity = maxCapacity;
 
-        this.semCapacidad = new Semaphore(capacidadMaxima, true);
-        this.semProyector = new Semaphore(unidadesProyector, true);
-        this.semMicrofono = new Semaphore(unidadesMicrofono, true);
-        this.semSonido = new Semaphore(unidadesSonido, true);
+        this.capacitySemaphore = new Semaphore(maxCapacity, true);
+        this.projectorSemaphore = new Semaphore(projectorUnits, true);
+        this.microphoneSemaphore = new Semaphore(microphoneUnits, true);
+        this.soundSemaphore = new Semaphore(soundUnits, true);
     }
 
-    public int getCapacidadMaxima() {
-        return capacidadMaxima;
+    /**
+     * @return maximum capacity allowed in the system
+     */
+    public int getMaxCapacity() {
+        return maxCapacity;
     }
 
-    public int capacidadDisponible() {
-        return semCapacidad.availablePermits();
+    /**
+     * @return number of available capacity permits
+     */
+    public int getAvailableCapacity() {
+        return capacitySemaphore.availablePermits();
     }
 
-    public void adquirirParaReserva(int asistentes, Reservation.Equipo equipo)
+    /**
+     * Acquires capacity and required equipment for a reservation.
+     *
+     * @param attendees number of attendees in the reservation
+     * @param equipment required equipment type
+     * @throws InterruptedException if the thread is interrupted while waiting
+     */
+    public void acquireForReservation(int attendees, 
+            Reservation.Equipment equipment)
             throws InterruptedException {
 
-        semCapacidad.acquire(asistentes);
+        capacitySemaphore.acquire(attendees);
 
         try {
-            adquirirEquipo(equipo);
+            acquireEquipment(equipment);
         } catch (InterruptedException e) {
-            semCapacidad.release(asistentes);
+            capacitySemaphore.release(attendees);
             throw e;
         }
     }
 
-    public void liberarDeReserva(int asistentes, Reservation.Equipo equipo) {
+    /**
+     * Releases capacity and equipment from a reservation.
+     *
+     * @param attendees number of attendees to release
+     * @param equipment equipment type to release
+     */
+    public void releaseFromReservation(int attendees, Reservation.Equipment 
+            equipment) {
 
-        liberarEquipo(equipo);
+        releaseEquipment(equipment);
 
-        if (asistentes > 0) {
-            semCapacidad.release(asistentes);
+        if (attendees > 0) {
+            capacitySemaphore.release(attendees);
         }
     }
 
-    private void adquirirEquipo(Reservation.Equipo equipo)
+    /**
+     * Acquires required equipment semaphores.
+     *
+     * @param equipment equipment type requested
+     * @throws InterruptedException if acquisition is interrupted
+     */
+    private void acquireEquipment(Reservation.Equipment equipment)
             throws InterruptedException {
 
-        if (equipo == null) return;
+        if (equipment == null) return;
 
-        switch (equipo) {
+        switch (equipment) {
 
             case PROYECTOR:
-                semProyector.acquire();
+                projectorSemaphore.acquire();
                 break;
 
             case MICROFONO:
-                semMicrofono.acquire();
+                microphoneSemaphore.acquire();
                 break;
 
             case SONIDO:
-                semSonido.acquire();
+                soundSemaphore.acquire();
                 break;
 
             case COMPLETO:
-                semProyector.acquire();
-                semMicrofono.acquire();
-                semSonido.acquire();
+                projectorSemaphore.acquire();
+                microphoneSemaphore.acquire();
+                soundSemaphore.acquire();
                 break;
 
             case NINGUNO:
@@ -102,28 +152,33 @@ public class SynchronizationManager {
         }
     }
 
-    private void liberarEquipo(Reservation.Equipo equipo) {
+    /**
+     * Releases previously acquired equipment semaphores.
+     *
+     * @param equipment equipment type to release
+     */
+    private void releaseEquipment(Reservation.Equipment equipment) {
 
-        if (equipo == null) return;
+        if (equipment == null) return;
 
-        switch (equipo) {
+        switch (equipment) {
 
             case PROYECTOR:
-                semProyector.release();
+                projectorSemaphore.release();
                 break;
 
             case MICROFONO:
-                semMicrofono.release();
+                microphoneSemaphore.release();
                 break;
 
             case SONIDO:
-                semSonido.release();
+                soundSemaphore.release();
                 break;
 
             case COMPLETO:
-                semSonido.release();
-                semMicrofono.release();
-                semProyector.release();
+                soundSemaphore.release();
+                microphoneSemaphore.release();
+                projectorSemaphore.release();
                 break;
 
             case NINGUNO:
@@ -132,23 +187,38 @@ public class SynchronizationManager {
         }
     }
 
-    public ReentrantLock getMutexTTL() {
-        return mutexTTL;
+    /**
+     * @return mutex used for TTL thread synchronization
+     */
+    public ReentrantLock getTtlMutex() {
+        return ttlMutex;
     }
 
-    public ReentrantLock getMutexBitacora() {
-        return mutexBitacora;
+    /**
+     * @return mutex used for logging synchronization
+     */
+    public ReentrantLock getLogMutex() {
+        return logMutex;
     }
 
-    public int proyectoresDisponibles() {
-        return semProyector.availablePermits();
+    /**
+     * @return number of available projectors
+     */
+    public int getAvailableProjectors() {
+        return projectorSemaphore.availablePermits();
     }
 
-    public int microfonosDisponibles() {
-        return semMicrofono.availablePermits();
+    /**
+     * @return number of available microphones
+     */
+    public int getAvailableMicrophones() {
+        return microphoneSemaphore.availablePermits();
     }
 
-    public int sonidosDisponibles() {
-        return semSonido.availablePermits();
+    /**
+     * @return number of available sound systems
+     */
+    public int getAvailableSound() {
+        return soundSemaphore.availablePermits();
     }
 }

@@ -8,25 +8,42 @@ import Logging.AuditoriumLog;
 import UI.FrmServer;
 import java.util.*;
 
+/**
+ * Main application class for the server.
+ * Manages shared resources and initializes the synchronization manager.
+ */
 public class ServerApp {
 
-    // SynchronizationManager — base de todos los locks
-    // Parámetros: capacidad=200, proyectores=3, micrófonos=5, sonido=2
-    public static final SynchronizationManager gestor
+    /**
+     * Base synchronization manager for all locks.
+     * Parameters: capacity=200, projectors=3, microphones=5, sound=2.
+     */
+    public static final SynchronizationManager manager
             = new SynchronizationManager(200, 3, 5, 2);
 
-    // Recursos compartidos R1 → R5
-    public static final ReservationCalendar calendario = 
-            new ReservationCalendar(gestor);
-    public static final AuditoriumManager recursos = 
-            new AuditoriumManager(gestor);
-    public static final TTLQueue colaTTL = new TTLQueue(gestor);
-    public static final AuditoriumLog bitacora = new AuditoriumLog(gestor);
+    /** Shared auditorium calendar. */
+    public static final ReservationCalendar calendar = 
+            new ReservationCalendar(manager);
 
-    // Clientes conectados
-    public static final List<ClientHandler> clientesConectados
+    /** Manager for physical resources (projectors, mics, etc). */
+    public static final AuditoriumManager resources = 
+            new AuditoriumManager(manager);
+
+    /** Queue to handle reservation expiration (Time To Live). */
+    public static final TTLQueue ttlQueue = new TTLQueue(manager);
+
+    /** System log for recording events. */
+    public static final AuditoriumLog log = new AuditoriumLog(manager);
+
+    /** List of currently connected clients, thread-safe. */
+    public static final List<ClientHandler> connectedClients
             = Collections.synchronizedList(new ArrayList<>());
 
+    /**
+     * Application entry point. Sets the UI Look and Feel and opens the 
+     * server window.
+     * @param args command line arguments.
+     */
     public static void main(String[] args) {
         javax.swing.SwingUtilities.invokeLater(() -> {
             try {
