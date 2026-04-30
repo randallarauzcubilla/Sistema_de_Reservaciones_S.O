@@ -99,6 +99,20 @@ public class SynchronizationManager {
         }
     }
 
+    /** Acquires only the equipment semaphore — capacity is managed per time range.
+     * @param equipment
+     * @throws java.lang.InterruptedException */
+    public void acquireEquipmentOnly(Reservation.Equipment equipment)
+            throws InterruptedException {
+        acquireEquipment(equipment);
+    }
+
+    /** Releases only the equipment semaphore.
+     * @param equipment */
+    public void releaseEquipmentOnly(Reservation.Equipment equipment) {
+        releaseEquipment(equipment);
+    }
+
     /**
      * Releases capacity and equipment from a reservation.
      *

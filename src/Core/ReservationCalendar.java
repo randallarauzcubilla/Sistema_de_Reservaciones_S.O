@@ -100,7 +100,7 @@ public class ReservationCalendar {
             }
 
             // Acquire resources from the manager
-            manager.acquireForReservation(attendees, equipment);
+            manager.acquireEquipmentOnly(equipment);
 
             Reservation reservation = new Reservation(clientId, date, startTime,
                     endTime, attendees, equipment, priority);
@@ -154,8 +154,7 @@ public class ReservationCalendar {
             if (r.getStatus() == Reservation.Status.CANCELADO) return false;
 
             r.setStatus(Reservation.Status.CANCELADO);
-            manager.releaseFromReservation(r.getAttendeeCount(), 
-                    r.getEquipment());
+            manager.releaseEquipmentOnly(r.getEquipment());
 
             return true;
         } finally {
@@ -175,8 +174,7 @@ public class ReservationCalendar {
             for (Reservation r : timeSlots.values()) {
                 if (r.isExpired()) {
                     r.setStatus(Reservation.Status.EXPIRADO);
-                    manager.releaseFromReservation(r.getAttendeeCount(), 
-                            r.getEquipment());
+                    manager.releaseEquipmentOnly(r.getEquipment());
                     expiredReservations.add(r);
                 }
             }
