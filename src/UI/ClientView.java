@@ -22,6 +22,17 @@ import javax.swing.JFormattedTextField;
 import java.util.Date;
 import javax.imageio.ImageIO;
 
+/**
+ * Main graphical interface for the Client application.
+ *
+ * This class handles the complete lifecycle of a client session: 1. User
+ * authentication and identity verification via TSE API. 2. Real-time connection
+ * management with the Central Server. 3. Dynamic UI switching between Login,
+ * Main Menu, and Reservation forms. 4. Asynchronous handling of server
+ * responses and TTL (Time-To-Live) updates.
+ *
+ * Adheres to the UNA (Universidad Nacional) visual identity standards.
+ */
 public class ClientView extends JFrame {
 
     // =========================================================
@@ -42,7 +53,7 @@ public class ClientView extends JFrame {
     // =========================================================
     // TSE API
     // =========================================================
-    private static final String TSE_API_URL = "https://apis.gometa.org/cedulas/";
+    private static final String TSE_API_URL ="https://apis.gometa.org/cedulas/";
 
     // =========================================================
     // SERVER CONNECTION
@@ -55,53 +66,55 @@ public class ClientView extends JFrame {
     // =========================================================
     // LOGIN COMPONENTS
     // =========================================================
-    private JTextField txtName;
-    private JTextField txtDNI;
-    private JComboBox<String> cmbRole;
-    private JButton btnConnect;
-    private JButton btnLogout;
-    private JLabel lblConnectionStatus;
-    private JLabel lblVerification;
-    private JLabel lblWelcome;
+    private JTextField txtClientName;
+    private JTextField txtClientId;
+    private JComboBox<String> cbUserRole;
+    private JButton btnEstablishConnection;
+    private JButton btnTerminateSession;
+    private JLabel lblStatusIndicator;
+    private JLabel lblApiFeedback;
+    private JLabel lblUserWelcome;
 
     // =========================================================
     // RESERVATION FORM COMPONENTS
     // =========================================================
-    private JTextField txtDate;
+    private JTextField txtReservationDate;
     private JComboBox<String> cmbStartTime;
     private JComboBox<String> cmbEndTime;
-    private JTextField txtAttendees;
-    private JComboBox<String> cmbEquipment;
-    private JButton btnReserve;
-    private JButton btnConfirm;
-    private JButton btnCancel;
+    private JTextField txtAttendeeCount;
+    private JComboBox<String> cbEquipmentType;
+    private JButton btnSubmitRequest;
+    private JButton btnConfirmSelection;
+    private JButton btnAbortReservation;
     private JLabel lblDuration;
-    private JButton btnBackToMenu;
-    private JButton btnOpenReservation; // New: "Crear Reserva" button
+    private JButton btnReturnToMenu;
+    private JButton btnCreateNewRequest; // New: "Crear Reserva" button
 
     // =========================================================
     // TABLE & MESSAGE COMPONENTS
     // =========================================================
-    private JTable reservationsTable;
-    private DefaultTableModel reservationsModel;
-    private JTextArea txtMessages;
+    private JTable tblClientReservations;
+    private DefaultTableModel tblModel;
+    private JTextArea txtServerLogs;
 
     // =========================================================
     // APPLICATION STATE
     // =========================================================
     private boolean isConnected = false;
-    private boolean idVerified = false;
-    private String lastCheckedId = "";
-    private JPanel mainPanel;
-    private JPanel loginPanel;
-    private JPanel menuPanel;
-    private JPanel reservationPanel;
-    private volatile boolean running = false;
-    private Timer ttlTimer;
+    private boolean isIdVerified = false;
+    private String sessionCheckedId = "";
+    private JPanel pnlMainContainer;
+    private JPanel pnlLoginView;
+    private JPanel pnlMenuView;
+    private JPanel pnlReservationForm;
+    private volatile boolean isWorkerRunning = false;
+    private Timer ttlCountdownTimer;
 
-    // =========================================================
-    // CONSTRUCTOR
-    // =========================================================
+    /**
+     * Constructs the ClientView interface. Initializes window properties, UI
+     * components, and starts the local TTL countdown timer for temporary
+     * reservations.
+     */
     public ClientView() {
         setTitle("UNIVERSIDAD NACIONAL - Sistema de Reservas de Salas");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -110,49 +123,50 @@ public class ClientView extends JFrame {
         setLocationRelativeTo(null);
         setBackground(BG_WHITE);
         initComponents();
-        ttlTimer = new Timer(1000, e -> updateTTL());
-        ttlTimer.start();
+        ttlCountdownTimer = new Timer(1000, e -> updateTTL());
+        ttlCountdownTimer.start();
     }
 
-    // =========================================================
-    // COMPONENT INITIALIZATION
-    // =========================================================
+    /**
+     * Initializes the root UI structure using a CardLayout to manage navigation
+     * between the login, main menu, and reservation screens.
+     */
     private void initComponents() {
-        // Root panel with CardLayout for navigation
-        mainPanel = new JPanel(new CardLayout());
-        mainPanel.setBackground(BG_WHITE);
+        pnlMainContainer = new JPanel(new CardLayout());
+        pnlMainContainer.setBackground(BG_WHITE);
 
-        // Create different panels
-        loginPanel = buildLoginPanel();
-        menuPanel = buildMenuPanel();
-        reservationPanel = buildReservationPanel();
+        pnlLoginView = buildLoginPanel();
+        pnlMenuView = buildMenuPanel();
+        pnlReservationForm = buildReservationPanel();
 
-        mainPanel.add(loginPanel, "LOGIN");
-        mainPanel.add(menuPanel, "MENU");
-        mainPanel.add(reservationPanel, "RESERVATION");
+        pnlMainContainer.add(pnlLoginView, "LOGIN");
+        pnlMainContainer.add(pnlMenuView, "MENU");
+        pnlMainContainer.add(pnlReservationForm, "RESERVATION");
 
-        // Header
         JPanel headerPanel = createHeader();
 
-        // Main layout
         JPanel root = new JPanel(new BorderLayout(0, 0));
         root.setBackground(BG_WHITE);
         root.add(headerPanel, BorderLayout.NORTH);
-        root.add(mainPanel, BorderLayout.CENTER);
-
+        root.add(pnlMainContainer, BorderLayout.CENTER);
         add(root);
 
-        // Show login initially
-        CardLayout cl = (CardLayout) mainPanel.getLayout();
-        cl.show(mainPanel, "LOGIN");
+        CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
+        cl.show(pnlMainContainer, "LOGIN");
     }
 
+    /**
+     * Creates the top navigation bar (Header). Features the university
+     * branding, system title, logo, and the dynamic logout button with hover
+     * effects.
+     *
+     * @return A styled JPanel representing the application header.
+     */
     private JPanel createHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(ACCENT_RED);
         header.setBorder(new EmptyBorder(15, 25, 15, 25));
 
-        // Left: University name and system title
         JPanel headerText = new JPanel(new GridLayout(2, 1));
         headerText.setBackground(ACCENT_RED);
 
@@ -168,7 +182,6 @@ public class ClientView extends JFrame {
         headerText.add(lblSystem);
         header.add(headerText, BorderLayout.WEST);
 
-        // Right: logo + botón logout
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         rightPanel.setBackground(ACCENT_RED);
 
@@ -177,50 +190,66 @@ public class ClientView extends JFrame {
             rightPanel.add(logoLabel);
         }
 
-        btnLogout = new JButton("Cerrar Sesión");
-        btnLogout.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnLogout.setForeground(Color.WHITE);
-        btnLogout.setFocusPainted(false);
-        btnLogout.setContentAreaFilled(false);
-        btnLogout.setOpaque(false);
-        btnLogout.setBorder(BorderFactory.createCompoundBorder(
+        btnTerminateSession = new JButton("Cerrar Sesión");
+        btnTerminateSession.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnTerminateSession.setForeground(Color.WHITE);
+        btnTerminateSession.setFocusPainted(false);
+        btnTerminateSession.setContentAreaFilled(false);
+        btnTerminateSession.setOpaque(false);
+        btnTerminateSession.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(Color.WHITE, 1),
                 new EmptyBorder(7, 18, 7, 18)));
-        btnLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnLogout.setVisible(false);
-        btnLogout.addActionListener(e -> logout());
-        btnLogout.addMouseListener(new MouseAdapter() {
+        btnTerminateSession.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnTerminateSession.setVisible(false);
+        btnTerminateSession.addActionListener(e -> logout());
+        btnTerminateSession.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                btnLogout.setForeground(ACCENT_RED);
-                btnLogout.setOpaque(true);
-                btnLogout.setBackground(Color.WHITE);
+                btnTerminateSession.setForeground(ACCENT_RED);
+                btnTerminateSession.setOpaque(true);
+                btnTerminateSession.setBackground(Color.WHITE);
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                btnLogout.setForeground(Color.WHITE);
-                btnLogout.setOpaque(false);
+                btnTerminateSession.setForeground(Color.WHITE);
+                btnTerminateSession.setOpaque(false);
             }
         });
 
-        rightPanel.add(btnLogout);
+        rightPanel.add(btnTerminateSession);
         header.add(rightPanel, BorderLayout.EAST);
-
         return header;
     }
 
+    /**
+     * Loads and processes the institutional logo from multiple possible
+     * resource paths.
+     *
+     * This method implements a multi-path lookup strategy (Classpath, package
+     * root, local resources, and src folders) to ensure the logo is found
+     * regardless of the execution environment (IDE vs JAR).
+     *
+     * Key processing features: 1. Dynamic Transparency: Converts pixel
+     * luminance to Alpha values, making darker areas transparent and preserving
+     * lighter tones. 2. High-Fidelity Scaling: Utilizes a multi-step reduction
+     * algorithm via multiStepScale to prevent aliasing and maintain sharpness.
+     *
+     * @param targetW The desired width of the logo.
+     * @param targetH The desired height of the logo.
+     * @return A JLabel containing the processed ImageIcon, or null if loading
+     * fails.
+     */
     private JLabel loadLogo(int targetW, int targetH) {
         try {
             BufferedImage original = null;
 
-            // Intento 1: classpath raíz
-            java.io.InputStream is = getClass().getResourceAsStream("/LogoBlanco.png");
+            java.io.InputStream is = getClass().getResourceAsStream(
+                    "/LogoBlanco.png");
             if (is != null) {
                 original = ImageIO.read(is);
             }
 
-            // Intento 2: mismo paquete que la clase
             if (original == null) {
                 is = getClass().getResourceAsStream("LogoBlanco.png");
                 if (is != null) {
@@ -228,7 +257,6 @@ public class ClientView extends JFrame {
                 }
             }
 
-            // Intento 3: carpeta resources relativa al directorio de ejecución
             if (original == null) {
                 java.io.File f = new java.io.File("resources/LogoBlanco.png");
                 if (f.exists()) {
@@ -236,15 +264,14 @@ public class ClientView extends JFrame {
                 }
             }
 
-            // Intento 4: carpeta src/resources
             if (original == null) {
-                java.io.File f = new java.io.File("src/resources/LogoBlanco.png");
+                java.io.File f = new java.io.File(
+                        "src/resources/LogoBlanco.png");
                 if (f.exists()) {
                     original = ImageIO.read(f);
                 }
             }
 
-            // Intento 5: ruta absoluta desde el jar/clase
             if (original == null) {
                 java.net.URL url = getClass().getClassLoader()
                         .getResource("LogoBlanco.png");
@@ -259,7 +286,8 @@ public class ClientView extends JFrame {
             }
 
             BufferedImage transparent = new BufferedImage(
-                    original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
+                    original.getWidth(), original.getHeight(),
+                    BufferedImage.TYPE_INT_ARGB);
 
             for (int y = 0; y < original.getHeight(); y++) {
                 for (int x = 0; x < original.getWidth(); x++) {
@@ -268,41 +296,51 @@ public class ClientView extends JFrame {
                     int g = (rgb >> 8) & 0xFF;
                     int b = rgb & 0xFF;
                     int lum = (r * 299 + g * 587 + b * 114) / 1000;
-                    // Curva de contraste: oscuros → transparente, claros → opaco total
+
                     int alpha = lum < 40 ? 0
                             : lum > 180 ? 255
                                     : (lum - 40) * 255 / 140;
                     transparent.setRGB(x, y, (alpha << 24) | 0x00FFFFFF);
                 }
             }
-
-            // Escalado multi-paso: reducir a la mitad en cada iteración evita
-            // la pérdida de detalle de un único salto grande → imagen más nítida.
-            BufferedImage scaled = multiStepScale(transparent, targetW, targetH);
+            BufferedImage scaled = multiStepScale(transparent, targetW,
+                    targetH);
 
             JLabel lbl = new JLabel(new ImageIcon(scaled));
             lbl.setBorder(new EmptyBorder(0, 0, 0, 10));
             return lbl;
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             System.out.println("Error cargando logo: " + e.getMessage());
             return null;
         }
     }
 
-    // =========================================================
-    // MULTI-STEP SCALING — mantiene nitidez al reducir logos
-    // =========================================================
-    private BufferedImage multiStepScale(BufferedImage src, int targetW, int targetH) {
+    /**
+     * Scales an image using a progressive multi-step downsampling technique.
+     *
+     * To maintain maximum sharpness and avoid aliasing artifacts, the method
+     * reduces the image dimensions by half in each iteration until it nears the
+     * target size. It applies high-quality rendering hints (Bilinear for
+     * intermediate steps and Bicubic for the final pass) to preserve logo
+     * detail and alpha channel transparency.
+     *
+     * @param src The source BufferedImage to scale.
+     * @param targetW The final desired width.
+     * @param targetH The final desired height.
+     * @return A high-quality scaled BufferedImage.
+     */
+    private BufferedImage multiStepScale(BufferedImage src, int targetW,
+            int targetH) {
         int w = src.getWidth();
         int h = src.getHeight();
         BufferedImage current = src;
 
-        // Reducir a la mitad repetidamente mientras sea más del doble del tamaño objetivo
         while (w > targetW * 2 || h > targetH * 2) {
             w = Math.max(w / 2, targetW);
             h = Math.max(h / 2, targetH);
-            BufferedImage tmp = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+            BufferedImage tmp = new BufferedImage(w, h,
+                    BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2 = tmp.createGraphics();
             g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                     RenderingHints.VALUE_INTERPOLATION_BILINEAR);
@@ -315,8 +353,8 @@ public class ClientView extends JFrame {
             current = tmp;
         }
 
-        // Paso final con máxima calidad hacia el tamaño exacto
-        BufferedImage result = new BufferedImage(targetW, targetH, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage result = new BufferedImage(targetW, targetH,
+                BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2 = result.createGraphics();
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_BICUBIC);
@@ -331,9 +369,22 @@ public class ClientView extends JFrame {
         return result;
     }
 
-    // =========================================================
-    // LOGIN PANEL (STEP 1)
-    // =========================================================
+    /**
+     * Constructs the login interface panel using GridBagLayout for precise
+     * component alignment.
+     *
+     * Features included: 1. Identity Verification: Integrates focus and action
+     * listeners on the ID field to trigger automated TSE API queries
+     * (queryTSE). 2. Data Integrity: The full name field is set to read-only,
+     * ensuring users cannot spoof identities retrieved from the official API.
+     * 3. Role Selection: Provides a customized JComboBox for university
+     * hierarchy classification. 4. UX/UI: Adheres to UNA brand guidelines with
+     * hover-ready buttons, custom padding (EmptyBorder), and high-contrast
+     * typography for accessibility.
+     *
+     * @return A styled JPanel containing the login card and authentication
+     * controls.
+     */
     private JPanel buildLoginPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG_WHITE);
@@ -351,15 +402,14 @@ public class ClientView extends JFrame {
         gbc.weightx = 1.0;
         gbc.insets = new Insets(8, 10, 8, 10);
 
-        // Title
         gbc.gridy = 0;
         gbc.insets = new Insets(0, 10, 25, 10);
-        JLabel lblLoginTitle = new JLabel("Inicio de Sesión", SwingConstants.CENTER);
+        JLabel lblLoginTitle = new JLabel("Inicio de Sesión",
+                SwingConstants.CENTER);
         lblLoginTitle.setFont(new Font("Segoe UI", Font.BOLD, 24));
         lblLoginTitle.setForeground(ACCENT_RED);
         loginCard.add(lblLoginTitle, gbc);
 
-        // DNI/Cédula field
         gbc.gridy = 1;
         gbc.insets = new Insets(8, 10, 5, 10);
         JLabel lblDNI = new JLabel("Número de Cédula");
@@ -367,53 +417,50 @@ public class ClientView extends JFrame {
         lblDNI.setForeground(TEXT_DARK);
         loginCard.add(lblDNI, gbc);
 
-        lblConnectionStatus = new JLabel(" ");
-        lblConnectionStatus.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblConnectionStatus.setForeground(Color.GRAY);
+        lblStatusIndicator = new JLabel(" ");
+        lblStatusIndicator.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblStatusIndicator.setForeground(Color.GRAY);
 
         gbc.gridy++;
-        panel.add(lblConnectionStatus, gbc);
+        panel.add(lblStatusIndicator, gbc);
 
         gbc.gridy = 2;
         gbc.insets = new Insets(0, 10, 5, 10);
-        txtDNI = new JTextField();
-        txtDNI.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        txtDNI.setBackground(BG_WHITE);
-        txtDNI.setForeground(TEXT_DARK);
-        txtDNI.setBorder(BorderFactory.createCompoundBorder(
+        txtClientId = new JTextField();
+        txtClientId.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtClientId.setBackground(BG_WHITE);
+        txtClientId.setForeground(TEXT_DARK);
+        txtClientId.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER_COLOR, 1),
                 new EmptyBorder(10, 15, 10, 15)));
-        txtDNI.setPreferredSize(new Dimension(0, 45));
+        txtClientId.setPreferredSize(new Dimension(0, 45));
 
-        // AGREGAR ESTO: ActionListener para cuando presiona Enter
-        txtDNI.addActionListener(e -> {
-            String id = txtDNI.getText().trim();
-            if (!id.isEmpty() && !id.equals(lastCheckedId)) {
+        txtClientId.addActionListener(e -> {
+            String id = txtClientId.getText().trim();
+            if (!id.isEmpty() && !id.equals(sessionCheckedId)) {
                 queryTSE(id);
             }
         });
 
-        // AGREGAR ESTO: FocusListener para cuando pierde el foco
-        txtDNI.addFocusListener(new FocusAdapter() {
+        txtClientId.addFocusListener(new FocusAdapter() {
             @Override
             public void focusLost(FocusEvent e) {
-                String id = txtDNI.getText().trim();
-                if (!id.isEmpty() && !id.equals(lastCheckedId)) {
+                String id = txtClientId.getText().trim();
+                if (!id.isEmpty() && !id.equals(sessionCheckedId)) {
                     queryTSE(id);
                 }
             }
         });
 
-        loginCard.add(txtDNI, gbc);
-        // Verification indicator
+        loginCard.add(txtClientId, gbc);
+
         gbc.gridy = 3;
         gbc.insets = new Insets(5, 10, 5, 10);
-        lblVerification = new JLabel("○  Ingrese su cédula para verificar");
-        lblVerification.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 11));
-        lblVerification.setForeground(TEXT_MUTED);
-        loginCard.add(lblVerification, gbc);
+        lblApiFeedback = new JLabel("○  Ingrese su cédula para verificar");
+        lblApiFeedback.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 11));
+        lblApiFeedback.setForeground(TEXT_MUTED);
+        loginCard.add(lblApiFeedback, gbc);
 
-        // Name field (read-only)
         gbc.gridy = 4;
         gbc.insets = new Insets(10, 10, 5, 10);
         JLabel lblName = new JLabel("Nombre Completo");
@@ -423,18 +470,17 @@ public class ClientView extends JFrame {
 
         gbc.gridy = 5;
         gbc.insets = new Insets(0, 10, 5, 10);
-        txtName = new JTextField();
-        txtName.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        txtName.setBackground(new Color(245, 245, 245));
-        txtName.setForeground(TEXT_DARK);
-        txtName.setEditable(false);
-        txtName.setBorder(BorderFactory.createCompoundBorder(
+        txtClientName = new JTextField();
+        txtClientName.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        txtClientName.setBackground(new Color(245, 245, 245));
+        txtClientName.setForeground(TEXT_DARK);
+        txtClientName.setEditable(false);
+        txtClientName.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER_COLOR, 1),
                 new EmptyBorder(10, 15, 10, 15)));
-        txtName.setPreferredSize(new Dimension(0, 45));
-        loginCard.add(txtName, gbc);
+        txtClientName.setPreferredSize(new Dimension(0, 45));
+        loginCard.add(txtClientName, gbc);
 
-        // Role selection
         gbc.gridy = 6;
         gbc.insets = new Insets(10, 10, 5, 10);
         JLabel lblRole = new JLabel("Rol en la Universidad");
@@ -444,37 +490,49 @@ public class ClientView extends JFrame {
 
         gbc.gridy = 7;
         gbc.insets = new Insets(0, 10, 5, 10);
-        cmbRole = new JComboBox<>(new String[]{"ESTUDIANTE", "DOCENTE", "DECANATURA"});
-        styleCombo(cmbRole);
-        cmbRole.setPreferredSize(new Dimension(0, 45));
-        loginCard.add(cmbRole, gbc);
+        cbUserRole = new JComboBox<>(new String[]{"ESTUDIANTE", "DOCENTE",
+            "DECANATURA"});
+        styleCombo(cbUserRole);
+        cbUserRole.setPreferredSize(new Dimension(0, 45));
+        loginCard.add(cbUserRole, gbc);
 
-        // Connect button
         gbc.gridy = 8;
         gbc.insets = new Insets(25, 10, 10, 10);
-        btnConnect = new JButton("Ingresar al Sistema");
-        btnConnect.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        btnConnect.setBackground(ACCENT_RED);
-        btnConnect.setForeground(Color.WHITE);
-        btnConnect.setFocusPainted(false);
+        btnEstablishConnection = new JButton("Ingresar al Sistema");
+        btnEstablishConnection.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnEstablishConnection.setBackground(ACCENT_RED);
+        btnEstablishConnection.setForeground(Color.WHITE);
+        btnEstablishConnection.setFocusPainted(false);
 
-        // IMPORTANTE
-        btnConnect.setContentAreaFilled(true);
-        btnConnect.setOpaque(true);
-        btnConnect.setBorderPainted(false);
+        btnEstablishConnection.setContentAreaFilled(true);
+        btnEstablishConnection.setOpaque(true);
+        btnEstablishConnection.setBorderPainted(false);
 
-        btnConnect.setBorder(BorderFactory.createEmptyBorder(12, 30, 12, 30));
-        btnConnect.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnConnect.addActionListener(e -> connect());
-        loginCard.add(btnConnect, gbc);
+        btnEstablishConnection.setBorder(BorderFactory.createEmptyBorder(
+                12, 30, 12, 30));
+        btnEstablishConnection.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnEstablishConnection.addActionListener(e -> connect());
+        loginCard.add(btnEstablishConnection, gbc);
 
         panel.add(loginCard);
         return panel;
     }
 
-    // =========================================================
-    // MENU PANEL (STEP 2)
-    // =========================================================
+    /**
+     * Builds the main navigation menu displayed after successful
+     * authentication.
+     *
+     * The panel uses a card-based design pattern: 1. Dynamic Greeting: Updates
+     * lblUserWelcome with the authenticated user's information retrieved from
+     * the session. 2. Navigation Logic: Implements lambda-based action
+     * listeners to trigger CardLayout transitions (e.g., switching to
+     * "RESERVATION" view). 3. Modular UI: Leverages a helper method
+     * (createMenuCard) to maintain visual consistency across different menu
+     * options. 4. Layout: Combines GridBagLayout for centering the main
+     * container with GridLayout for the uniform distribution of action cards.
+     *
+     * @return A styled JPanel containing the primary navigation hub.
+     */
     private JPanel buildMenuPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG_LIGHT);
@@ -484,7 +542,6 @@ public class ClientView extends JFrame {
         gbc.gridx = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // Tarjeta principal
         JPanel menuCard = new JPanel(new GridBagLayout());
         menuCard.setBackground(BG_WHITE);
         menuCard.setBorder(BorderFactory.createCompoundBorder(
@@ -497,43 +554,39 @@ public class ClientView extends JFrame {
         gbcCard.gridx = 0;
         gbcCard.fill = GridBagConstraints.HORIZONTAL;
 
-        // Título
         JLabel title = new JLabel("Menú Principal", SwingConstants.CENTER);
         title.setFont(new Font("Segoe UI", Font.BOLD, 26));
         title.setForeground(ACCENT_RED);
         gbcCard.gridy = 0;
         menuCard.add(title, gbcCard);
 
-        // Bienvenida
-        lblWelcome = new JLabel("Bienvenido(a)", SwingConstants.CENTER);
-        lblWelcome.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        lblWelcome.setForeground(SUCCESS_GREEN);
+        lblUserWelcome = new JLabel("Bienvenido(a)", SwingConstants.CENTER);
+        lblUserWelcome.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblUserWelcome.setForeground(SUCCESS_GREEN);
         gbcCard.gridy = 1;
-        menuCard.add(lblWelcome, gbcCard);
+        menuCard.add(lblUserWelcome, gbcCard);
 
-        // PANEL DE TARJETAS
         JPanel cardsPanel = new JPanel(new GridLayout(1, 2, 30, 0));
         cardsPanel.setBackground(BG_LIGHT);
 
-        // Tarjeta Crear Reserva
         JPanel cardReserve = createMenuCard(
                 "+",
                 "Crear Reserva",
                 "Nueva reserva de sala",
                 () -> {
 
-                    CardLayout cl = (CardLayout) mainPanel.getLayout();
-                    cl.show(mainPanel, "RESERVATION");
+                    CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
+                    cl.show(pnlMainContainer, "RESERVATION");
                 }
         );
 
-        // Tarjeta Mis Reservas
         JPanel cardMyReservations = createMenuCard(
                 "≡",
                 "Mis Reservas",
                 "Ver reservas activas",
                 () -> {
-                    JOptionPane.showMessageDialog(this, "Funcionalidad próximamente");
+                    JOptionPane.showMessageDialog(this, 
+                            "Funcionalidad próximamente");
                 }
         );
 
@@ -549,29 +602,46 @@ public class ClientView extends JFrame {
         return panel;
     }
 
-    private JPanel createMenuCard(String icon, String title, String subtitle, Runnable action) {
+    /**
+     * Generates a stylized interactive card component for the main menu.
+     *
+     * Key technical implementations: 1. Functional Interface: Accepts a
+     * {@link Runnable} to decouple the UI component from its navigation or
+     * business logic. 2. Visual Feedback: Implements a {@link MouseListener} to
+     * toggle borders and thickness during hover events, providing clear
+     * affordance to the user. 3. Layout Management: Uses {@link BoxLayout} with
+     * vertical alignment and struts to ensure consistent spacing between icon
+     * and text elements. 4. Custom Styling: Features a compound border and
+     * rounded corners for a modern, "card-style" institutional look.
+     *
+     * @param icon The symbol or character to display as a header.
+     * @param title The main text of the card.
+     * @param subtitle A descriptive label for the action.
+     * @param action The logic to execute when the card is clicked.
+     * @return A self-contained, interactive JPanel.
+     */
+    private JPanel createMenuCard(String icon, String title, String subtitle,
+            Runnable action) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(BG_WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(255, 200, 200), 1, true),
+                BorderFactory.createLineBorder(new Color(255, 200, 200), 1, 
+                        true),
                 new EmptyBorder(30, 40, 30, 40)
         ));
         card.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        // ICONO
         JLabel lblIcon = new JLabel(icon, SwingConstants.CENTER);
         lblIcon.setFont(new Font("Segoe UI", Font.BOLD, 40));
         lblIcon.setForeground(ACCENT_RED);
         lblIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // TITULO
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblTitle.setForeground(TEXT_DARK);
         lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // SUBTITULO
         JLabel lblSub = new JLabel(subtitle);
         lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         lblSub.setForeground(TEXT_MUTED);
@@ -583,7 +653,6 @@ public class ClientView extends JFrame {
         card.add(Box.createVerticalStrut(5));
         card.add(lblSub);
 
-        // EVENTOS (CLICK + HOVER)
         card.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -601,7 +670,8 @@ public class ClientView extends JFrame {
             @Override
             public void mouseExited(MouseEvent e) {
                 card.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(new Color(255, 200, 200), 1, true),
+                        BorderFactory.createLineBorder(new Color(255, 200, 200),
+                                1, true),
                         new EmptyBorder(30, 40, 30, 40)
                 ));
             }
@@ -610,18 +680,29 @@ public class ClientView extends JFrame {
         return card;
     }
 
+    /**
+     * Identifies unavailable time slots for a specific date by parsing the
+     * current table model.
+     *
+     * The logic filters out canceled or expired reservations and maps reserved
+     * time ranges to discrete slots using the server's 24h format.
+     *
+     * @param date The target date to check for availability (format:
+     * dd/MM/yyyy).
+     * @return A Set of strings representing the time slots already occupied.
+     */
     private java.util.Set<String> getTakenSlots(String date) {
         java.util.Set<String> taken = new java.util.HashSet<>();
-        for (int i = 0; i < reservationsModel.getRowCount(); i++) {
-            String rowDate = (String) reservationsModel.getValueAt(i, 1);
-            String rowStatus = (String) reservationsModel.getValueAt(i, 3);
+        for (int i = 0; i < tblModel.getRowCount(); i++) {
+            String rowDate = (String) tblModel.getValueAt(i, 1);
+            String rowStatus = (String) tblModel.getValueAt(i, 3);
             if (!date.equals(rowDate)) {
                 continue;
             }
             if ("CANCELADA".equals(rowStatus) || "EXPIRADA".equals(rowStatus)) {
                 continue;
             }
-            String timeRange = (String) reservationsModel.getValueAt(i, 2);
+            String timeRange = (String) tblModel.getValueAt(i, 2);
             if (timeRange == null) {
                 continue;
             }
@@ -629,7 +710,7 @@ public class ClientView extends JFrame {
             if (parts.length < 2) {
                 continue;
             }
-            // Marcar todos los slots dentro del rango como tomados
+
             String[] allSlots = generateTimeSlots();
             boolean inRange = false;
             for (String slot : allSlots) {
@@ -648,11 +729,21 @@ public class ClientView extends JFrame {
         return taken;
     }
 
+    /**
+     * Updates the visual representation of time selection components based on
+     * current availability.
+     *
+     * This method applies a custom {@link ListCellRenderer} to highlight taken
+     * slots with a distinct style (strikethrough-like icon and muted colors)
+     * while maintaining the institutional theme for available options.
+     *
+     * @see #getTakenSlots(String)
+     */
     private void refreshComboRenderers() {
-        if (reservationsModel == null) {
+        if (tblModel == null) {
             return;
         }
-        String date = txtDate.getText().trim();
+        String date = txtReservationDate.getText().trim();
         java.util.Set<String> taken = getTakenSlots(date);
 
         ListCellRenderer<Object> renderer = new DefaultListCellRenderer() {
@@ -660,12 +751,14 @@ public class ClientView extends JFrame {
             public Component getListCellRendererComponent(
                     JList<?> list, Object value, int index,
                     boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                super.getListCellRendererComponent(list, value, index,
+                        isSelected, cellHasFocus);
                 setFont(new Font("Segoe UI", Font.BOLD, 14));
                 setBorder(new EmptyBorder(5, 10, 5, 10));
                 if (taken.contains(value)) {
                     setForeground(new Color(180, 180, 180));
-                    setBackground(isSelected ? new Color(245, 245, 245) : BG_WHITE);
+                    setBackground(isSelected ? new Color(
+                            245, 245, 245) : BG_WHITE);
                     setText(value + "  ✗");
                 } else {
                     setForeground(isSelected ? Color.WHITE : TEXT_DARK);
@@ -682,6 +775,20 @@ public class ClientView extends JFrame {
         cmbEndTime.repaint();
     }
 
+    /**
+     * Assembles the main reservation view by integrating the input form and the
+     * data table.
+     *
+     * The layout is organized as follows: 1. North: User input form section for
+     * new reservation requests. 2. Center: Scrollable container for the
+     * reservations table and server logs. 3. South: Navigation controls,
+     * featuring an animated "Return to Menu" button.
+     *
+     * Implements smooth scrolling and CardLayout navigation for seamless user
+     * experience.
+     *
+     * @return A composite JPanel serving as the primary reservation workspace.
+     */
     private JPanel buildReservationPanel() {
         JPanel content = new JPanel(new BorderLayout(0, 20));
         content.setBackground(BG_WHITE);
@@ -699,7 +806,6 @@ public class ClientView extends JFrame {
         scroll.setBorder(null);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
 
-        // Panel externo: scroll arriba, botón "Volver" siempre visible abajo
         JPanel outer = new JPanel(new BorderLayout(0, 5));
         outer.setBackground(BG_WHITE);
         outer.add(scroll, BorderLayout.CENTER);
@@ -708,43 +814,54 @@ public class ClientView extends JFrame {
         buttonPanel.setBackground(BG_WHITE);
         buttonPanel.setBorder(new EmptyBorder(5, 15, 10, 15));
 
-        btnBackToMenu = new JButton("←  Volver al Menú");
-        btnBackToMenu.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnBackToMenu.setForeground(ACCENT_RED);
-        btnBackToMenu.setFocusPainted(false);
-        btnBackToMenu.setContentAreaFilled(false);
-        btnBackToMenu.setOpaque(false);
-        btnBackToMenu.setBorder(BorderFactory.createCompoundBorder(
+        btnReturnToMenu = new JButton("←  Volver al Menú");
+        btnReturnToMenu.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnReturnToMenu.setForeground(ACCENT_RED);
+        btnReturnToMenu.setFocusPainted(false);
+        btnReturnToMenu.setContentAreaFilled(false);
+        btnReturnToMenu.setOpaque(false);
+        btnReturnToMenu.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ACCENT_RED, 1),
                 new EmptyBorder(7, 18, 7, 18)));
-        btnBackToMenu.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnBackToMenu.addMouseListener(new MouseAdapter() {
+        btnReturnToMenu.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnReturnToMenu.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                btnBackToMenu.setOpaque(true);
-                btnBackToMenu.setBackground(ACCENT_RED);
-                btnBackToMenu.setForeground(Color.WHITE);
+                btnReturnToMenu.setOpaque(true);
+                btnReturnToMenu.setBackground(ACCENT_RED);
+                btnReturnToMenu.setForeground(Color.WHITE);
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                btnBackToMenu.setOpaque(false);
-                btnBackToMenu.setForeground(ACCENT_RED);
+                btnReturnToMenu.setOpaque(false);
+                btnReturnToMenu.setForeground(ACCENT_RED);
             }
         });
-        btnBackToMenu.addActionListener(e -> {
-            CardLayout cl = (CardLayout) mainPanel.getLayout();
-            cl.show(mainPanel, "MENU");
+        btnReturnToMenu.addActionListener(e -> {
+            CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
+            cl.show(pnlMainContainer, "MENU");
         });
-        buttonPanel.add(btnBackToMenu);
+        buttonPanel.add(btnReturnToMenu);
         outer.add(buttonPanel, BorderLayout.SOUTH);
 
         return outer;
     }
 
-    // =========================================================
-    // RESERVATION FORM PANEL
-    // =========================================================
+    /**
+     * Constructs the interactive reservation form panel.
+     *
+     * Key features: 1. Data Binding: Synchronizes start and end times via event
+     * listeners to enforce logical constraints and dynamic duration
+     * calculation. 2. Component Integration: Incorporates custom styled combo
+     * boxes, a calendar-based date picker, and specialized text fields. 3.
+     * State Management: Initially disabled (via setFormEnabled) to prevent
+     * input before server handshake or specific action triggers. 4.
+     * Multi-column Layout: Uses GridBagLayout with weighted constraints to
+     * maintain a responsive, card-like form structure.
+     *
+     * @return A JPanel representing the high-fidelity reservation input form.
+     */
     private JPanel buildFormPanel() {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setBackground(BG_WHITE);
@@ -765,7 +882,6 @@ public class ClientView extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(8, 10, 8, 10);
 
-        // Initialize time slots
         String[] timeSlots = generateTimeSlots();
 
         gbc.gridx = 0;
@@ -780,7 +896,6 @@ public class ClientView extends JFrame {
         JPanel datePickerPanel = buildCalendarDatePicker();
         card.add(datePickerPanel, gbc);
 
-        // Row 1: Start Time | End Time
         gbc.gridx = 0;
         gbc.gridy = 1;
         JLabel lblStart = new JLabel("🕒  Hora Inicio");
@@ -809,7 +924,6 @@ public class ClientView extends JFrame {
         cmbEndTime.addActionListener(e -> updateDuration());
         card.add(cmbEndTime, gbc);
 
-        // Duration display
         gbc.gridx = 0;
         gbc.gridy = 2;
         gbc.gridwidth = 2;
@@ -818,7 +932,6 @@ public class ClientView extends JFrame {
         lblDuration.setForeground(SUCCESS_GREEN);
         card.add(lblDuration, gbc);
 
-        // Row 3: Attendees | Equipment
         gbc.gridx = 0;
         gbc.gridy = 3;
         gbc.gridwidth = 1;
@@ -828,8 +941,8 @@ public class ClientView extends JFrame {
         card.add(lblAttendees, gbc);
 
         gbc.gridx = 1;
-        txtAttendees = buildTextField("10");
-        card.add(txtAttendees, gbc);
+        txtAttendeeCount = buildTextField("10");
+        card.add(txtAttendeeCount, gbc);
 
         gbc.gridx = 2;
         JLabel lblEquipment = new JLabel("Equipamiento");
@@ -838,13 +951,12 @@ public class ClientView extends JFrame {
         card.add(lblEquipment, gbc);
 
         gbc.gridx = 3;
-        cmbEquipment = new JComboBox<>(new String[]{
+        cbEquipmentType = new JComboBox<>(new String[]{
             "NINGUNO", "PROYECTOR", "MICROFONO", "SONIDO", "COMPLETO"
         });
-        styleCombo(cmbEquipment);
-        card.add(cmbEquipment, gbc);
+        styleCombo(cbEquipmentType);
+        card.add(cbEquipmentType, gbc);
 
-        // Row 4: Action buttons
         gbc.gridx = 0;
         gbc.gridy = 4;
         gbc.gridwidth = 1;
@@ -853,17 +965,19 @@ public class ClientView extends JFrame {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
         buttonPanel.setBackground(BG_LIGHT);
 
-        btnReserve = buildActionButton("💾  Reservar", ACCENT_RED, true);
-        btnConfirm = buildActionButton("✓  Confirmar", SUCCESS_GREEN, true);
-        btnCancel = buildActionButton("⊗  Cancelar", ACCENT_RED, false);
+        btnSubmitRequest = buildActionButton("💾  Reservar", ACCENT_RED, true);
+        btnConfirmSelection = buildActionButton("✓  Confirmar", SUCCESS_GREEN, 
+                true);
+        btnAbortReservation = buildActionButton("⊗  Cancelar", ACCENT_RED,
+                false);
 
-        btnReserve.addActionListener(e -> reserve());
-        btnConfirm.addActionListener(e -> confirmReservation());
-        btnCancel.addActionListener(e -> cancelReservation());
+        btnSubmitRequest.addActionListener(e -> reserve());
+        btnConfirmSelection.addActionListener(e -> confirmReservation());
+        btnAbortReservation.addActionListener(e -> cancelReservation());
 
-        buttonPanel.add(btnReserve);
-        buttonPanel.add(btnConfirm);
-        buttonPanel.add(btnCancel);
+        buttonPanel.add(btnSubmitRequest);
+        buttonPanel.add(btnConfirmSelection);
+        buttonPanel.add(btnAbortReservation);
 
         gbc.gridwidth = 4;
         card.add(buttonPanel, gbc);
@@ -873,15 +987,27 @@ public class ClientView extends JFrame {
         return panel;
     }
 
-    // =========================================================
-    // TABLE + MESSAGES PANEL
-    // =========================================================
+    /**
+     * Builds the feedback section of the UI, containing the reservation history
+     * and the system activity log.
+     *
+     * Technical Highlights: 1. Dynamic Rendering: Overrides prepareRenderer to
+     * apply state-based coloring (e.g., Green for CONFIRMADA, Amber for
+     * TEMPORAL) and zebra-striping for readability. 2. Non-Editable Model:
+     * Implements a custom DefaultTableModel to enforce read-only integrity on
+     * the client view. 3. Layout: Uses BoxLayout (Y_AXIS) with vertical struts
+     * to separate the reservation table from the server log area. 4. UI
+     * Consistency: Styles the JTableHeader with institutional colors and custom
+     * matte borders.
+     *
+     * @return A JPanel providing visual feedback of transactions and system
+     * status.
+     */
     private JPanel buildTableAndMessagesPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(BG_WHITE);
 
-        // ── SECCIÓN TABLA ──────────────────────────────────────
         JPanel tableWrapper = new JPanel(new BorderLayout(0, 6));
         tableWrapper.setBackground(BG_WHITE);
         tableWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -892,23 +1018,24 @@ public class ClientView extends JFrame {
         tableWrapper.add(tableLabel, BorderLayout.NORTH);
 
         String[] columns = {"ID", "Fecha", "Horario", "Estado", "TTL"};
-        reservationsModel = new DefaultTableModel(columns, 0) {
+        tblModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
                 return false;
             }
         };
 
-        reservationsTable = new JTable(reservationsModel) {
+        tblClientReservations = new JTable(tblModel) {
             @Override
-            public Component prepareRenderer(TableCellRenderer r, int row, int col) {
+            public Component prepareRenderer(TableCellRenderer r, int row,
+                    int col) {
                 Component c = super.prepareRenderer(r, row, col);
                 c.setBackground(row % 2 == 0 ? BG_WHITE : BG_LIGHT);
                 c.setForeground(TEXT_DARK);
                 if (c instanceof JComponent) {
                     ((JComponent) c).setBorder(new EmptyBorder(0, 8, 0, 8));
                 }
-                Object status = reservationsModel.getValueAt(row, 3);
+                Object status = tblModel.getValueAt(row, 3);
                 if ("CONFIRMADA".equals(status)) {
                     c.setForeground(SUCCESS_GREEN);
                 } else if ("CANCELADA".equals(status)) {
@@ -927,19 +1054,20 @@ public class ClientView extends JFrame {
             }
         };
 
-        reservationsTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        reservationsTable.setRowHeight(30);
-        reservationsTable.setBackground(BG_WHITE);
-        reservationsTable.setForeground(TEXT_DARK);
-        reservationsTable.setGridColor(BORDER_COLOR);
-        reservationsTable.setShowVerticalLines(false);
-        reservationsTable.setIntercellSpacing(new Dimension(0, 1));
+        tblClientReservations.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tblClientReservations.setRowHeight(30);
+        tblClientReservations.setBackground(BG_WHITE);
+        tblClientReservations.setForeground(TEXT_DARK);
+        tblClientReservations.setGridColor(BORDER_COLOR);
+        tblClientReservations.setShowVerticalLines(false);
+        tblClientReservations.setIntercellSpacing(new Dimension(0, 1));
 
-        JTableHeader tableHeader = reservationsTable.getTableHeader();
+        JTableHeader tableHeader = tblClientReservations.getTableHeader();
         tableHeader.setBackground(ACCENT_RED);
         tableHeader.setForeground(Color.WHITE);
         tableHeader.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        tableHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, ACCENT_RED));
+        tableHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0,
+                ACCENT_RED));
         tableHeader.setPreferredSize(new Dimension(0, 34));
         tableHeader.setDefaultRenderer(new DefaultTableCellRenderer() {
             @Override
@@ -952,7 +1080,8 @@ public class ClientView extends JFrame {
                 lbl.setForeground(Color.WHITE);
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                 lbl.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(200, 30, 45)),
+                        BorderFactory.createMatteBorder(0, 0, 0, 1,
+                                new Color(200, 30, 45)),
                         new EmptyBorder(0, 8, 0, 8)));
                 lbl.setOpaque(true);
                 lbl.setHorizontalAlignment(SwingConstants.LEFT);
@@ -960,7 +1089,7 @@ public class ClientView extends JFrame {
             }
         });
 
-        JScrollPane tableScroll = new JScrollPane(reservationsTable);
+        JScrollPane tableScroll = new JScrollPane(tblClientReservations);
         tableScroll.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
         tableScroll.getViewport().setBackground(BG_WHITE);
         tableScroll.setPreferredSize(new Dimension(600, 160));
@@ -968,7 +1097,6 @@ public class ClientView extends JFrame {
         tableScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
         tableWrapper.add(tableScroll, BorderLayout.CENTER);
 
-        // ── SECCIÓN BITÁCORA ───────────────────────────────────
         JPanel messagesWrapper = new JPanel(new BorderLayout(0, 6));
         messagesWrapper.setBackground(BG_WHITE);
         messagesWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -979,23 +1107,23 @@ public class ClientView extends JFrame {
         messagesLabel.setForeground(ACCENT_RED);
         messagesWrapper.add(messagesLabel, BorderLayout.NORTH);
 
-        txtMessages = new JTextArea();
-        txtMessages.setEditable(false);
-        txtMessages.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        txtMessages.setBackground(BG_WHITE);
-        txtMessages.setForeground(TEXT_DARK);
-        txtMessages.setLineWrap(true);
-        txtMessages.setWrapStyleWord(true);
-        txtMessages.setBorder(new EmptyBorder(10, 14, 10, 14));
+        txtServerLogs = new JTextArea();
+        txtServerLogs.setEditable(false);
+        txtServerLogs.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        txtServerLogs.setBackground(BG_WHITE);
+        txtServerLogs.setForeground(TEXT_DARK);
+        txtServerLogs.setLineWrap(true);
+        txtServerLogs.setWrapStyleWord(true);
+        txtServerLogs.setBorder(new EmptyBorder(10, 14, 10, 14));
 
-        JScrollPane messagesScroll = new JScrollPane(txtMessages);
-        messagesScroll.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
+        JScrollPane messagesScroll = new JScrollPane(txtServerLogs);
+        messagesScroll.setBorder(BorderFactory.createLineBorder(BORDER_COLOR,
+                1));
         messagesScroll.setPreferredSize(new Dimension(600, 130));
         messagesScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
         messagesScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
         messagesWrapper.add(messagesScroll, BorderLayout.CENTER);
 
-        // ── ENSAMBLAR ──────────────────────────────────────────
         panel.add(tableWrapper);
         panel.add(Box.createVerticalStrut(8));
         panel.add(messagesWrapper);
@@ -1003,25 +1131,34 @@ public class ClientView extends JFrame {
         return panel;
     }
 
-    // =========================================================
-// CALENDAR DATE PICKER
-// =========================================================
+    /**
+     * Creates a custom date picker component consisting of a read-only text
+     * field and an interactive calendar trigger.
+     *
+     * Logic Flow: 1. Initializes the date to {@link LocalDate#now()} with
+     * ISO-8601 formatting. 2. Triggers {@link #refreshComboRenderers()} to
+     * synchronize available time slots based on the selected date. 3. Provides
+     * a custom-painted button that invokes a popup calendar dialog for date
+     * selection.
+     *
+     * @return A styled JPanel acting as a cohesive date input control.
+     */
     private JPanel buildCalendarDatePicker() {
         JPanel container = new JPanel(new BorderLayout());
         container.setBackground(BG_WHITE);
         container.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
         container.setPreferredSize(new Dimension(0, 45));
 
-        txtDate = new JTextField();
-        txtDate.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        txtDate.setBackground(BG_WHITE);
-        txtDate.setForeground(TEXT_DARK);
-        txtDate.setEditable(false);
-        txtDate.setBorder(new EmptyBorder(10, 15, 10, 10));
-        txtDate.setText(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        txtReservationDate = new JTextField();
+        txtReservationDate.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtReservationDate.setBackground(BG_WHITE);
+        txtReservationDate.setForeground(TEXT_DARK);
+        txtReservationDate.setEditable(false);
+        txtReservationDate.setBorder(new EmptyBorder(10, 15, 10, 10));
+        txtReservationDate.setText(LocalDate.now().format(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         refreshComboRenderers();
 
-        // ── Mismo patrón que buildActionButton ──
         JButton calBtn = new JButton("▼") {
             @Override
             protected void paintComponent(Graphics g) {
@@ -1038,7 +1175,7 @@ public class ClientView extends JFrame {
         calBtn.setBackground(ACCENT_RED);
         calBtn.setForeground(Color.WHITE);
         calBtn.setFocusPainted(false);
-        calBtn.setContentAreaFilled(false);   // paintComponent se encarga
+        calBtn.setContentAreaFilled(false);
         calBtn.setOpaque(false);
         calBtn.setBorder(new EmptyBorder(5, 14, 5, 14));
         calBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -1055,13 +1192,28 @@ public class ClientView extends JFrame {
         });
         calBtn.addActionListener(e -> showCalendarPopup(calBtn));
 
-        container.add(txtDate, BorderLayout.CENTER);
+        container.add(txtReservationDate, BorderLayout.CENTER);
         container.add(calBtn, BorderLayout.EAST);
         return container;
     }
 
+    /**
+     * Displays a custom, undecorated modal popup containing an interactive
+     * calendar.
+     *
+     * Technical implementation: 1. Dynamic Grid: Recalculates day positions and
+     * month lengths using {@link LocalDate}. 2. State Validation: Disables past
+     * dates to prevent invalid reservations. 3. UX Design: Highlights the
+     * current system date and manages focus loss to auto-close the popup when
+     * clicking outside. 4. Functional Updates: Uses a Runnable to refresh the
+     * UI grid during month/year navigation.
+     *
+     * @param parent The component used as a coordinate reference for popup
+     * positioning.
+     */
     private void showCalendarPopup(Component parent) {
-        JDialog popup = new JDialog((Frame) SwingUtilities.getWindowAncestor(parent), false);
+        JDialog popup = new JDialog((Frame) SwingUtilities.getWindowAncestor(
+                parent), false);
         popup.setUndecorated(true);
 
         final LocalDate[] view = {LocalDate.now()};
@@ -1072,7 +1224,6 @@ public class ClientView extends JFrame {
                 BorderFactory.createLineBorder(BORDER_COLOR, 1),
                 new EmptyBorder(12, 12, 12, 12)));
 
-        // — Navegación mes/año —
         JPanel navPanel = new JPanel(new BorderLayout());
         navPanel.setBackground(BG_WHITE);
 
@@ -1097,15 +1248,16 @@ public class ClientView extends JFrame {
         navPanel.add(monthLabel, BorderLayout.CENTER);
         navPanel.add(nextBtn, BorderLayout.EAST);
 
-        // — Grid días —
         JPanel gridPanel = new JPanel(new GridLayout(0, 7, 4, 4));
         gridPanel.setBackground(BG_WHITE);
 
         Runnable buildGrid = () -> {
             gridPanel.removeAll();
-            monthLabel.setText(view[0].format(DateTimeFormatter.ofPattern("MMMM yyyy")));
+            monthLabel.setText(view[0].format(DateTimeFormatter.ofPattern(
+                    "MMMM yyyy")));
 
-            for (String d : new String[]{"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}) {
+            for (String d : new String[]{"Su", "Mo", "Tu", "We", "Th", "Fr",
+                "Sa"}) {
                 JLabel lbl = new JLabel(d, SwingConstants.CENTER);
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
                 lbl.setForeground(TEXT_MUTED);
@@ -1133,16 +1285,19 @@ public class ClientView extends JFrame {
                             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                                     RenderingHints.VALUE_ANTIALIAS_ON);
                             g2.setColor(getBackground());
-                            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                            g2.fillRoundRect(0, 0, getWidth(), 
+                                    getHeight(), 8, 8);
                             g2.dispose();
                         }
                         super.paintComponent(g);
                     }
                 };
 
-                dayBtn.setFont(new Font("Segoe UI", isToday ? Font.BOLD : Font.PLAIN, 12));
+                dayBtn.setFont(new Font("Segoe UI", isToday ? Font.BOLD : 
+                        Font.PLAIN, 12));
                 dayBtn.setFocusPainted(false);
-                dayBtn.setCursor(isPast ? Cursor.getDefaultCursor() : new Cursor(Cursor.HAND_CURSOR));
+                dayBtn.setCursor(isPast ? Cursor.getDefaultCursor() :
+                        new Cursor(Cursor.HAND_CURSOR));
 
                 if (isPast) {
                     dayBtn.setBackground(BG_LIGHT);
@@ -1168,7 +1323,8 @@ public class ClientView extends JFrame {
                 }
 
                 dayBtn.addActionListener(ev -> {
-                    txtDate.setText(date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    txtReservationDate.setText(date.format(
+                            DateTimeFormatter.ofPattern("yyyy-MM-dd")));
                     refreshComboRenderers();
                     popup.dispose();
                 });
@@ -1200,37 +1356,57 @@ public class ClientView extends JFrame {
         popup.setVisible(true);
 
         popup.addWindowFocusListener(new java.awt.event.WindowFocusListener() {
+            @Override
             public void windowGainedFocus(java.awt.event.WindowEvent e) {
             }
 
+            @Override
             public void windowLostFocus(java.awt.event.WindowEvent e) {
                 popup.dispose();
             }
         });
     }
 
-    // =========================================================
-    // TIME SLOTS GENERATOR
-    // =========================================================
+    /**
+     * Generates an array of time slots from 08:00 AM to 10:00 PM in 30-minute
+     * intervals.
+     *
+     * Technical Details: 1. Time Range: Defined by {@link LocalTime} constants
+     * to ensure data integrity. 2. Formatting: Converts 24-hour internal logic
+     * into a localized 12-hour AM/PM String format for the UI. 3. Collection
+     * Handling: Uses a dynamic List to populate slots before converting to a
+     * fixed-size String array for ComboBox compatibility.
+     *
+     * @return A String array containing the formatted time intervals.
+     */
     private String[] generateTimeSlots() {
         List<String> slots = new ArrayList<>();
-        LocalTime time = LocalTime.of(8, 0); // 8:00 AM
-        LocalTime end = LocalTime.of(22, 0); // 10:00 PM
+        LocalTime time = LocalTime.of(8, 0);
+        LocalTime end = LocalTime.of(22, 0);
 
         while (!time.isAfter(end)) {
             String ampm = time.getHour() >= 12 ? "PM" : "AM";
             int displayHour = time.getHour() > 12 ? time.getHour() - 12
                     : time.getHour() == 0 ? 12 : time.getHour();
-            slots.add(String.format("%d:%02d %s", displayHour, time.getMinute(), ampm));
+            slots.add(String.format("%d:%02d %s", displayHour, time.getMinute(),
+                    ampm));
             time = time.plusMinutes(30);
         }
 
-        return slots.toArray(new String[0]);
+        return slots.toArray(String[]::new);
     }
 
-    // =========================================================
-    // UPDATE END TIME OPTIONS (only later than start time)
-    // =========================================================
+    /**
+     * Dynamically updates the end-time options based on the selected
+     * start-time.
+     *
+     * Functional Constraints: 1. Mutual Exclusion: Ensures the end-time is
+     * always strictly after the start-time to prevent logical booking errors.
+     * 2. State Persistence: Attempts to restore the previously selected
+     * end-time if it remains valid within the new range. 3. UI Synchronization:
+     * Clears and repopulates the cmbEndTime model whenever the start-time
+     * selection changes.
+     */
     private void updateEndTimeOptions() {
         String selectedStart = (String) cmbStartTime.getSelectedItem();
         if (selectedStart == null) {
@@ -1246,14 +1422,13 @@ public class ClientView extends JFrame {
         for (String slot : allSlots) {
             if (!startFound && slot.equals(selectedStart)) {
                 startFound = true;
-                continue; // Skip the start time itself
+                continue;
             }
             if (startFound) {
                 cmbEndTime.addItem(slot);
             }
         }
 
-        // Try to restore previous selection
         if (currentEnd != null) {
             for (int i = 0; i < cmbEndTime.getItemCount(); i++) {
                 if (cmbEndTime.getItemAt(i).equals(currentEnd)) {
@@ -1264,9 +1439,18 @@ public class ClientView extends JFrame {
         }
     }
 
-    // =========================================================
-    // UPDATE DURATION CALCULATION
-    // =========================================================
+    /**
+     * Calculates and displays the elapsed time between the selected start and
+     * end points.
+     *
+     * Key operations: 1. Parsing: Converts UI string selections into
+     * {@link LocalTime} objects. 2. Validation: Checks for chronological
+     * consistency, updating the label with a warning color (ACCENT_RED) if the
+     * range is invalid. 3. Computation: Uses {@link Duration} to compute
+     * precise hour and minute intervals for the final output. 4. Visual
+     * Feedback: Updates lblDuration with a success state (SUCCESS_GREEN) upon
+     * successful calculation.
+     */
     private void updateDuration() {
         String startStr = (String) cmbStartTime.getSelectedItem();
         String endStr = (String) cmbEndTime.getSelectedItem();
@@ -1290,7 +1474,8 @@ public class ClientView extends JFrame {
             long hours = duration.toHours();
             long minutes = duration.toMinutesPart();
 
-            String durationText = String.format("Duración: %d h %d min", hours, minutes);
+            String durationText = String.format("Duración: %d h %d min", hours,
+                    minutes);
             lblDuration.setText(durationText);
             lblDuration.setForeground(SUCCESS_GREEN);
 
@@ -1299,8 +1484,21 @@ public class ClientView extends JFrame {
         }
     }
 
+    /**
+     * Converts a 12-hour formatted time string (AM/PM) into a {@link LocalTime}
+     * object.
+     *
+     * Conversion Logic: 1. Tokenization: Splits the input to isolate time
+     * components and the AM/PM marker. 2. Military Time Calculation: Adjusts
+     * the hour based on the marker (e.g., adding 12 for PM, setting 12 AM to
+     * 0). 3. Object Mapping: Returns a normalized LocalTime instance for
+     * internal computations and duration logic.
+     *
+     * @param timeStr Formatted string (e.g., "02:30 PM").
+     * @return The equivalent LocalTime representation.
+     * @throws NumberFormatException if the numerical parts are invalid.
+     */
     private LocalTime parseTimeString(String timeStr) {
-        // Parse strings like "8:00 AM" or "2:30 PM"
         String[] parts = timeStr.split(" ");
         String[] timeParts = parts[0].split(":");
         int hour = Integer.parseInt(timeParts[0]);
@@ -1315,21 +1513,33 @@ public class ClientView extends JFrame {
         return LocalTime.of(hour, minute);
     }
 
-    // =========================================================
-    // TSE INTEGRATION (unchanged)
-    // =========================================================
+    /**
+     * Performs an asynchronous identity validation against the TSE (Tribunal
+     * Supremo de Elecciones) API.
+     *
+     * Technical Workflow: 1. Sanitize: Strips non-numeric characters from the
+     * input ID. 2. Concurrency: Spawns a daemon thread to prevent UI freezing
+     * during network I/O. 3. Network: Executes a GET request with specific
+     * timeouts (6s) and User-Agent headers. 4. Error Handling: Manages various
+     * HTTP states (200, 404, 429) and network exceptions (Timeout, UnknownHost)
+     * with localized user feedback. 5. Thread Safety: Uses
+     * SwingUtilities.invokeLater to ensure UI updates happen exclusively on the
+     * Event Dispatch Thread (EDT).
+     *
+     * @param id The raw identification string to verify.
+     */
     private void queryTSE(String id) {
         String cleanId = id.replaceAll("[^0-9]", "");
         if (cleanId.isEmpty()) {
             return;
         }
 
-        lastCheckedId = cleanId;
-        lblVerification.setText("⟳  Verificando en TSE...");
-        lblVerification.setForeground(WARNING_AMBER);
-        txtName.setText("");
-        idVerified = false;
-        btnConnect.setEnabled(false);
+        sessionCheckedId = cleanId;
+        lblApiFeedback.setText("⟳  Verificando en TSE...");
+        lblApiFeedback.setForeground(WARNING_AMBER);
+        txtClientName.setText("");
+        isIdVerified = false;
+        btnEstablishConnection.setEnabled(false);
 
         Thread queryThread = new Thread(() -> {
             String urlStr = TSE_API_URL + cleanId;
@@ -1341,7 +1551,8 @@ public class ClientView extends JFrame {
                 conn.setConnectTimeout(6000);
                 conn.setReadTimeout(6000);
                 conn.setRequestProperty("Accept", "application/json");
-                conn.setRequestProperty("User-Agent", "VentanaCliente-ReservasSala/1.0");
+                conn.setRequestProperty("User-Agent", 
+                        "VentanaCliente-ReservasSala/1.0");
 
                 int status = conn.getResponseCode();
 
@@ -1360,61 +1571,63 @@ public class ClientView extends JFrame {
                     if (fullName != null && !fullName.isBlank()) {
                         final String name = fullName;
                         SwingUtilities.invokeLater(() -> {
-                            txtName.setText(name);
-                            lblVerification.setText("✔  Cédula válida - TSE");
-                            lblVerification.setForeground(SUCCESS_GREEN);
-                            idVerified = true;
-                            btnConnect.setEnabled(true);
+                            txtClientName.setText(name);
+                            lblApiFeedback.setText("✔  Cédula válida - TSE");
+                            lblApiFeedback.setForeground(SUCCESS_GREEN);
+                            isIdVerified = true;
+                            btnEstablishConnection.setEnabled(true);
                         });
                     } else {
                         SwingUtilities.invokeLater(() -> {
-                            txtName.setText("");
-                            lblVerification.setText("✖  Cédula no registrada");
-                            lblVerification.setForeground(ACCENT_RED);
-                            idVerified = false;
-                            btnConnect.setEnabled(false);
+                            txtClientName.setText("");
+                            lblApiFeedback.setText("✖  Cédula no registrada");
+                            lblApiFeedback.setForeground(ACCENT_RED);
+                            isIdVerified = false;
+                            btnEstablishConnection.setEnabled(false);
                         });
                     }
 
                 } else if (status == 404) {
                     SwingUtilities.invokeLater(() -> {
-                        txtName.setText("");
-                        lblVerification.setText("✖  Cédula no encontrada");
-                        lblVerification.setForeground(ACCENT_RED);
-                        idVerified = false;
-                        btnConnect.setEnabled(false);
+                        txtClientName.setText("");
+                        lblApiFeedback.setText("✖  Cédula no encontrada");
+                        lblApiFeedback.setForeground(ACCENT_RED);
+                        isIdVerified = false;
+                        btnEstablishConnection.setEnabled(false);
                     });
                 } else if (status == 429) {
                     SwingUtilities.invokeLater(() -> {
-                        lblVerification.setText("⚠ Límite de consultas - reintente");
-                        lblVerification.setForeground(WARNING_AMBER);
-                        btnConnect.setEnabled(true);
+                        lblApiFeedback.setText(
+                                "⚠ Límite de consultas - reintente");
+                        lblApiFeedback.setForeground(WARNING_AMBER);
+                        btnEstablishConnection.setEnabled(true);
                     });
                 } else {
                     SwingUtilities.invokeLater(() -> {
-                        lblVerification.setText("⚠  Error TSE (HTTP " + status + ")");
-                        lblVerification.setForeground(WARNING_AMBER);
-                        btnConnect.setEnabled(true);
+                        lblApiFeedback.setText(
+                                "⚠  Error TSE (HTTP " + status + ")");
+                        lblApiFeedback.setForeground(WARNING_AMBER);
+                        btnEstablishConnection.setEnabled(true);
                     });
                 }
 
             } catch (SocketTimeoutException e) {
                 SwingUtilities.invokeLater(() -> {
-                    lblVerification.setText("⚠  TSE sin respuesta");
-                    lblVerification.setForeground(WARNING_AMBER);
-                    btnConnect.setEnabled(true);
+                    lblApiFeedback.setText("⚠  TSE sin respuesta");
+                    lblApiFeedback.setForeground(WARNING_AMBER);
+                    btnEstablishConnection.setEnabled(true);
                 });
             } catch (UnknownHostException e) {
                 SwingUtilities.invokeLater(() -> {
-                    lblVerification.setText("⚠  Sin internet");
-                    lblVerification.setForeground(WARNING_AMBER);
-                    btnConnect.setEnabled(true);
+                    lblApiFeedback.setText("⚠  Sin internet");
+                    lblApiFeedback.setForeground(WARNING_AMBER);
+                    btnEstablishConnection.setEnabled(true);
                 });
             } catch (IOException e) {
                 SwingUtilities.invokeLater(() -> {
-                    lblVerification.setText("⚠  Error de red");
-                    lblVerification.setForeground(WARNING_AMBER);
-                    btnConnect.setEnabled(true);
+                    lblApiFeedback.setText("⚠  Error de red");
+                    lblApiFeedback.setForeground(WARNING_AMBER);
+                    btnEstablishConnection.setEnabled(true);
                 });
             } finally {
                 if (conn != null) {
@@ -1428,12 +1641,29 @@ public class ClientView extends JFrame {
         queryThread.start();
     }
 
+    /**
+     * Extracts and assembles a person's full name from a JSON response string.
+     *
+     * The process follows these steps: 1. Pre-validation: Quickly identifies
+     * empty result sets to avoid unnecessary parsing. 2. Field Extraction:
+     * Isolates the first name, first surname, and second surname using a
+     * specialized internal string helper. 3. Assembly: Dynamically constructs
+     * the full name using {@link StringBuilder}, ensuring proper spacing and
+     * trimming of whitespace.
+     *
+     * @param json The raw JSON string returned by the API.
+     * @param id The identification number associated with the query (for
+     * logging/context).
+     * @return The formatted full name, or {@code null} if the data is missing
+     * or malformed.
+     */
     private String parseNameFromJson(String json, String id) {
         if (json == null || json.isBlank()) {
             return null;
         }
         try {
-            if (json.contains("\"results\":[]") || json.contains("\"results\": []")) {
+            if (json.contains("\"results\":[]") || json.contains(
+                    "\"results\": []")) {
                 return null;
             }
 
@@ -1469,6 +1699,22 @@ public class ClientView extends JFrame {
         }
     }
 
+    /**
+     * Manually extracts a specific string field value from a JSON formatted
+     * string.
+     *
+     * Technical Workflow: 1. Token Localization: Searches for the field pattern
+     * within the raw string. 2. Delimiter Navigation: Skips colons and
+     * whitespace to find the starting quote or null identifier. 3. Escape
+     * Character Handling: Properly processes backslashes to include escaped
+     * characters in the final value. 4. Null Safety: Explicitly identifies JSON
+     * 'null' values to prevent incorrect string captures.
+     *
+     * @param json The raw JSON text to parse.
+     * @param field The key name to search for.
+     * @return The extracted string value, or {@code null} if the field is
+     * missing or null.
+     */
     private String extractJsonField(String json, String field) {
         String pattern = "\"" + field + "\"";
         int idx = json.indexOf(pattern);
@@ -1477,7 +1723,8 @@ public class ClientView extends JFrame {
         }
 
         int start = idx + pattern.length();
-        while (start < json.length() && (json.charAt(start) == ':' || json.charAt(start) == ' ')) {
+        while (start < json.length() && (json.charAt(start) == ':' ||
+                json.charAt(start) == ' ')) {
             start++;
         }
 
@@ -1509,13 +1756,24 @@ public class ClientView extends JFrame {
         return null;
     }
 
-    // =========================================================
-    // SERVER CONNECTION
-    // =========================================================
+    /**
+     * Orchestrates the connection process between the client and the central
+     * server.
+     *
+     * Workflow: 1. UI Validation: Checks for mandatory ID and handles TSE
+     * verification fallback. 2. Socket Initiation: Attempts to establish a TCP
+     * connection to localhost:8000 with a 3-second timeout. 3. Protocol
+     * Handshake: Sends client credentials (Name|ID|Role) and waits for server
+     * authorization (e.g., "OK|CONECTADO" or "ERROR|ROL_NO_AUTORIZADO"). 4.
+     * State Management: Upon success, initializes I/O streams, updates the UI
+     * via CardLayout, and spawns the background listener thread. 5. Exception
+     * Handling: Provides specific feedback for connection refusals, timeouts,
+     * and general I/O failures.
+     */
     private void connect() {
-        String name = txtName.getText().trim();
-        String id = txtDNI.getText().trim();
-        String role = (String) cmbRole.getSelectedItem();
+        String name = txtClientName.getText().trim();
+        String id = txtClientId.getText().trim();
+        String role = (String) cbUserRole.getSelectedItem();
 
         if (id.isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -1524,9 +1782,10 @@ public class ClientView extends JFrame {
             return;
         }
 
-        if (!idVerified && name.isEmpty()) {
+        if (!isIdVerified && name.isEmpty()) {
             int choice = JOptionPane.showConfirmDialog(this,
-                    "La cédula no fue verificada contra el TSE.\n¿Desea continuar de todas formas?",
+                    "La cédula no fue verificada contra el TSE.\n"
+                            + "¿Desea continuar de todas formas?",
                     "Cédula no verificada",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
@@ -1543,13 +1802,14 @@ public class ClientView extends JFrame {
                 return;
             }
             name = name.trim();
-            txtName.setText(name);
-            idVerified = true;
+            txtClientName.setText(name);
+            isIdVerified = true;
         }
 
         if (name.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "No se pudo obtener el nombre desde el TSE.\nVerifique su cédula.",
+                    "No se pudo obtener el nombre desde el TSE.\n"
+                            + "Verifique su cédula.",
                     "Nombre no disponible", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -1573,7 +1833,8 @@ public class ClientView extends JFrame {
 
             if (response.equals("ERROR|ROL_NO_AUTORIZADO")) {
                 JOptionPane.showMessageDialog(this,
-                        "Su cédula no está autorizada para el rol: " + role + "\nContacte al administrador.",
+                        "Su cédula no está autorizada para el rol: " + role + 
+                                "\nContacte al administrador.",
                         "Acceso denegado", JOptionPane.ERROR_MESSAGE);
                 closeSilently(tempSocket);
                 return;
@@ -1590,26 +1851,24 @@ public class ClientView extends JFrame {
             outputStream = tempOut;
 
             isConnected = true;
-            running = true;
+            isWorkerRunning = true;
 
-            // Update connection status for menu
-            lblConnectionStatus.setText("");
-            lblWelcome.setText("Bienvenido(a), " + name);
-            lblWelcome.setForeground(SUCCESS_GREEN);
+            lblStatusIndicator.setText("");
+            lblUserWelcome.setText("Bienvenido(a), " + name);
+            lblUserWelcome.setForeground(SUCCESS_GREEN);
 
-            btnConnect.setEnabled(false);
-            btnLogout.setVisible(true);
-            txtDNI.setEditable(false);
-            cmbRole.setEnabled(false);
+            btnEstablishConnection.setEnabled(false);
+            btnTerminateSession.setVisible(true);
+            txtClientId.setEditable(false);
+            cbUserRole.setEnabled(false);
             setFormEnabled(true);
 
             logMessage("✅ Conectado como: " + name + " (DNI: " + id + ")");
             logMessage("Servidor listo. Puede realizar su reserva.");
             setTitle("UNIVERSIDAD NACIONAL - " + name);
 
-            // Show menu panel after successful login
-            CardLayout cl = (CardLayout) mainPanel.getLayout();
-            cl.show(mainPanel, "MENU");
+            CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
+            cl.show(pnlMainContainer, "MENU");
 
             Thread listenerThread = new Thread(this::listenToServer);
             listenerThread.setDaemon(true);
@@ -1619,12 +1878,14 @@ public class ClientView extends JFrame {
         } catch (ConnectException e) {
             closeSilently(tempSocket);
             JOptionPane.showMessageDialog(this,
-                    "No hay servidor activo en el puerto 8000.\n¿Está corriendo el servidor?",
+                    "No hay servidor activo en el puerto 8000.\n"
+                            + "¿Está corriendo el servidor?",
                     "Sin conexión", JOptionPane.ERROR_MESSAGE);
         } catch (SocketTimeoutException e) {
             closeSilently(tempSocket);
             JOptionPane.showMessageDialog(this,
-                    "El servidor no respondió a tiempo.\nVerifique que esté operativo.",
+                    "El servidor no respondió a tiempo.\n"
+                            + "Verifique que esté operativo.",
                     "Tiempo de espera agotado", JOptionPane.ERROR_MESSAGE);
         } catch (IOException e) {
             closeSilently(tempSocket);
@@ -1634,8 +1895,20 @@ public class ClientView extends JFrame {
         }
     }
 
+    /**
+     * Terminates the current session and resets the application to its initial
+     * state.
+     *
+     * The logout sequence performs the following: 1. Concurrency Control:
+     * Signals background threads to stop by setting {@code isWorkerRunning} to
+     * false. 2. Resource Release: Safely closes the network socket and handles
+     * potential IOExceptions. 3. State Reset: Clears session-specific
+     * identifiers, verification flags, and data models. 4. UI Restoration:
+     * Resets input fields (ID, Name, Role), clears logs, and reverts the layout
+     * to the "LOGIN" view using {@link CardLayout}.
+     */
     private void logout() {
-        running = false;
+        isWorkerRunning = false;
         try {
             if (socket != null && !socket.isClosed()) {
                 socket.close();
@@ -1644,35 +1917,43 @@ public class ClientView extends JFrame {
         }
 
         isConnected = false;
-        idVerified = false;
+        isIdVerified = false;
         lastReservationId = null;
 
-        txtDNI.setText("");
-        txtDNI.setEditable(true);
-        lastCheckedId = "";
-        txtName.setText("");
-        cmbRole.setSelectedIndex(0);
-        cmbRole.setEnabled(true);
+        txtClientId.setText("");
+        txtClientId.setEditable(true);
+        sessionCheckedId = "";
+        txtClientName.setText("");
+        cbUserRole.setSelectedIndex(0);
+        cbUserRole.setEnabled(true);
 
-        lblVerification.setText("○  Ingrese su cédula para verificar");
-        lblVerification.setForeground(TEXT_MUTED);
+        lblApiFeedback.setText("○  Ingrese su cédula para verificar");
+        lblApiFeedback.setForeground(TEXT_MUTED);
 
-        // LIMPIAR MENSAJES
-        lblWelcome.setText("Bienvenido(a)");
-        lblConnectionStatus.setText("");
+        lblUserWelcome.setText("Bienvenido(a)");
+        lblStatusIndicator.setText("");
 
-        btnConnect.setEnabled(true);
-        btnLogout.setVisible(false);
+        btnEstablishConnection.setEnabled(true);
+        btnTerminateSession.setVisible(false);
 
-        reservationsModel.setRowCount(0);
-        txtMessages.setText("");
+        tblModel.setRowCount(0);
+        txtServerLogs.setText("");
 
         setTitle("UNIVERSIDAD NACIONAL - Sistema de Reservas de Salas");
 
-        CardLayout cl = (CardLayout) mainPanel.getLayout();
-        cl.show(mainPanel, "LOGIN");
+        CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
+        cl.show(pnlMainContainer, "LOGIN");
     }
 
+    /**
+     * Safely closes a {@link Socket} without throwing checked exceptions.
+     *
+     * This helper method ensures that resource cleanup does not clutter the
+     * main logic. It verifies if the socket is null or already closed before
+     * attempting to terminate the connection.
+     *
+     * @param s The socket instance to be closed, or {@code null}.
+     */
     private void closeSilently(Socket s) {
         if (s != null && !s.isClosed()) {
             try {
@@ -1682,12 +1963,21 @@ public class ClientView extends JFrame {
         }
     }
 
-    // =========================================================
-    // LISTEN TO SERVER RESPONSES
-    // =========================================================
+    /**
+     * Continuous background loop that listens for incoming messages from the
+     * server.
+     *
+     * Technical Design: 1. Message Polling: Uses a blocking
+     * {@link DataInputStream#readUTF()} call within a dedicated thread to
+     * receive server-side updates. 2. Thread Safety: Offloads message
+     * processing and disconnection logic to the Event Dispatch Thread (EDT)
+     * using {@link SwingUtilities#invokeLater}. 3. Lifecycle Management:
+     * Monitors the {@code isWorkerRunning} flag and socket status to ensure
+     * graceful termination during logout or connection loss.
+     */
     private void listenToServer() {
         try {
-            while (running && !socket.isClosed()) {
+            while (isWorkerRunning && !socket.isClosed()) {
                 String msg = inputStream.readUTF();
                 SwingUtilities.invokeLater(() -> handleServerResponse(msg));
             }
@@ -1696,9 +1986,14 @@ public class ClientView extends JFrame {
         }
     }
 
-    // =========================================================
-    // DISCONNECTION HANDLING
-    // =========================================================
+    /**
+     * Handles unexpected connection loss and triggers the cleanup sequence.
+     *
+     * Workflow: 1. Status Guard: Verifies the current connection state to
+     * prevent redundant calls. 2. Feedback: Logs a warning message to inform
+     * the user about the network failure. 3. Cleanup: Invokes
+     * {@link #disconnect()} to reset UI components and release local resources.
+     */
     private void handleDisconnection() {
         if (!isConnected) {
             return;
@@ -1707,38 +2002,61 @@ public class ClientView extends JFrame {
         disconnect();
     }
 
+    /**
+     * Executes the graceful disconnection sequence and UI rollback.
+     *
+     * Key Actions: 1. Data Integrity: Iterates through the reservation table to
+     * remove pending entries (marked as "ENVIANDO...") that failed to
+     * synchronize. 2. Resource Management: Safely terminates the network socket
+     * using {@link #closeSilently(Socket)}. 3. UI Reset: Restores all input
+     * fields, validation flags, and visual indicators to their default values.
+     * 4. Navigation: Switches the view back to the "LOGIN" screen via
+     * {@link CardLayout}.
+     */
     private void disconnect() {
         isConnected = false;
 
-        for (int i = reservationsModel.getRowCount() - 1; i >= 0; i--) {
-            if ("ENVIANDO...".equals(reservationsModel.getValueAt(i, 3))) {
-                reservationsModel.removeRow(i);
+        for (int i = tblModel.getRowCount() - 1; i >= 0; i--) {
+            if ("ENVIANDO...".equals(tblModel.getValueAt(i, 3))) {
+                tblModel.removeRow(i);
             }
         }
 
         closeSilently(socket);
         setFormEnabled(false);
 
-        btnConnect.setEnabled(true);
-        txtDNI.setEditable(true);
-        cmbRole.setEnabled(true);
-        btnLogout.setVisible(false);
+        btnEstablishConnection.setEnabled(true);
+        txtClientId.setEditable(true);
+        cbUserRole.setEnabled(true);
+        btnTerminateSession.setVisible(false);
         setTitle("UNIVERSIDAD NACIONAL - Sistema de Reservas de Salas");
 
-        txtName.setText("");
-        txtDNI.setText("");
-        lblVerification.setText("○  Ingrese su cédula para verificar");
-        lblVerification.setForeground(TEXT_MUTED);
-        idVerified = false;
-        lastCheckedId = "";
+        txtClientName.setText("");
+        txtClientId.setText("");
+        lblApiFeedback.setText("○  Ingrese su cédula para verificar");
+        lblApiFeedback.setForeground(TEXT_MUTED);
+        isIdVerified = false;
+        sessionCheckedId = "";
 
-        CardLayout cl = (CardLayout) mainPanel.getLayout();
-        cl.show(mainPanel, "LOGIN");
+        CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
+        cl.show(pnlMainContainer, "LOGIN");
     }
 
-    // =========================================================
-    // HANDLE SERVER RESPONSES
-    // =========================================================
+    /**
+     * Central dispatcher for processing and reacting to server-side messages.
+     *
+     * Message Handling Logic: 1. HISTORIAL: Reconstructs the local table model
+     * using raw data from the server database. 2. OK
+     * (TEMPORAL/CONFIRMADO/CANCELADO): Updates the status of pending or active
+     * reservations and manages the Time-To-Live (TTL) synchronization. 3.
+     * ERROR: Logs server-side failures and removes "ghost" rows from the table
+     * to maintain UI consistency. 4. EXPIRACION: Handles the lifecycle
+     * termination of temporary reservations, notifying the user through visual
+     * alerts and logging.
+     *
+     * @param msg The raw pipe-delimited protocol string received from the
+     * server.
+     */
     private void handleServerResponse(String msg) {
         logMessage(" - " + msg);
         String[] parts = msg.split("\\|");
@@ -1746,7 +2064,7 @@ public class ClientView extends JFrame {
         switch (parts[0]) {
 
             case "HISTORIAL":
-                reservationsModel.setRowCount(0);
+                tblModel.setRowCount(0);
                 for (int i = 1; i < parts.length; i++) {
                     String[] fields = parts[i].split(",", 5);
                     if (fields.length < 5) {
@@ -1756,10 +2074,12 @@ public class ClientView extends JFrame {
                     String date = fields[1];
                     String timeRng = fields[2] + " - " + fields[3];
                     String status = fields[4];
-                    reservationsModel.addRow(new Object[]{id, date, timeRng, status, "—"});
+                    tblModel.addRow(new Object[]{id, date, timeRng,
+                        status, "—"});
                 }
-                if (reservationsModel.getRowCount() > 0) {
-                    logMessage("Historial restaurado: " + reservationsModel.getRowCount() + " reserva(s).");
+                if (tblModel.getRowCount() > 0) {
+                    logMessage("Historial restaurado: " + tblModel.getRowCount() 
+                            + " reserva(s).");
                 }
                 refreshComboRenderers();
                 break;
@@ -1769,38 +2089,39 @@ public class ClientView extends JFrame {
                     String id = parts[2];
                     String ttl = parts.length >= 4 ? parts[3] : "?";
                     lastReservationId = id;
-                    for (int i = 0; i < reservationsModel.getRowCount(); i++) {
-                        if ("ENVIANDO...".equals(reservationsModel.getValueAt(i, 3))) {
-                            reservationsModel.setValueAt(id, i, 0);
-                            reservationsModel.setValueAt("TEMPORAL", i, 3);
+                    for (int i = 0; i < tblModel.getRowCount(); i++) {
+                        if ("ENVIANDO...".equals(tblModel.getValueAt(i, 3))) {
+                            tblModel.setValueAt(id, i, 0);
+                            tblModel.setValueAt("TEMPORAL", i, 3);
                             ttl = ttl.replace("TTL:", "").trim();
-                            reservationsModel.setValueAt(Long.valueOf(ttl), i, 4);
+                            tblModel.setValueAt(Long.valueOf(ttl), i, 4);
                             clearReservationForm();
                             refreshComboRenderers();
                             break;
                         }
                     }
                 } else if (parts.length >= 2 && "CONFIRMADO".equals(parts[1])) {
-                    String id = parts.length >= 3 ? parts[2] : lastReservationId;
+                    String id = parts.length >= 3 ? parts[2]:lastReservationId;
                     updateTableStatus(id, "CONFIRMADA");
                     clearTTL(id);
                     refreshComboRenderers();
                 } else if (parts.length >= 2 && "CANCELADO".equals(parts[1])) {
-                    String id = parts.length >= 3 ? parts[2] : lastReservationId;
+                    String id = parts.length >= 3 ? parts[2]:lastReservationId;
                     updateTableStatus(id, "CANCELADA");
                     clearTTL(id);
                 }
                 break;
 
             case "ERROR":
-                logMessage("❌ Error del servidor: " + (parts.length > 1 ? parts[1] : "desconocido"));
+                logMessage("❌ Error del servidor: " + (parts.length > 1 ?
+                        parts[1] : "desconocido"));
                 if (parts.length > 1 && "SERVIDOR_DETENIDO".equals(parts[1])) {
                     handleDisconnection();
                     return;
                 }
-                for (int i = reservationsModel.getRowCount() - 1; i >= 0; i--) {
-                    if ("ENVIANDO...".equals(reservationsModel.getValueAt(i, 3))) {
-                        reservationsModel.removeRow(i);
+                for (int i = tblModel.getRowCount() - 1; i >= 0; i--) {
+                    if ("ENVIANDO...".equals(tblModel.getValueAt(i, 3))) {
+                        tblModel.removeRow(i);
                         break;
                     }
                 }
@@ -1810,15 +2131,16 @@ public class ClientView extends JFrame {
                 if (parts.length >= 2) {
                     String expiredId = parts[1];
                     updateTableStatus(expiredId, "EXPIRADA");
-                    for (int i = 0; i < reservationsModel.getRowCount(); i++) {
-                        if (expiredId.equals(reservationsModel.getValueAt(i, 0))) {
-                            reservationsModel.setValueAt("—", i, 4);
+                    for (int i = 0; i < tblModel.getRowCount(); i++) {
+                        if (expiredId.equals(tblModel.getValueAt(i, 0))) {
+                            tblModel.setValueAt("—", i, 4);
                             break;
                         }
                     }
                     logMessage("Reserva " + expiredId + " expiró.");
                     JOptionPane.showMessageDialog(this,
-                            "Tu reserva " + expiredId + " expiró por TTL.\nPuede realizar una nueva reserva.",
+                            "Tu reserva " + expiredId + " expiró por TTL.\n"
+                                    + "Puede realizar una nueva reserva.",
                             "Reserva expirada", JOptionPane.WARNING_MESSAGE);
                 }
                 break;
@@ -1828,54 +2150,89 @@ public class ClientView extends JFrame {
         }
     }
 
+    /**
+     * Resets all input components in the reservation form to their default
+     * states.
+     *
+     * This ensures a clean slate for the next entry by clearing text fields,
+     * resetting combo box selections, and updating visual indicators like the
+     * duration label and custom renderers.
+     */
     private void clearReservationForm() {
-        txtAttendees.setText("");
+        txtAttendeeCount.setText("");
         cmbStartTime.setSelectedIndex(0);
         cmbEndTime.setSelectedIndex(0);
-        cmbEquipment.setSelectedIndex(0);
+        cbEquipmentType.setSelectedIndex(0);
         lblDuration.setText("Duración: --");
         refreshComboRenderers();
     }
 
+    /**
+     * Removes the TTL countdown indicator for a specific reservation once it
+     * has been confirmed or cancelled.
+     *
+     * @param id The unique identifier of the reservation to update. If the ID
+     *is found, the TTL column is reset to a placeholder ("—") and the table is
+     * repainted to reflect the change.
+     */
     private void clearTTL(String id) {
-        for (int i = 0; i < reservationsModel.getRowCount(); i++) {
-            if (id != null && id.equals(reservationsModel.getValueAt(i, 0))) {
-                reservationsModel.setValueAt("—", i, 4);
-                reservationsTable.repaint();
+        for (int i = 0; i < tblModel.getRowCount(); i++) {
+            if (id != null && id.equals(tblModel.getValueAt(i, 0))) {
+                tblModel.setValueAt("—", i, 4);
+                tblClientReservations.repaint();
                 break;
             }
         }
     }
 
+    /**
+     * Updates the status column of a specific reservation in the UI table.
+     *
+     * This method synchronizes the local view with the server's state by
+     * locating the row via its ID and applying the new status string (e.g.,
+     * "CONFIRMADA", "EXPIRADA").
+     *
+     * @param id The identifier of the reservation to be modified.
+     * @param newStatus The literal string to be displayed in the status column.
+     */
     private void updateTableStatus(String id, String newStatus) {
-        for (int i = 0; i < reservationsModel.getRowCount(); i++) {
-            if (id != null && id.equals(reservationsModel.getValueAt(i, 0))) {
-                reservationsModel.setValueAt(newStatus, i, 3);
-                reservationsTable.repaint();
+        for (int i = 0; i < tblModel.getRowCount(); i++) {
+            if (id != null && id.equals(tblModel.getValueAt(i, 0))) {
+                tblModel.setValueAt(newStatus, i, 3);
+                tblClientReservations.repaint();
                 return;
             }
         }
     }
 
-    // =========================================================
-    // RESERVATION ACTIONS
-    // =========================================================
+    /**
+     * Initiates a new reservation request.
+     *
+     * Workflow: 1. Validation: Checks connection status and ensures all
+     * required fields are filled. 2. Formatting: Converts selected times to a
+     * 24-hour server-compliant format. 3. UI Feedback: Adds a placeholder row
+     * ("ENVIANDO...") to the table. 4. Transmission: Sends the "RESERVAR"
+     * command with the assembled reservation parameters to the server.
+     */
     private void reserve() {
         if (!isConnected) {
             return;
         }
 
-        String date = txtDate.getText().trim();
+        String date = txtReservationDate.getText().trim();
         if (date.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Seleccione una fecha.", "Campo vacío", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Seleccione una fecha.",
+                    "Campo vacío", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        String startTime = convertToServerFormat((String) cmbStartTime.getSelectedItem());
-        String endTime = convertToServerFormat((String) cmbEndTime.getSelectedItem());
-        String attendees = txtAttendees.getText().trim();
-        String equipment = (String) cmbEquipment.getSelectedItem();
-        String role = (String) cmbRole.getSelectedItem();
+        String startTime = convertToServerFormat((String)
+                cmbStartTime.getSelectedItem());
+        String endTime = convertToServerFormat((String) 
+                cmbEndTime.getSelectedItem());
+        String attendees = txtAttendeeCount.getText().trim();
+        String equipment = (String) cbEquipmentType.getSelectedItem();
+        String role = (String) cbUserRole.getSelectedItem();
 
         if (attendees.isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -1884,12 +2241,22 @@ public class ClientView extends JFrame {
             return;
         }
 
-        reservationsModel.addRow(new Object[]{"...", date,
+        tblModel.addRow(new Object[]{"...", date,
             startTime + " - " + endTime, "ENVIANDO...", "..."});
         sendMessage("RESERVAR|" + date + "|" + startTime + "|" + endTime + "|"
                 + attendees + "|" + equipment + "|" + role);
     }
 
+    /**
+     * Normalizes 12-hour (AM/PM) time strings into 24-hour (HH:mm) format.
+     *
+     * This ensures the server receives a consistent time representation
+     * regardless of the UI's display format. Handles edge cases like 12:00
+     * AM/PM correctly.
+     *
+     * @param timeStr The UI time string (e.g., "02:30 PM").
+     * @return A formatted 24-hour string (e.g., "14:30").
+     */
     private String convertToServerFormat(String timeStr) {
         // Convert "8:00 AM" to "08:00"
         if (timeStr == null) {
@@ -1908,15 +2275,23 @@ public class ClientView extends JFrame {
             }
 
             return String.format("%02d:%02d", hour, minute);
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
             return timeStr;
         }
     }
 
+    /**
+     * Decrements the Time-To-Live (TTL) counter for all pending "TEMPORAL"
+     * reservations.
+     *
+     * Designed to be called by a Swing Timer, this method scans the table
+     * model, extracts the current TTL value, and updates the view with the
+     * decremented count until it reaches zero or the reservation is confirmed.
+     */
     private void updateTTL() {
-        for (int i = 0; i < reservationsModel.getRowCount(); i++) {
-            Object statusObj = reservationsModel.getValueAt(i, 3);
-            Object ttlObj = reservationsModel.getValueAt(i, 4);
+        for (int i = 0; i < tblModel.getRowCount(); i++) {
+            Object statusObj = tblModel.getValueAt(i, 3);
+            Object ttlObj = tblModel.getValueAt(i, 4);
             if (statusObj == null || ttlObj == null) {
                 continue;
             }
@@ -1929,34 +2304,50 @@ public class ClientView extends JFrame {
                     ttlStr = ttlStr.split(":")[1].trim();
                 }
                 long ttl = Long.parseLong(ttlStr);
-                reservationsModel.setValueAt(ttl > 0 ? ttl - 1 : 0, i, 4);
-            } catch (Exception e) {
+                tblModel.setValueAt(ttl > 0 ? ttl - 1 : 0, i, 4);
+            } catch (NumberFormatException e) {
                 System.out.println("Invalid TTL: " + ttlObj);
             }
         }
     }
 
+    /**
+     * Sends a confirmation request for the currently selected reservation in
+     * the table.
+     *
+     * Guard Clauses: 1. Selection: Verifies that a row is actually selected. 2.
+     * State: Ensures the reservation is not in a pending "ENVIANDO" state
+     * before sending the "CONFIRMAR" protocol command.
+     */
     private void confirmReservation() {
-        int row = reservationsTable.getSelectedRow();
+        int row = tblClientReservations.getSelectedRow();
         if (row < 0) {
             logMessage("⚠ Seleccione una reserva para confirmar.");
             return;
         }
-        String id = (String) reservationsModel.getValueAt(row, 0);
-        if ("...".equals(id) || "ENVIANDO...".equals(reservationsModel.getValueAt(row, 3))) {
+        String id = (String) tblModel.getValueAt(row, 0);
+        if ("...".equals(id) || "ENVIANDO...".equals(tblModel.getValueAt(
+                row, 3))) {
             logMessage("⚠ Espere la respuesta del servidor.");
             return;
         }
         sendMessage("CONFIRMAR|" + id);
     }
 
+    /**
+     * Sends a cancellation request for the currently selected reservation.
+     *
+     * Similar to confirmation, it verifies the selection and state before
+     * transmitting the "CANCELAR" command to release the reserved slot on the
+     * server.
+     */
     private void cancelReservation() {
-        int row = reservationsTable.getSelectedRow();
+        int row = tblClientReservations.getSelectedRow();
         if (row < 0) {
             logMessage("⚠ Seleccione una reserva para cancelar.");
             return;
         }
-        String id = (String) reservationsModel.getValueAt(row, 0);
+        String id = (String) tblModel.getValueAt(row, 0);
         if ("...".equals(id)) {
             logMessage("⚠ Espere la respuesta del servidor.");
             return;
@@ -1964,9 +2355,16 @@ public class ClientView extends JFrame {
         sendMessage("CANCELAR|" + id);
     }
 
-    // =========================================================
-    // SERVER COMMUNICATION
-    // =========================================================
+    /**
+     * Sends a UTF-encoded string message to the server via the established
+     * output stream.
+     *
+     * Includes an immediate flush to ensure packet delivery and logs the
+     * transaction for local debugging. Catches IOExceptions to prevent UI
+     * crashes during network failures.
+     *
+     * @param message The protocol command or data string to transmit.
+     */
     private void sendMessage(String message) {
         try {
             outputStream.writeUTF(message);
@@ -1977,26 +2375,41 @@ public class ClientView extends JFrame {
         }
     }
 
-    // =========================================================
-    // UI UTILITIES
-    // =========================================================
+    /**
+     * Formats and appends a message to the internal server logs area.
+     *
+     * Adds a localized HH:mm:ss timestamp and automatically scrolls the
+     * JTextArea to the bottom to keep the latest events visible.
+     *
+     * @param msg The event description or server response to log.
+     */
     private void logMessage(String msg) {
-        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-        txtMessages.append("[" + time + "]  " + msg + "\n");
-        txtMessages.setCaretPosition(txtMessages.getDocument().getLength());
+        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern(
+                "HH:mm:ss"));
+        txtServerLogs.append("[" + time + "]  " + msg + "\n");
+        txtServerLogs.setCaretPosition(txtServerLogs.getDocument().getLength());
     }
 
     private void setFormEnabled(boolean enabled) {
-        txtDate.setEnabled(enabled);
+        txtReservationDate.setEnabled(enabled);
         cmbStartTime.setEnabled(enabled);
         cmbEndTime.setEnabled(enabled);
-        txtAttendees.setEnabled(enabled);
-        cmbEquipment.setEnabled(enabled);
-        btnReserve.setEnabled(enabled);
-        btnConfirm.setEnabled(enabled);
-        btnCancel.setEnabled(enabled);
+        txtAttendeeCount.setEnabled(enabled);
+        cbEquipmentType.setEnabled(enabled);
+        btnSubmitRequest.setEnabled(enabled);
+        btnConfirmSelection.setEnabled(enabled);
+        btnAbortReservation.setEnabled(enabled);
     }
 
+    /**
+     * Constructs a styled JTextField with custom focus-based placeholder logic.
+     *
+     * Applies Segoe UI typography, internal padding, and a focus listener that
+     * toggles placeholder visibility and text color dynamically.
+     *
+     * @param placeholder The ghost text to display when the field is empty.
+     * @return A pre-configured and styled JTextField instance.
+     */
     private JTextField buildTextField(String placeholder) {
         JTextField field = new JTextField();
         field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
@@ -2028,6 +2441,14 @@ public class ClientView extends JFrame {
         return field;
     }
 
+    /**
+     * Builds a localized JSpinner configured for date selection (yyyy-MM-dd).
+     *
+     * Restricts selection to current or future dates and applies a non-editable
+     * custom editor styled to match the application's visual theme.
+     *
+     * @return A configured JSpinner for reservation date selection.
+     */
     private JSpinner buildDatePicker() {
         SpinnerDateModel model = new SpinnerDateModel();
 
@@ -2058,6 +2479,13 @@ public class ClientView extends JFrame {
         return dateSpinner;
     }
 
+    /**
+     * Configures a custom visual theme for JComboBox components.
+     *
+     * It sets typography, colors, and a custom ListCellRenderer to handle
+     * selection highlights (using ACCENT_RED) and consistent padding across all
+     * dropdown items.
+     */
     private void styleCombo(JComboBox<?> combo) {
         combo.setFont(new Font("Segoe UI", Font.BOLD, 14));
         combo.setBackground(BG_WHITE);
@@ -2072,7 +2500,8 @@ public class ClientView extends JFrame {
             public Component getListCellRendererComponent(
                     JList<?> list, Object value, int index,
                     boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                super.getListCellRendererComponent(list, value, index,
+                        isSelected, cellHasFocus);
                 setFont(new Font("Segoe UI", Font.BOLD, 14));
                 setBackground(isSelected ? ACCENT_RED : BG_WHITE);
                 setForeground(isSelected ? Color.WHITE : TEXT_DARK);
@@ -2082,7 +2511,22 @@ public class ClientView extends JFrame {
         });
     }
 
-    private JButton buildActionButton(String text, Color color, boolean isPrimary) {
+    /**
+     * Creates a styled JButton with advanced 2D graphics and hover effects.
+     *
+     * Implementation details: 1. Geometry: Overrides paintComponent to render
+     * smooth rounded corners. 2. Interactivity: Attaches MouseListeners for
+     * dynamic background color transitions during hover events. 3. Styling:
+     * Supports both primary (filled) and secondary (outlined) visual variants.
+     *
+     * @param text The label text for the button.
+     * @param color The base theme color (applied to background or border).
+     * @param isPrimary {@code true} for solid fill, {@code false} for outline
+     * style.
+     * @return A fully configured and interactive JButton.
+     */
+    private JButton buildActionButton(String text, Color color,
+            boolean isPrimary) {
         JButton btn = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -2097,7 +2541,7 @@ public class ClientView extends JFrame {
         };
 
         btn.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
-        btn.setContentAreaFilled(false);   // dejamos que paintComponent lo haga
+        btn.setContentAreaFilled(false);
         btn.setOpaque(false);
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -2116,7 +2560,8 @@ public class ClientView extends JFrame {
 
         Color bgNormal = btn.getBackground();
         Color bgHover = isPrimary ? color.darker()
-                : new Color(color.getRed(), color.getGreen(), color.getBlue(), 30);
+                : new Color(color.getRed(), color.getGreen(),
+                        color.getBlue(), 30);
 
         btn.addMouseListener(new MouseAdapter() {
             @Override
@@ -2133,14 +2578,21 @@ public class ClientView extends JFrame {
         return btn;
     }
 
-    // =========================================================
-    // MAIN
-    // =========================================================
+    /**
+     * Application entry point.Sets the System Look and Feel to match the OS
+     * environment and launches the ClientView on the Event Dispatch Thread
+     * (EDT) to ensure thread-safe UI initialization.
+     *
+     * @param args
+     */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignored) {
+                UIManager.setLookAndFeel(
+                        UIManager.getSystemLookAndFeelClassName());
+            } catch (ClassNotFoundException | IllegalAccessException
+                    | InstantiationException
+                    | UnsupportedLookAndFeelException ignored) {
             }
             new ClientView().setVisible(true);
         });
