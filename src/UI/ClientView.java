@@ -232,8 +232,8 @@ public class ClientView extends JFrame {
      *
      * Key processing features: 1. Dynamic Transparency: Converts pixel
      * luminance to Alpha values, making darker areas transparent and preserving
-     * lighter tones. 2. High-Fidelity Scaling: Utilizes a multi-step reduction
-     * algorithm via multiStepScale to prevent aliasing and maintain sharpness.
+     * lighter tones. 2. High-Fidelity Scaling: Uses scaleImage() to preserve
+     * sharpness.
      *
      * @param targetW The desired width of the logo.
      * @param targetH The desired height of the logo.
@@ -242,131 +242,66 @@ public class ClientView extends JFrame {
      */
     private JLabel loadLogo(int targetW, int targetH) {
         try {
-            BufferedImage original = null;
+            InputStream is = getClass().getResourceAsStream("/resources/UNA.png");
 
-            java.io.InputStream is = getClass().getResourceAsStream(
-                    "/LogoBlanco.png");
-            if (is != null) {
-                original = ImageIO.read(is);
-            }
-
-            if (original == null) {
-                is = getClass().getResourceAsStream("LogoBlanco.png");
-                if (is != null) {
-                    original = ImageIO.read(is);
-                }
-            }
-
-            if (original == null) {
-                java.io.File f = new java.io.File("resources/LogoBlanco.png");
-                if (f.exists()) {
-                    original = ImageIO.read(f);
-                }
-            }
-
-            if (original == null) {
-                java.io.File f = new java.io.File(
-                        "src/resources/LogoBlanco.png");
-                if (f.exists()) {
-                    original = ImageIO.read(f);
-                }
-            }
-
-            if (original == null) {
-                java.net.URL url = getClass().getClassLoader()
-                        .getResource("LogoBlanco.png");
-                if (url != null) {
-                    original = ImageIO.read(url);
-                }
-            }
-
-            if (original == null) {
-                System.out.println("Logo no encontrado en ninguna ruta.");
+            if (is == null) {
+                System.out.println("Resource not found.");
                 return null;
             }
 
-            BufferedImage transparent = new BufferedImage(
-                    original.getWidth(), original.getHeight(),
-                    BufferedImage.TYPE_INT_ARGB);
+            BufferedImage original = ImageIO.read(is);
 
-            for (int y = 0; y < original.getHeight(); y++) {
-                for (int x = 0; x < original.getWidth(); x++) {
-                    int rgb = original.getRGB(x, y);
-                    int r = (rgb >> 16) & 0xFF;
-                    int g = (rgb >> 8) & 0xFF;
-                    int b = rgb & 0xFF;
-                    int lum = (r * 299 + g * 587 + b * 114) / 1000;
-
-                    int alpha = lum < 40 ? 0
-                            : lum > 180 ? 255
-                                    : (lum - 40) * 255 / 140;
-                    transparent.setRGB(x, y, (alpha << 24) | 0x00FFFFFF);
-                }
+            if (original == null) {
+                System.out.println("Unable to read image.");
+                return null;
             }
-            BufferedImage scaled = multiStepScale(transparent, targetW,
-                    targetH);
+
+            BufferedImage scaled = scaleImage(original, targetW, targetH);
 
             JLabel lbl = new JLabel(new ImageIcon(scaled));
             lbl.setBorder(new EmptyBorder(0, 0, 0, 10));
             return lbl;
 
         } catch (IOException e) {
-            System.out.println("Error cargando logo: " + e.getMessage());
+            System.out.println("Error loading logo: " + e.getMessage());
             return null;
         }
     }
-
+ 
     /**
-     * Scales an image using a progressive multi-step downsampling technique.
+     * Scales an image using high-quality Java2D rendering.
      *
-     * To maintain maximum sharpness and avoid aliasing artifacts, the method
-     * reduces the image dimensions by half in each iteration until it nears the
-     * target size. It applies high-quality rendering hints (Bilinear for
-     * intermediate steps and Bicubic for the final pass) to preserve logo
-     * detail and alpha channel transparency.
-     *
-     * @param src The source BufferedImage to scale.
-     * @param targetW The final desired width.
-     * @param targetH The final desired height.
-     * @return A high-quality scaled BufferedImage.
+     * @param img source image
+     * @param w target width
+     * @param h target height
+     * @return scaled BufferedImage
      */
-    private BufferedImage multiStepScale(BufferedImage src, int targetW,
-            int targetH) {
-        int w = src.getWidth();
-        int h = src.getHeight();
-        BufferedImage current = src;
+    private BufferedImage scaleImage(BufferedImage img, int w, int h) {
 
-        while (w > targetW * 2 || h > targetH * 2) {
-            w = Math.max(w / 2, targetW);
-            h = Math.max(h / 2, targetH);
-            BufferedImage tmp = new BufferedImage(w, h,
-                    BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g2 = tmp.createGraphics();
-            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                    RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g2.setRenderingHint(RenderingHints.KEY_RENDERING,
-                    RenderingHints.VALUE_RENDER_QUALITY);
-            g2.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION,
-                    RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
-            g2.drawImage(current, 0, 0, w, h, null);
-            g2.dispose();
-            current = tmp;
-        }
+        BufferedImage scaled = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
 
-        BufferedImage result = new BufferedImage(targetW, targetH,
-                BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2 = result.createGraphics();
+        Graphics2D g2 = scaled.createGraphics();
+
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+
         g2.setRenderingHint(RenderingHints.KEY_RENDERING,
                 RenderingHints.VALUE_RENDER_QUALITY);
+
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
+
         g2.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION,
                 RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
-        g2.drawImage(current, 0, 0, targetW, targetH, null);
+
+        g2.setRenderingHint(RenderingHints.KEY_DITHERING,
+                RenderingHints.VALUE_DITHER_ENABLE);
+
+        g2.drawImage(img, 0, 0, w, h, null);
+
         g2.dispose();
-        return result;
+
+        return scaled;
     }
 
     /**
