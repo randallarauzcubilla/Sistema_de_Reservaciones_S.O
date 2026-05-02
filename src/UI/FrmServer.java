@@ -1099,8 +1099,12 @@ public class FrmServer extends JFrame {
                 if (handler.getClientId()
                         .equals(clientId)) {
                     try {
-                           handler.send("OK|EDITADO|"
-                                + newRes.getReservationId());
+                        handler.send("OK|EDITADO|" + resId
+                                + "|" + newRes.getReservationId()
+                                + "|" + newRes.getDate()
+                                + "|" + newRes.getStartTime()
+                                + "|" + newRes.getEndTime()
+                                + "|" + newRes.getStatus().toString());
                     } catch (Exception ignored) {
                     }
                     break;

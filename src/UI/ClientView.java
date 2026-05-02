@@ -519,17 +519,17 @@ public class ClientView extends JFrame {
         JPanel cardMyReservations = createMenuCard(
                 "≡",
                 "Mis Reservas",
-                "Ver historial completo",
-                () -> {
-                    if (historyModel != null && 
-                            historyModel.getRowCount() == 0) {
-                        for (Object[] row : allReservationsData) {
-                            historyModel.addRow(row);
-                        }
+                "Ver historial completo",                    
+            () -> {
+                if (historyModel != null) {
+                    historyModel.setRowCount(0);
+                    for (Object[] row : allReservationsData) {
+                        historyModel.addRow(java.util.Arrays.copyOf(row, row.length));
                     }
-                    CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
-                    cl.show(pnlMainContainer, "MY_RESERVATIONS");
                 }
+                CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
+                cl.show(pnlMainContainer, "MY_RESERVATIONS");
+            }               
         );
 
         cardsPanel.add(cardReserve);
@@ -828,35 +828,41 @@ public class ClientView extends JFrame {
         };
 
         JTable table = new JTable(historyModel) {
-
             @Override
-            public Component prepareRenderer(
-                    TableCellRenderer r,
-                    int row,
-                    int col) {
-
+            public Component prepareRenderer(TableCellRenderer r,
+                    int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
-
+                if (c instanceof JComponent) {
+                    ((JComponent) c).setBorder(new EmptyBorder(0, 8, 0, 8));
+                }
                 if (isRowSelected(row)) {
-                    c.setBackground(new Color(220, 38, 38, 25)); 
+                    c.setBackground(new Color(220, 38, 38, 25));
                 } else {
                     c.setBackground(row % 2 == 0 ? BG_WHITE : BG_LIGHT);
                 }
-
-                String estado = (String) getValueAt(row, 3);
-
-                if ("CONFIRMADA".equals(estado)) {
-                    c.setForeground(SUCCESS_GREEN); 
-                } else if ("CANCELADA".equals(estado)) {
-                    c.setForeground(TEXT_MUTED); 
-                } else if ("EXPIRADA".equals(estado)) {
-                    c.setForeground(WARNING_AMBER); 
-                } else if ("TEMPORAL".equals(estado)) {
-                    c.setForeground(TEXT_DARK); 
-                } else {
-                    c.setForeground(TEXT_DARK);
+                Object estadoObj = getValueAt(row, 3);
+                String estado = estadoObj != null ? estadoObj.toString() : "";
+                switch (estado) {
+                    case "CONFIRMADA":
+                    case "CONFIRMADO":
+                        c.setForeground(SUCCESS_GREEN);
+                        break;
+                    case "CANCELADA":
+                    case "CANCELADO":
+                        c.setForeground(TEXT_MUTED);
+                        break;
+                    case "EXPIRADA":
+                    case "EXPIRADO":
+                        c.setForeground(WARNING_AMBER);
+                        break;
+                    case "TEMPORAL":
+                    case "RESERVADO_TEMPORAL":
+                        c.setForeground(TEXT_DARK);
+                        break;
+                    default:
+                        c.setForeground(TEXT_DARK);
+                        break;
                 }
-
                 return c;
             }
         };
@@ -2062,10 +2068,18 @@ public class ClientView extends JFrame {
             }
         } catch (IOException ignored) {
         }
+        
+        allReservationsData.clear();
+        if (tblModel != null) {
+            tblModel.setRowCount(0);
+        }
+        if (historyModel != null) {
+            historyModel.setRowCount(0);
+        }
+        lastReservationId = null;
 
         isConnected = false;
         isIdVerified = false;
-        lastReservationId = null;
 
         txtClientId.setText("");
         txtClientId.setEditable(true);
@@ -2083,7 +2097,6 @@ public class ClientView extends JFrame {
         btnEstablishConnection.setEnabled(true);
         btnTerminateSession.setVisible(false);
 
-        tblModel.setRowCount(0);
         txtServerLogs.setText("");
 
         setTitle("UNIVERSIDAD NACIONAL - Sistema de Reservas de Salas");
@@ -2169,6 +2182,15 @@ public class ClientView extends JFrame {
             }
         }
 
+        allReservationsData.clear();
+        if (tblModel != null) {
+            tblModel.setRowCount(0);
+        }
+        if (historyModel != null) {
+            historyModel.setRowCount(0);
+        }
+        lastReservationId = null;
+
         closeSilently(socket);
         setFormEnabled(false);
 
@@ -2230,7 +2252,7 @@ public class ClientView extends JFrame {
 
             case "HISTORIAL":
                 tblModel.setRowCount(0);
-
+                allReservationsData.clear();
                 if (historyModel != null) {
                     historyModel.setRowCount(0);
                 }
@@ -2246,32 +2268,20 @@ public class ClientView extends JFrame {
                     String timeRng = fields[2] + " - " + fields[3];
                     String status = fields[4];
 
-                    // ACTIVA SOLO estados válidos
-                    if ("RESERVADO_TEMPORAL".equals(status)
-                            || "TEMPORAL".equals(status)
-                            || "CONFIRMADO".equals(status)
-                            || "CONFIRMADA".equals(status)) {
+                    allReservationsData.add(new Object[]{id, date,
+                        timeRng, status, "—"});
 
-                        tblModel.addRow(new Object[]{
-                            id, date, timeRng, status, "—"
-                        });
+                    if ("RESERVADO_TEMPORAL".equals(status) || 
+                            "TEMPORAL".equals(status)
+                            || "CONFIRMADO".equals(status) || 
+                            "CONFIRMADA".equals(status)) {
+                        tblModel.addRow(new Object[]{id, date, timeRng, 
+                            status, "—"});
                     }
 
                     if (historyModel != null) {
-                        boolean exists = false;
-
-                        for (int j = 0; j < historyModel.getRowCount(); j++) {
-                            if (id.equals(historyModel.getValueAt(j, 0))) {
-                                exists = true;
-                                break;
-                            }
-                        }
-
-                        if (!exists) {
-                            historyModel.addRow(new Object[]{
-                                id, date, timeRng, status, "—"
-                            });
-                        }
+                        historyModel.addRow(new Object[]{id, date, timeRng,
+                            status, "—"});
                     }
                 }
                 refreshComboRenderers();
@@ -2305,6 +2315,18 @@ public class ClientView extends JFrame {
                             tblModel.setValueAt(id, i, 0);
                             tblModel.setValueAt("TEMPORAL", i, 3);
                             tblModel.setValueAt(ttlValue, i, 4);
+                            
+                            boolean existsInData = false;
+                            for (Object[] row : allReservationsData) {
+                                if (id.equals(row[0])) {
+                                    existsInData = true;
+                                    break;
+                                }
+                            }
+                            if (!existsInData) {
+                                allReservationsData.add(new Object[]{id, date,
+                                    timeRng, "TEMPORAL", "—"});
+                            }
 
                             boolean existsGlobal = false;
 
@@ -2365,6 +2387,48 @@ public class ClientView extends JFrame {
                     updateTableStatus(id, "CANCELADA");
                     clearTTL(id);
                     refreshComboRenderers();
+                } else if (parts.length >= 2 && "EDITADO".equals(parts[1])) {
+                    if (parts.length >= 7) {
+                        String oldId = parts[2];
+                        String newId = parts[3];
+                        String date = parts[4];
+                        String timeRng = parts[5] + " - " + parts[6];
+                        String status = parts.length >= 8 ? parts[7] :
+                                "CONFIRMADO";
+
+                        for (int i = tblModel.getRowCount() - 1; i >= 0; i--) {
+                            if (oldId.equals(tblModel.getValueAt(i, 0))) {
+                                tblModel.removeRow(i);
+                                break;
+                            }
+                        }
+                        if (historyModel != null) {
+                            for (int i = historyModel.getRowCount() - 1;
+                                    i >= 0; i--) {
+                                if (oldId.equals(historyModel.getValueAt(
+                                        i, 0))) {
+                                    historyModel.setValueAt("CANCELADA", i, 3);
+                                    break;
+                                }
+                            }
+                        }
+                        for (Object[] row : allReservationsData) {
+                            if (oldId.equals(row[0])) {
+                                row[3] = "CANCELADA";
+                                break;
+                            }
+                        }
+
+                        Object[] newRow = {newId, date, timeRng, status, "—"};
+                        tblModel.addRow(newRow);
+                        allReservationsData.add(newRow.clone());
+                        if (historyModel != null) {
+                            historyModel.addRow(newRow.clone());
+                        }
+
+                        refreshComboRenderers();
+                        logMessage("Reserva editada: " + oldId + " → " + newId);
+                    }
                 }
                 break;
 
@@ -2430,7 +2494,7 @@ public class ClientView extends JFrame {
      * has been confirmed or cancelled.
      *
      * @param id The unique identifier of the reservation to update. If the ID
-     * is found, the TTL column is reset to a placeholder ("—") and the table is
+     * is found, the TTL column is reset to a placeholder ("-") and the table is
      * repainted to reflect the change.
      */
     private void clearTTL(String id) {
@@ -2438,6 +2502,22 @@ public class ClientView extends JFrame {
             if (id != null && id.equals(tblModel.getValueAt(i, 0))) {
                 tblModel.setValueAt("—", i, 4);
                 tblClientReservations.repaint();
+                break;
+            }
+        }
+
+        if (historyModel != null) {
+            for (int i = 0; i < historyModel.getRowCount(); i++) {
+                if (id != null && id.equals(historyModel.getValueAt(i, 0))) {
+                    historyModel.setValueAt("—", i, 4);
+                    break;
+                }
+            }
+        }
+
+        for (Object[] row : allReservationsData) {
+            if (id != null && id.equals(row[0])) {
+                row[4] = "—";
                 break;
             }
         }
@@ -2455,11 +2535,11 @@ public class ClientView extends JFrame {
      * @param newStatus the new status value to display in the table
      */
     private void updateTableStatus(String id, String newStatus) {
-        // 1. Actualizar tabla activa (Crear Reserva)
         for (int i = 0; i < tblModel.getRowCount(); i++) {
             if (id != null && id.equals(tblModel.getValueAt(i, 0))) {
-                if ("CANCELADA".equals(newStatus) || "EXPIRADA".equals(newStatus)) {
-                    tblModel.removeRow(i); 
+                if ("CANCELADA".equals(newStatus) || 
+                        "EXPIRADA".equals(newStatus)) {
+                    tblModel.removeRow(i);
                 } else {
                     tblModel.setValueAt(newStatus, i, 3);
                 }
@@ -2468,41 +2548,24 @@ public class ClientView extends JFrame {
             }
         }
 
-        boolean foundInData = false;
         for (Object[] row : allReservationsData) {
             if (id != null && id.equals(row[0])) {
                 row[3] = newStatus;
-                foundInData = true;
                 break;
             }
         }
 
-        if (!foundInData) {
-            for (int i = 0; i < tblModel.getRowCount(); i++) {
-                if (id != null && id.equals(tblModel.getValueAt(i, 0))) {
-                    allReservationsData.add(new Object[]{
-                        tblModel.getValueAt(i, 0),
-                        tblModel.getValueAt(i, 1),
-                        tblModel.getValueAt(i, 2),
-                        newStatus,
-                        tblModel.getValueAt(i, 4)
-                    });
-                    break;
-                }
-            }
-        }
-
         if (historyModel != null) {
-            boolean foundInHistory = false;
+            boolean found = false;
             for (int i = 0; i < historyModel.getRowCount(); i++) {
                 if (id != null && id.equals(historyModel.getValueAt(i, 0))) {
                     historyModel.setValueAt(newStatus, i, 3);
-                    foundInHistory = true;
+                    found = true;
                     break;
                 }
             }
 
-            if (!foundInHistory) {
+            if (!found) {
                 for (Object[] row : allReservationsData) {
                     if (id != null && id.equals(row[0])) {
                         historyModel.addRow(new Object[]{
