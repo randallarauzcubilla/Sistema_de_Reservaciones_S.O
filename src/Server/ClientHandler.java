@@ -175,10 +175,9 @@ public class ClientHandler extends Thread {
                     .append(r.getEndTime()).append(",")
                     .append(r.getStatus().toString());
         }
-
         sendResponse(sb.toString());
     }
-    
+     
     /**
      * Processes a availability query request.
      * Verifies if a specific date and time range is free for booking.
