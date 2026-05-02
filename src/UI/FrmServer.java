@@ -440,9 +440,9 @@ public class FrmServer extends JFrame {
      */
     private JScrollPane createTablePanel() {
         String[] cols = {
-            "ID", "Requester", "Date",
-            "Schedule", "Status", "Attendees",
-            "Equipment", "TTL"
+            "ID Reserva", "Usuario", "Fecha",
+            "Horario", "Estado", "Asistentes",
+            "Equipo", "Vigencia"
         };
         tableModel = new DefaultTableModel(cols, 0) {
             @Override
@@ -1099,7 +1099,7 @@ public class FrmServer extends JFrame {
                 if (handler.getClientId()
                         .equals(clientId)) {
                     try {
-                        handler.send("OK|EDITADO|"
+                           handler.send("OK|EDITADO|"
                                 + newRes.getReservationId());
                     } catch (Exception ignored) {
                     }
@@ -1108,7 +1108,7 @@ public class FrmServer extends JFrame {
             }
         }
 
-        log("✎ Reserva " + resId + " editada → "
+        log("Reserva " + resId + " editada → "
                 + newRes.getReservationId()
                 + " | cliente: " + clientId);
         refreshView();
