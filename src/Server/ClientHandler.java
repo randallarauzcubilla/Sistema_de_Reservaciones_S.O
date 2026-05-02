@@ -168,10 +168,6 @@ public class ClientHandler extends Thread {
             if (!r.getClientId().equals(clientId)) {
                 continue;
             }
-            if (r.getStatus() == Reservation.Status.CANCELADO) {
-                continue;
-            }
-
             sb.append("|")
                     .append(r.getReservationId()).append(",")
                     .append(r.getDate()).append(",")
@@ -182,7 +178,7 @@ public class ClientHandler extends Thread {
 
         sendResponse(sb.toString());
     }
-
+    
     /**
      * Processes a availability query request.
      * Verifies if a specific date and time range is free for booking.

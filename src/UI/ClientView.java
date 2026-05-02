@@ -16,10 +16,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.time.LocalDate;
-import javax.swing.SpinnerDateModel;
-import javax.swing.JSpinner;
-import javax.swing.JFormattedTextField;
-import java.util.Date;
 import javax.imageio.ImageIO;
 
 /**
@@ -53,7 +49,7 @@ public class ClientView extends JFrame {
     // =========================================================
     // TSE API
     // =========================================================
-    private static final String TSE_API_URL ="https://apis.gometa.org/cedulas/";
+    private static final String TSE_API_URL= "https://apis.gometa.org/cedulas/";
 
     // =========================================================
     // SERVER CONNECTION
@@ -96,6 +92,9 @@ public class ClientView extends JFrame {
     private JTable tblClientReservations;
     private DefaultTableModel tblModel;
     private JTextArea txtServerLogs;
+    private DefaultTableModel historyModel;
+    private final java.util.List<Object[]> allReservationsData = 
+            new java.util.ArrayList<>();
 
     // =========================================================
     // APPLICATION STATE
@@ -142,7 +141,7 @@ public class ClientView extends JFrame {
         pnlMainContainer.add(pnlLoginView, "LOGIN");
         pnlMainContainer.add(pnlMenuView, "MENU");
         pnlMainContainer.add(pnlReservationForm, "RESERVATION");
-
+        pnlMainContainer.add(buildMyReservationsPanel(), "MY_RESERVATIONS");
         JPanel headerPanel = createHeader();
 
         JPanel root = new JPanel(new BorderLayout(0, 0));
@@ -242,7 +241,8 @@ public class ClientView extends JFrame {
      */
     private JLabel loadLogo(int targetW, int targetH) {
         try {
-            InputStream is = getClass().getResourceAsStream("/resources/UNA.png");
+            InputStream is = getClass().getResourceAsStream(
+                    "/resources/UNA.png");
 
             if (is == null) {
                 System.out.println("Resource not found.");
@@ -267,7 +267,7 @@ public class ClientView extends JFrame {
             return null;
         }
     }
- 
+
     /**
      * Scales an image using high-quality Java2D rendering.
      *
@@ -278,7 +278,8 @@ public class ClientView extends JFrame {
      */
     private BufferedImage scaleImage(BufferedImage img, int w, int h) {
 
-        BufferedImage scaled = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage scaled = new BufferedImage(w, h,
+                BufferedImage.TYPE_INT_ARGB);
 
         Graphics2D g2 = scaled.createGraphics();
 
@@ -518,10 +519,16 @@ public class ClientView extends JFrame {
         JPanel cardMyReservations = createMenuCard(
                 "≡",
                 "Mis Reservas",
-                "Ver reservas activas",
+                "Ver historial completo",
                 () -> {
-                    JOptionPane.showMessageDialog(this, 
-                            "Funcionalidad próximamente");
+                    if (historyModel != null && 
+                            historyModel.getRowCount() == 0) {
+                        for (Object[] row : allReservationsData) {
+                            historyModel.addRow(row);
+                        }
+                    }
+                    CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
+                    cl.show(pnlMainContainer, "MY_RESERVATIONS");
                 }
         );
 
@@ -561,7 +568,7 @@ public class ClientView extends JFrame {
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(BG_WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(255, 200, 200), 1, 
+                BorderFactory.createLineBorder(new Color(255, 200, 200), 1,
                         true),
                 new EmptyBorder(30, 40, 30, 40)
         ));
@@ -784,6 +791,211 @@ public class ClientView extends JFrame {
     }
 
     /**
+     * Builds the "My Reservations" panel, which displays the user's reservation
+     * history in a structured table format.
+     *
+     * This panel is responsible for showing all reservations associated with
+     * the logged-in client, including their status, schedule, and other
+     * relevant details. It refreshes the table model when the panel is opened
+     * and applies visual styling (colors, row formatting, and headers) to
+     * improve readability.
+     *
+     * The table supports different reservation states such as CONFIRMADA,
+     * CANCELADA, EXPIRADA, and RESERVADO_TEMPORAL, each rendered with a
+     * specific color for quick identification.
+     *
+     * @return the fully constructed JPanel containing the reservations history
+     */
+    private JPanel buildMyReservationsPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(BG_WHITE);
+        panel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        JLabel title = new JLabel("Historial de Reservas");
+        title.setFont(new Font("SansSerif", Font.BOLD, 20));
+        title.setForeground(ACCENT_RED);
+        panel.add(title, BorderLayout.NORTH);
+
+        String[] cols = {
+            "ID Reserva", "Fecha", "Horario", "Estado", "Vigencia"
+        };
+
+        historyModel = new DefaultTableModel(cols, 0) {
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
+        };
+
+        JTable table = new JTable(historyModel) {
+
+            @Override
+            public Component prepareRenderer(
+                    TableCellRenderer r,
+                    int row,
+                    int col) {
+
+                Component c = super.prepareRenderer(r, row, col);
+
+                if (isRowSelected(row)) {
+                    c.setBackground(new Color(220, 38, 38, 25)); 
+                } else {
+                    c.setBackground(row % 2 == 0 ? BG_WHITE : BG_LIGHT);
+                }
+
+                String estado = (String) getValueAt(row, 3);
+
+                if ("CONFIRMADA".equals(estado)) {
+                    c.setForeground(SUCCESS_GREEN); 
+                } else if ("CANCELADA".equals(estado)) {
+                    c.setForeground(TEXT_MUTED); 
+                } else if ("EXPIRADA".equals(estado)) {
+                    c.setForeground(WARNING_AMBER); 
+                } else if ("TEMPORAL".equals(estado)) {
+                    c.setForeground(TEXT_DARK); 
+                } else {
+                    c.setForeground(TEXT_DARK);
+                }
+
+                return c;
+            }
+        };
+
+        table.setRowHeight(28);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        table.setGridColor(ACCENT_RED);
+        table.setShowVerticalLines(false);
+        table.setIntercellSpacing(new Dimension(0, 1));
+        table.setSelectionBackground(new Color(220, 38, 38, 25));
+        table.setSelectionForeground(TEXT_DARK);
+
+        JTableHeader header = table.getTableHeader();
+
+        header.setDefaultRenderer(new DefaultTableCellRenderer() {
+
+            @Override
+            public Component getTableCellRendererComponent(
+                    JTable table,
+                    Object value,
+                    boolean isSelected,
+                    boolean hasFocus,
+                    int row,
+                    int col) {
+
+                JLabel lbl = (JLabel) super.getTableCellRendererComponent(
+                        table, value, isSelected, hasFocus, row, col);
+
+                lbl.setBackground(ACCENT_RED);
+                lbl.setForeground(Color.WHITE);
+
+                lbl.setFont(new Font("SansSerif", Font.BOLD, 11));
+
+                lbl.setOpaque(true);
+
+                lbl.setBorder(BorderFactory.createMatteBorder(
+                        0, 0, 2, 0,
+                        ACCENT_RED_DARK
+                ));
+
+                return lbl;
+            }
+        });
+
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
+        scroll.getViewport().setBackground(BG_WHITE);
+
+        panel.add(scroll, BorderLayout.CENTER);
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        bottom.setBackground(BG_WHITE);
+
+        JButton btnBack = createButton("← Volver", ACCENT_RED, true);
+
+        btnBack.addActionListener(e -> {
+            CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
+            cl.show(pnlMainContainer, "MENU");
+        });
+
+        bottom.add(btnBack);
+        panel.add(bottom, BorderLayout.SOUTH);
+
+        return panel;
+    }
+
+    /**
+     * Creates a styled JButton used across the UI with consistent visual
+     * design.
+     *
+     * The button supports primary and secondary styles, allowing different
+     * visual behaviors depending on its role in the interface (e.g., main
+     * actions vs. navigation or back buttons).
+     *
+     * @param text the text displayed on the button
+     * @param color the base color used for the button background or accent
+     * @param isSecondary if true, applies a secondary (less prominent) style;
+     * otherwise applies the primary button style
+     * @return a fully styled JButton instance ready to be added to the UI
+     */
+    private JButton createButton(String text, Color color, boolean isSecondary){
+
+        JButton btn = new JButton(text) {
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+
+                ButtonModel model = getModel();
+
+                boolean hover = model.isRollover();
+                boolean pressed = model.isPressed();
+
+                Color fill;
+                Color textColor;
+
+                if (!isEnabled()) {
+                    fill = new Color(230, 230, 230);
+                    textColor = Color.GRAY;
+                } else if (pressed) {
+                    fill = color.darker();
+                    textColor = Color.WHITE;
+                } else if (hover) {
+                    fill = color;
+                    textColor = Color.WHITE;
+                } else {
+                    if (isSecondary) {
+                        fill = Color.WHITE;
+                        textColor = color;
+                    } else {
+                        fill = color;
+                        textColor = Color.WHITE;
+                    }
+                }
+
+                g2.setColor(fill);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+                g2.dispose();
+                setForeground(textColor);
+                super.paintComponent(g);
+            }
+        };
+
+        btn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btn.setFocusPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btn.setContentAreaFilled(false);
+        btn.setOpaque(false);
+
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(color, 1),
+                new EmptyBorder(10, 28, 10, 28)
+        ));
+        return btn;
+    }
+
+    /**
      * Constructs the interactive reservation form panel.
      *
      * Key features: 1. Data Binding: Synchronizes start and end times via event
@@ -901,7 +1113,7 @@ public class ClientView extends JFrame {
         buttonPanel.setBackground(BG_LIGHT);
 
         btnSubmitRequest = buildActionButton("💾  Reservar", ACCENT_RED, true);
-        btnConfirmSelection = buildActionButton("✓  Confirmar", SUCCESS_GREEN, 
+        btnConfirmSelection = buildActionButton("✓  Confirmar", SUCCESS_GREEN,
                 true);
         btnAbortReservation = buildActionButton("⊗  Cancelar", ACCENT_RED,
                 false);
@@ -952,7 +1164,7 @@ public class ClientView extends JFrame {
         tableLabel.setForeground(ACCENT_RED);
         tableWrapper.add(tableLabel, BorderLayout.NORTH);
 
-        String[] columns = {"ID", "Fecha", "Horario", "Estado", "TTL"};
+        String[] columns = {"ID", "Fecha", "Horario", "Estado", "Vigencia"};
         tblModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
@@ -1220,7 +1432,7 @@ public class ClientView extends JFrame {
                             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                                     RenderingHints.VALUE_ANTIALIAS_ON);
                             g2.setColor(getBackground());
-                            g2.fillRoundRect(0, 0, getWidth(), 
+                            g2.fillRoundRect(0, 0, getWidth(),
                                     getHeight(), 8, 8);
                             g2.dispose();
                         }
@@ -1228,11 +1440,11 @@ public class ClientView extends JFrame {
                     }
                 };
 
-                dayBtn.setFont(new Font("Segoe UI", isToday ? Font.BOLD : 
-                        Font.PLAIN, 12));
+                dayBtn.setFont(new Font("Segoe UI", isToday ? Font.BOLD
+                        : Font.PLAIN, 12));
                 dayBtn.setFocusPainted(false);
-                dayBtn.setCursor(isPast ? Cursor.getDefaultCursor() :
-                        new Cursor(Cursor.HAND_CURSOR));
+                dayBtn.setCursor(isPast ? Cursor.getDefaultCursor()
+                        : new Cursor(Cursor.HAND_CURSOR));
 
                 if (isPast) {
                     dayBtn.setBackground(BG_LIGHT);
@@ -1486,7 +1698,7 @@ public class ClientView extends JFrame {
                 conn.setConnectTimeout(6000);
                 conn.setReadTimeout(6000);
                 conn.setRequestProperty("Accept", "application/json");
-                conn.setRequestProperty("User-Agent", 
+                conn.setRequestProperty("User-Agent",
                         "VentanaCliente-ReservasSala/1.0");
 
                 int status = conn.getResponseCode();
@@ -1658,8 +1870,8 @@ public class ClientView extends JFrame {
         }
 
         int start = idx + pattern.length();
-        while (start < json.length() && (json.charAt(start) == ':' ||
-                json.charAt(start) == ' ')) {
+        while (start < json.length() && (json.charAt(start) == ':'
+                || json.charAt(start) == ' ')) {
             start++;
         }
 
@@ -1720,7 +1932,7 @@ public class ClientView extends JFrame {
         if (!isIdVerified && name.isEmpty()) {
             int choice = JOptionPane.showConfirmDialog(this,
                     "La cédula no fue verificada contra el TSE.\n"
-                            + "¿Desea continuar de todas formas?",
+                    + "¿Desea continuar de todas formas?",
                     "Cédula no verificada",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
@@ -1744,7 +1956,7 @@ public class ClientView extends JFrame {
         if (name.isEmpty()) {
             JOptionPane.showMessageDialog(this,
                     "No se pudo obtener el nombre desde el TSE.\n"
-                            + "Verifique su cédula.",
+                    + "Verifique su cédula.",
                     "Nombre no disponible", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -1768,8 +1980,8 @@ public class ClientView extends JFrame {
 
             if (response.equals("ERROR|ROL_NO_AUTORIZADO")) {
                 JOptionPane.showMessageDialog(this,
-                        "Su cédula no está autorizada para el rol: " + role + 
-                                "\nContacte al administrador.",
+                        "Su cédula no está autorizada para el rol: " + role
+                        + "\nContacte al administrador.",
                         "Acceso denegado", JOptionPane.ERROR_MESSAGE);
                 closeSilently(tempSocket);
                 return;
@@ -1814,13 +2026,13 @@ public class ClientView extends JFrame {
             closeSilently(tempSocket);
             JOptionPane.showMessageDialog(this,
                     "No hay servidor activo en el puerto 8000.\n"
-                            + "¿Está corriendo el servidor?",
+                    + "¿Está corriendo el servidor?",
                     "Sin conexión", JOptionPane.ERROR_MESSAGE);
         } catch (SocketTimeoutException e) {
             closeSilently(tempSocket);
             JOptionPane.showMessageDialog(this,
                     "El servidor no respondió a tiempo.\n"
-                            + "Verifique que esté operativo.",
+                    + "Verifique que esté operativo.",
                     "Tiempo de espera agotado", JOptionPane.ERROR_MESSAGE);
         } catch (IOException e) {
             closeSilently(tempSocket);
@@ -1980,14 +2192,32 @@ public class ClientView extends JFrame {
     /**
      * Central dispatcher for processing and reacting to server-side messages.
      *
-     * Message Handling Logic: 1. HISTORIAL: Reconstructs the local table model
-     * using raw data from the server database. 2. OK
-     * (TEMPORAL/CONFIRMADO/CANCELADO): Updates the status of pending or active
-     * reservations and manages the Time-To-Live (TTL) synchronization. 3.
-     * ERROR: Logs server-side failures and removes "ghost" rows from the table
-     * to maintain UI consistency. 4. EXPIRACION: Handles the lifecycle
-     * termination of temporary reservations, notifying the user through visual
-     * alerts and logging.
+     * This method is responsible for interpreting the custom protocol messages
+     * received from the server and updating the UI state accordingly. It acts
+     * as the main synchronization point between backend events and the client
+     * view.
+     *
+     * Message Handling Logic: HISTORIAL: Reconstructs the reservation history
+     * table model using data provided by the server, ensuring no duplicate
+     * entries are added.
+     *
+     * OK | TEMPORAL: Handles creation of temporary reservations, updating both
+     * the active table and historical view, and storing TTL values.
+     *
+     * OK | CONFIRMADO: Updates reservation status to confirmed, clears TTL
+     * information, and refreshes UI renderers.
+     *
+     * OK | CANCELADO: Updates reservation state to cancelled and removes TTL
+     * tracking from the interface.
+     *
+     * ERROR: Handles server-side errors, logs diagnostic information, and
+     * removes inconsistent or pending UI entries when necessary.
+     *
+     * EXPIRACION:Processes TTL expiration events, updates status to expired,
+     * clears TTL display, and notifies the user through alerts.
+     *
+     * This method also ensures UI consistency by preventing duplicate entries
+     * in both the active reservations table and the history model.
      *
      * @param msg The raw pipe-delimited protocol string received from the
      * server.
@@ -2000,60 +2230,153 @@ public class ClientView extends JFrame {
 
             case "HISTORIAL":
                 tblModel.setRowCount(0);
+
+                if (historyModel != null) {
+                    historyModel.setRowCount(0);
+                }
+
                 for (int i = 1; i < parts.length; i++) {
                     String[] fields = parts[i].split(",", 5);
                     if (fields.length < 5) {
                         continue;
                     }
+
                     String id = fields[0];
                     String date = fields[1];
                     String timeRng = fields[2] + " - " + fields[3];
                     String status = fields[4];
-                    tblModel.addRow(new Object[]{id, date, timeRng,
-                        status, "—"});
-                }
-                if (tblModel.getRowCount() > 0) {
-                    logMessage("Historial restaurado: " + tblModel.getRowCount() 
-                            + " reserva(s).");
+
+                    // ACTIVA SOLO estados válidos
+                    if ("RESERVADO_TEMPORAL".equals(status)
+                            || "TEMPORAL".equals(status)
+                            || "CONFIRMADO".equals(status)
+                            || "CONFIRMADA".equals(status)) {
+
+                        tblModel.addRow(new Object[]{
+                            id, date, timeRng, status, "—"
+                        });
+                    }
+
+                    if (historyModel != null) {
+                        boolean exists = false;
+
+                        for (int j = 0; j < historyModel.getRowCount(); j++) {
+                            if (id.equals(historyModel.getValueAt(j, 0))) {
+                                exists = true;
+                                break;
+                            }
+                        }
+
+                        if (!exists) {
+                            historyModel.addRow(new Object[]{
+                                id, date, timeRng, status, "—"
+                            });
+                        }
+                    }
                 }
                 refreshComboRenderers();
                 break;
 
             case "OK":
                 if (parts.length >= 3 && "TEMPORAL".equals(parts[1])) {
+
                     String id = parts[2];
-                    String ttl = parts.length >= 4 ? parts[3] : "?";
+                    String ttlStr = parts.length >= 4 ? parts[3] : "?";
                     lastReservationId = id;
+
+                    ttlStr = ttlStr.replace("TTL:", "").trim();
+
+                    long ttlValue;
+                    try {
+                        ttlValue = Long.parseLong(ttlStr);
+                    } catch (NumberFormatException e) {
+                        ttlValue = -1;
+                    }
+
                     for (int i = 0; i < tblModel.getRowCount(); i++) {
+
                         if ("ENVIANDO...".equals(tblModel.getValueAt(i, 3))) {
+
+                            String date = 
+                                    String.valueOf(tblModel.getValueAt(i, 1));
+                            String timeRng = 
+                                    String.valueOf(tblModel.getValueAt(i, 2));
+
                             tblModel.setValueAt(id, i, 0);
                             tblModel.setValueAt("TEMPORAL", i, 3);
-                            ttl = ttl.replace("TTL:", "").trim();
-                            tblModel.setValueAt(Long.valueOf(ttl), i, 4);
+                            tblModel.setValueAt(ttlValue, i, 4);
+
+                            boolean existsGlobal = false;
+
+                            for (int j = 0; j < tblModel.getRowCount(); j++) {
+                                if (id.equals(tblModel.getValueAt(j, 0))) {
+                                    existsGlobal = true;
+                                    break;
+                                }
+                            }
+
+                            if (!existsGlobal) {
+                                tblModel.addRow(new Object[]{
+                                    id, date, timeRng, "TEMPORAL", ttlValue
+                                });
+                            }
+
+                            if (historyModel != null) {
+                                boolean existsHistory = false;
+
+                                for (int j = 0; j < historyModel.getRowCount();
+                                        j++) {
+                                    if (id.equals(historyModel.getValueAt(
+                                            j, 0))) {
+                                        existsHistory = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!existsHistory) {
+                                    historyModel.addRow(new Object[]{
+                                        id, date, timeRng, "TEMPORAL", "N/A"
+                                    });
+                                }
+                            }
+
                             clearReservationForm();
                             refreshComboRenderers();
                             break;
                         }
                     }
                 } else if (parts.length >= 2 && "CONFIRMADO".equals(parts[1])) {
-                    String id = parts.length >= 3 ? parts[2]:lastReservationId;
+
+                    String id = parts.length >= 3 ? parts[2] : lastReservationId;
+
                     updateTableStatus(id, "CONFIRMADA");
                     clearTTL(id);
                     refreshComboRenderers();
+
+                    JOptionPane.showMessageDialog(this,
+                            "Reserva confirmada con éxito.\n"
+                                    + "Consulta en 'Mis Reservas'.",
+                            "Confirmación",
+                            JOptionPane.INFORMATION_MESSAGE);
                 } else if (parts.length >= 2 && "CANCELADO".equals(parts[1])) {
-                    String id = parts.length >= 3 ? parts[2]:lastReservationId;
+
+                    String id = parts.length >= 3 ? parts[2] : lastReservationId;
+
                     updateTableStatus(id, "CANCELADA");
                     clearTTL(id);
+                    refreshComboRenderers();
                 }
                 break;
 
             case "ERROR":
-                logMessage("❌ Error del servidor: " + (parts.length > 1 ?
-                        parts[1] : "desconocido"));
+                logMessage("❌ Error del servidor: "
+                        + (parts.length > 1 ? parts[1] : "desconocido"));
+
                 if (parts.length > 1 && "SERVIDOR_DETENIDO".equals(parts[1])) {
                     handleDisconnection();
                     return;
                 }
+
                 for (int i = tblModel.getRowCount() - 1; i >= 0; i--) {
                     if ("ENVIANDO...".equals(tblModel.getValueAt(i, 3))) {
                         tblModel.removeRow(i);
@@ -2064,19 +2387,19 @@ public class ClientView extends JFrame {
 
             case "EXPIRACION":
                 if (parts.length >= 2) {
+
                     String expiredId = parts[1];
+
                     updateTableStatus(expiredId, "EXPIRADA");
-                    for (int i = 0; i < tblModel.getRowCount(); i++) {
-                        if (expiredId.equals(tblModel.getValueAt(i, 0))) {
-                            tblModel.setValueAt("—", i, 4);
-                            break;
-                        }
-                    }
+                    clearTTL(expiredId);
+
                     logMessage("Reserva " + expiredId + " expiró.");
+
                     JOptionPane.showMessageDialog(this,
                             "Tu reserva " + expiredId + " expiró por TTL.\n"
-                                    + "Puede realizar una nueva reserva.",
-                            "Reserva expirada", JOptionPane.WARNING_MESSAGE);
+                            + "Puede realizar una nueva reserva.",
+                            "Reserva expirada",
+                            JOptionPane.WARNING_MESSAGE);
                 }
                 break;
 
@@ -2107,7 +2430,7 @@ public class ClientView extends JFrame {
      * has been confirmed or cancelled.
      *
      * @param id The unique identifier of the reservation to update. If the ID
-     *is found, the TTL column is reset to a placeholder ("—") and the table is
+     * is found, the TTL column is reset to a placeholder ("—") and the table is
      * repainted to reflect the change.
      */
     private void clearTTL(String id) {
@@ -2123,19 +2446,71 @@ public class ClientView extends JFrame {
     /**
      * Updates the status column of a specific reservation in the UI table.
      *
-     * This method synchronizes the local view with the server's state by
-     * locating the row via its ID and applying the new status string (e.g.,
-     * "CONFIRMADA", "EXPIRADA").
+     * This method synchronizes the local view with the server state by locating
+     * the row using its reservation ID and updating its status value (e.g.
+     * CONFIRMADA, EXPIRADA, CANCELADA). It ensures that the UI remains
+     * consistent with backend changes in real time.
      *
-     * @param id The identifier of the reservation to be modified.
-     * @param newStatus The literal string to be displayed in the status column.
+     * @param id the identifier of the reservation to be updated
+     * @param newStatus the new status value to display in the table
      */
     private void updateTableStatus(String id, String newStatus) {
+        // 1. Actualizar tabla activa (Crear Reserva)
         for (int i = 0; i < tblModel.getRowCount(); i++) {
             if (id != null && id.equals(tblModel.getValueAt(i, 0))) {
-                tblModel.setValueAt(newStatus, i, 3);
+                if ("CANCELADA".equals(newStatus) || "EXPIRADA".equals(newStatus)) {
+                    tblModel.removeRow(i); 
+                } else {
+                    tblModel.setValueAt(newStatus, i, 3);
+                }
                 tblClientReservations.repaint();
-                return;
+                break;
+            }
+        }
+
+        boolean foundInData = false;
+        for (Object[] row : allReservationsData) {
+            if (id != null && id.equals(row[0])) {
+                row[3] = newStatus;
+                foundInData = true;
+                break;
+            }
+        }
+
+        if (!foundInData) {
+            for (int i = 0; i < tblModel.getRowCount(); i++) {
+                if (id != null && id.equals(tblModel.getValueAt(i, 0))) {
+                    allReservationsData.add(new Object[]{
+                        tblModel.getValueAt(i, 0),
+                        tblModel.getValueAt(i, 1),
+                        tblModel.getValueAt(i, 2),
+                        newStatus,
+                        tblModel.getValueAt(i, 4)
+                    });
+                    break;
+                }
+            }
+        }
+
+        if (historyModel != null) {
+            boolean foundInHistory = false;
+            for (int i = 0; i < historyModel.getRowCount(); i++) {
+                if (id != null && id.equals(historyModel.getValueAt(i, 0))) {
+                    historyModel.setValueAt(newStatus, i, 3);
+                    foundInHistory = true;
+                    break;
+                }
+            }
+
+            if (!foundInHistory) {
+                for (Object[] row : allReservationsData) {
+                    if (id != null && id.equals(row[0])) {
+                        historyModel.addRow(new Object[]{
+                            row[0], row[1], row[2], newStatus, "—"
+                        });
+                        break;
+                    }
+                }
             }
         }
     }
@@ -2161,9 +2536,9 @@ public class ClientView extends JFrame {
             return;
         }
 
-        String startTime = convertToServerFormat((String)
+        String startTime = convertToServerFormat((String) 
                 cmbStartTime.getSelectedItem());
-        String endTime = convertToServerFormat((String) 
+        String endTime = convertToServerFormat((String)
                 cmbEndTime.getSelectedItem());
         String attendees = txtAttendeeCount.getText().trim();
         String equipment = (String) cbEquipmentType.getSelectedItem();
@@ -2260,12 +2635,21 @@ public class ClientView extends JFrame {
             logMessage("⚠ Seleccione una reserva para confirmar.");
             return;
         }
-        String id = (String) tblModel.getValueAt(row, 0);
-        if ("...".equals(id) || "ENVIANDO...".equals(tblModel.getValueAt(
-                row, 3))) {
+
+        String id = String.valueOf(tblModel.getValueAt(row, 0));
+        String status = String.valueOf(tblModel.getValueAt(row, 3));
+
+        if ("ENVIANDO...".equals(status) || "...".equals(id)) {
             logMessage("⚠ Espere la respuesta del servidor.");
             return;
         }
+
+        if (!"TEMPORAL".equals(status)) {
+            logMessage("⚠ Solo reservas TEMPORALES pueden confirmarse aquí.");
+            return;
+        }
+
+        logMessage("Confirmando reserva " + id + "...");
         sendMessage("CONFIRMAR|" + id);
     }
 
@@ -2282,11 +2666,21 @@ public class ClientView extends JFrame {
             logMessage("⚠ Seleccione una reserva para cancelar.");
             return;
         }
-        String id = (String) tblModel.getValueAt(row, 0);
-        if ("...".equals(id)) {
+
+        String id = String.valueOf(tblModel.getValueAt(row, 0));
+        String status = String.valueOf(tblModel.getValueAt(row, 3));
+
+        if ("...".equals(id) || "ENVIANDO...".equals(status)) {
             logMessage("⚠ Espere la respuesta del servidor.");
             return;
         }
+
+        if ("EXPIRADA".equals(status)) {
+            logMessage("⚠ Esta reserva ya expiró.");
+            return;
+        }
+
+        logMessage("Cancelando reserva " + id + "...");
         sendMessage("CANCELAR|" + id);
     }
 
@@ -2374,44 +2768,6 @@ public class ClientView extends JFrame {
             }
         });
         return field;
-    }
-
-    /**
-     * Builds a localized JSpinner configured for date selection (yyyy-MM-dd).
-     *
-     * Restricts selection to current or future dates and applies a non-editable
-     * custom editor styled to match the application's visual theme.
-     *
-     * @return A configured JSpinner for reservation date selection.
-     */
-    private JSpinner buildDatePicker() {
-        SpinnerDateModel model = new SpinnerDateModel();
-
-        Date today = new Date();
-        model.setValue(today);
-        model.setStart(today);
-
-        JSpinner dateSpinner = new JSpinner(model);
-
-        JSpinner.DateEditor editor
-                = new JSpinner.DateEditor(dateSpinner, "yyyy-MM-dd");
-
-        dateSpinner.setEditor(editor);
-
-        JFormattedTextField tf = editor.getTextField();
-        tf.setEditable(false);
-        tf.setBackground(BG_WHITE);
-        tf.setForeground(TEXT_DARK);
-        tf.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-
-        dateSpinner.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
-                new EmptyBorder(5, 10, 5, 10)
-        ));
-
-        dateSpinner.setPreferredSize(new Dimension(0, 45));
-
-        return dateSpinner;
     }
 
     /**
