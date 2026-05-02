@@ -2315,6 +2315,18 @@ public class ClientView extends JFrame {
                             tblModel.setValueAt(id, i, 0);
                             tblModel.setValueAt("TEMPORAL", i, 3);
                             tblModel.setValueAt(ttlValue, i, 4);
+                            
+                            boolean existsInData = false;
+                            for (Object[] row : allReservationsData) {
+                                if (id.equals(row[0])) {
+                                    existsInData = true;
+                                    break;
+                                }
+                            }
+                            if (!existsInData) {
+                                allReservationsData.add(new Object[]{id, date,
+                                    timeRng, "TEMPORAL", "—"});
+                            }
 
                             boolean existsGlobal = false;
 
