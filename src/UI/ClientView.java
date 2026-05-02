@@ -2268,15 +2268,20 @@ public class ClientView extends JFrame {
                     String timeRng = fields[2] + " - " + fields[3];
                     String status = fields[4];
 
-                    allReservationsData.add(new Object[]{id, date, timeRng, status, "—"});
+                    allReservationsData.add(new Object[]{id, date,
+                        timeRng, status, "—"});
 
-                    if ("RESERVADO_TEMPORAL".equals(status) || "TEMPORAL".equals(status)
-                            || "CONFIRMADO".equals(status) || "CONFIRMADA".equals(status)) {
-                        tblModel.addRow(new Object[]{id, date, timeRng, status, "—"});
+                    if ("RESERVADO_TEMPORAL".equals(status) || 
+                            "TEMPORAL".equals(status)
+                            || "CONFIRMADO".equals(status) || 
+                            "CONFIRMADA".equals(status)) {
+                        tblModel.addRow(new Object[]{id, date, timeRng, 
+                            status, "—"});
                     }
 
                     if (historyModel != null) {
-                        historyModel.addRow(new Object[]{id, date, timeRng, status, "—"});
+                        historyModel.addRow(new Object[]{id, date, timeRng,
+                            status, "—"});
                     }
                 }
                 refreshComboRenderers();
@@ -2370,6 +2375,48 @@ public class ClientView extends JFrame {
                     updateTableStatus(id, "CANCELADA");
                     clearTTL(id);
                     refreshComboRenderers();
+                } else if (parts.length >= 2 && "EDITADO".equals(parts[1])) {
+                    if (parts.length >= 7) {
+                        String oldId = parts[2];
+                        String newId = parts[3];
+                        String date = parts[4];
+                        String timeRng = parts[5] + " - " + parts[6];
+                        String status = parts.length >= 8 ? parts[7] :
+                                "CONFIRMADO";
+
+                        for (int i = tblModel.getRowCount() - 1; i >= 0; i--) {
+                            if (oldId.equals(tblModel.getValueAt(i, 0))) {
+                                tblModel.removeRow(i);
+                                break;
+                            }
+                        }
+                        if (historyModel != null) {
+                            for (int i = historyModel.getRowCount() - 1;
+                                    i >= 0; i--) {
+                                if (oldId.equals(historyModel.getValueAt(
+                                        i, 0))) {
+                                    historyModel.setValueAt("CANCELADA", i, 3);
+                                    break;
+                                }
+                            }
+                        }
+                        for (Object[] row : allReservationsData) {
+                            if (oldId.equals(row[0])) {
+                                row[3] = "CANCELADA";
+                                break;
+                            }
+                        }
+
+                        Object[] newRow = {newId, date, timeRng, status, "—"};
+                        tblModel.addRow(newRow);
+                        allReservationsData.add(newRow.clone());
+                        if (historyModel != null) {
+                            historyModel.addRow(newRow.clone());
+                        }
+
+                        refreshComboRenderers();
+                        logMessage("Reserva editada: " + oldId + " → " + newId);
+                    }
                 }
                 break;
 
