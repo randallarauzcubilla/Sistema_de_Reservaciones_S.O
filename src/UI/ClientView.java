@@ -109,7 +109,8 @@ public class ClientView extends JFrame {
     private JPanel pnlReservationForm;
     private volatile boolean isWorkerRunning = false;
     private Timer ttlCountdownTimer;
-    private final Map<String, List<String[]>> otherUsersSlots = new java.util.HashMap<>();
+    private final Map<String, List<String[]>> otherUsersSlots = 
+            new java.util.HashMap<>();
 
     /**
      * Constructs the ClientView interface. Initializes window properties, UI
@@ -529,7 +530,8 @@ public class ClientView extends JFrame {
                 if (historyModel != null) {
                     historyModel.setRowCount(0);
                     for (Object[] row : allReservationsData) {
-                        historyModel.addRow(java.util.Arrays.copyOf(row, row.length));
+                        historyModel.addRow(java.util.Arrays.copyOf(row,
+                                row.length));
                     }
                 }
                 CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
@@ -645,8 +647,10 @@ public class ClientView extends JFrame {
             String rowStatus = (String) tblModel.getValueAt(i, 3);
             if (!date.equals(rowDate)) {
                 continue;
-            }
-            if ("CANCELADA".equals(rowStatus) || "EXPIRADA".equals(rowStatus)) {
+            }          
+            if ("CANCELADA".equals(rowStatus) || "CANCELADO".equals(rowStatus)
+                    || "EXPIRADA".equals(rowStatus) 
+                    || "EXPIRADO".equals(rowStatus)) {
                 continue;
             }
             String timeRange = (String) tblModel.getValueAt(i, 2);
@@ -689,55 +693,72 @@ public class ClientView extends JFrame {
         return taken;
     }
     
-     /**
+    /**
      * Determines which end-time slots are invalid given a selected start time.
      *
-     * An end slot {@code E} is considered invalid if the range [{@code start}, {@code E})
-     * overlaps with any already-reserved range [{@code rs}, {@code re}) on the given date.
-     * Both the current user's own reservations (from the table model) and other users'
-     * reservations (stored in {@code otherUsersSlots}) are taken into account.
+     * An end slot {@code E} is considered invalid if the range [{@code start},
+     * {@code E}) overlaps with any already-reserved range [{@code rs},
+     * {@code re}) on the given date. Both the current user's own reservations
+     * (from the table model) and other users' reservations (stored in
+     * {@code otherUsersSlots}) are taken into account.
      *
-     * @param date      The target date in {@code yyyy-MM-dd} format.
-     * @param startSlot The selected start time slot in AM/PM format (e.g., "8:00 AM").
-     * @return A {@code Set} of strings representing the end slots that would cause
-     *         a scheduling conflict. Returns an empty set if {@code startSlot} is
-     *         null or equals the placeholder label.
+     * @param date The target date in {@code yyyy-MM-dd} format.
+     * @param startSlot The selected start time slot in AM/PM format (e.g.,
+     * "8:00 AM").
+     * @return A {@code Set} of strings representing the end slots that would
+     * cause a scheduling conflict. Returns an empty set if {@code startSlot} is
+     * null or equals the placeholder label.
      */
-    
-    private java.util.Set<String> getInvalidEndSlots(String date, String startSlot) {
+    private java.util.Set<String> getInvalidEndSlots(String date,
+            String startSlot) {
         java.util.Set<String> invalid = new java.util.HashSet<>();
-        if (startSlot == null || "— Selecciona hora —".equals(startSlot)) return invalid;
+        if (startSlot == null || "— Selecciona hora —".equals(startSlot)) {
+            return invalid;
+        }
 
         String start24 = convertToServerFormat(startSlot);
 
-        // Recopilar rangos de esta fecha (propios + otros usuarios)
         List<String[]> ranges = new java.util.ArrayList<>();
         for (int i = 0; i < tblModel.getRowCount(); i++) {
             String rowDate = (String) tblModel.getValueAt(i, 1);
             String rowStatus = (String) tblModel.getValueAt(i, 3);
-            if (!date.equals(rowDate)) continue;
-            if ("CANCELADA".equals(rowStatus) || "EXPIRADA".equals(rowStatus)) continue;
+            if (!date.equals(rowDate)) {
+                continue;
+            }
+            if ("CANCELADA".equals(rowStatus) || "CANCELADO".equals(rowStatus)
+                    || "EXPIRADA".equals(rowStatus) 
+                    || "EXPIRADO".equals(rowStatus)) {
+                continue;
+            }
             String timeRange = (String) tblModel.getValueAt(i, 2);
-            if (timeRange == null) continue;
+            if (timeRange == null) {
+                continue;
+            }
             String[] parts = timeRange.split(" - ");
-            if (parts.length < 2) continue;
+            if (parts.length < 2) {
+                continue;
+            }
             ranges.add(parts);
         }
         List<String[]> global = otherUsersSlots.get(date);
         if (global != null) {
-            for (String[] r : global) ranges.add(new String[]{r[0], r[1]});
+            for (String[] r : global) {
+                ranges.add(new String[]{r[0], r[1]});
+            }
         }
 
-        // E es inválido si [start, E) solapa con [rs, re):
-        // condición: start < re  Y  E > rs
         String[] allSlots = generateTimeSlots();
         for (String[] range : ranges) {
-            String rs = range[0]; // HH:mm
-            String re = range[1]; // HH:mm
-            if (start24.compareTo(re) >= 0) continue; // start >= re, no hay solapamiento posible
+            String rs = range[0];
+            String re = range[1];
+            if (start24.compareTo(re) >= 0) {
+                continue;
+            }
             for (String slot : allSlots) {
                 String e24 = convertToServerFormat(slot);
-                if (e24.compareTo(rs) > 0) invalid.add(slot); // E > rs → solapamiento
+                if (e24.compareTo(rs) > 0) {
+                    invalid.add(slot);
+                }
             }
         }
         return invalid;
@@ -754,15 +775,15 @@ public class ClientView extends JFrame {
      * @see #getTakenSlots(String)
      */
     private void refreshComboRenderers() {
-        if (tblModel == null) return;
+        if (tblModel == null) {
+            return;
+        }
         String date = txtReservationDate.getText().trim();
 
-        // Taken para START: slots dentro de rangos reservados
         java.util.Set<String> takenStart = getTakenSlots(date);
 
-        // Invalid para END: slots que causarían solapamiento dado el start actual
         String selectedStart = (String) cmbStartTime.getSelectedItem();
-        java.util.Set<String> takenEnd = getInvalidEndSlots(date, selectedStart);
+        java.util.Set<String> takenEnd = getInvalidEndSlots(date,selectedStart);
 
         cmbStartTime.setRenderer(buildSlotRenderer(takenStart));
         cmbEndTime.setRenderer(buildSlotRenderer(takenEnd));
@@ -775,19 +796,22 @@ public class ClientView extends JFrame {
     }
     
     /**
-    * Builds a custom {@link ListCellRenderer} for the time-slot {@link JComboBox} components.
+    * Builds a custom {@link ListCellRenderer} for the time-slot 
+    * {@link JComboBox} components.
     *
-    * The renderer visually distinguishes three types of items: the placeholder option
-    * displayed in italic with a muted color, taken slots shown in gray with a lock
-    * icon (🔒) to signal unavailability, and available slots styled with an
-    * {@code ACCENT_RED} background highlight on selection.
+    * The renderer visually distinguishes three types of items: the placeholder 
+    * option displayed in italic with a muted color, taken slots shown in gray 
+    * with a lock icon (🔒) to signal unavailability, and available slots styled 
+    * with an {@code ACCENT_RED} background highlight on selection.
     *
-    * @param taken A set of strings representing unavailable slots, obtained from
-    *              {@link #getTakenSlots(String)} or {@link #getInvalidEndSlots(String, String)}.
-    * @return A {@code ListCellRenderer<Object>} ready to be assigned to a {@code JComboBox}.
+    * @param taken A set of strings representing unavailable slots, obtained 
+    * from {@link #getTakenSlots(String)} or 
+    * {@link #getInvalidEndSlots(String, String)}.
+    * @return A {@code ListCellRenderer<Object>} 
+    * ready to be assigned to a {@code JComboBox}.
     */
-
-    private ListCellRenderer<Object> buildSlotRenderer(java.util.Set<String> taken) {
+    private ListCellRenderer<Object> buildSlotRenderer(
+            java.util.Set<String> taken) {
         return new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(
@@ -807,25 +831,28 @@ public class ClientView extends JFrame {
                     setText(value + "  🔒");
                 } else {
                     setFont(new Font("Segoe UI", Font.BOLD, 14));
-                    setForeground(isSelected && index != -1 ? Color.WHITE : TEXT_DARK);
-                    setBackground(isSelected && index != -1 ? ACCENT_RED : BG_WHITE);
+                    setForeground(isSelected && index != -1 ? Color.WHITE :
+                            TEXT_DARK);
+                    setBackground(isSelected && index != -1 ? ACCENT_RED :
+                            BG_WHITE);
                 }
                 return this;
             }
         };
     }
-    
-    /**
-    * Registers a {@link SlotGuardListener} on the given {@link JComboBox} to prevent
-    * the user from selecting a slot that has been marked as unavailable.
-    *
-    * Before attaching the new listener, any existing {@code SlotGuardListener} instance
-    * is removed to avoid duplicates when renderers are refreshed.
-    *
-    * @param combo  The time-slot combo box to apply the guard to.
-    * @param taken  The set of invalid or already-occupied slots that must be blocked.
-    */
 
+    /**
+     * Registers a {@link SlotGuardListener} on the given {@link JComboBox} to
+     * prevent the user from selecting a slot that has been marked as
+     * unavailable.
+     *
+     * Before attaching the new listener, any existing {@code SlotGuardListener}
+     * instance is removed to avoid duplicates when renderers are refreshed.
+     *
+     * @param combo The time-slot combo box to apply the guard to.
+     * @param taken The set of invalid or already-occupied slots that must be
+     * blocked.
+     */
     private void applySelectionGuard(JComboBox<String> combo,
             java.util.Set<String> taken) {
         for (ActionListener al : combo.getActionListeners()) {
@@ -837,46 +864,52 @@ public class ClientView extends JFrame {
     }
     
     /**
-    * An {@link ActionListener} for time-slot {@link JComboBox} components that prevents
+    * An {@link ActionListener} for time-slot {@link JComboBox} components that
+    * prevents
     * the selection of occupied or invalid slots.
     *
-    * If the user attempts to select a slot contained in the {@code taken} set, the
-    * combo box is automatically reverted to index 0 (the "— Selecciona hora —" placeholder),
+    * If the user attempts to select a slot contained in the {@code taken} 
+    * set, the
+    * combo box is automatically reverted to index 0 (the "— Selecciona hora —"
+    * placeholder),
     * preventing invalid reservation data from being submitted to the server.
-    * This listener is registered and managed through {@link #applySelectionGuard}.
+    * This listener is registered and managed through
+    * {@link #applySelectionGuard}.
     */
-    
     private class SlotGuardListener implements ActionListener {
+
         private final JComboBox<String> combo;
         private final java.util.Set<String> taken;
-        
-          /**
-        * Constructs a new guard listener with a reference to the combo box and the set
-        * of blocked slots that must not be selectable.
-        *
-        * @param combo  The {@link JComboBox} this listener is attached to.
-        * @param taken  The set of slots that must not be selectable.
-        */
 
-        SlotGuardListener(JComboBox<String> combo, java.util.Set<String> taken) {
+        /**
+         * Constructs a new guard listener with a reference to the combo box and
+         * the set of blocked slots that must not be selectable.
+         *
+         * @param combo The {@link JComboBox} this listener is attached to.
+         * @param taken The set of slots that must not be selectable.
+         */
+        SlotGuardListener(JComboBox<String> combo, java.util.Set<String> taken){
             this.combo = combo;
             this.taken = taken;
         }
         
-          /**
-            * Intercepts the combo box selection event. If the chosen item belongs to the
-            * {@code taken} set, it safely resets the selection back to index 0 by temporarily
-            * removing and re-adding itself to avoid recursive event firing.
-            *
-            * @param e The action event triggered by the selection change.
-            */
+        /**
+         * Intercepts the combo box selection event. If the chosen item belongs
+         * to the {@code taken} set, it safely resets the selection back to
+         * index 0 by temporarily removing and re-adding itself to avoid
+         * recursive event firing.
+         *
+         * @param e The action event triggered by the selection change.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Object selected = combo.getSelectedItem();
-            if (selected == null) return;
+            if (selected == null) {
+                return;
+            }
             if (taken.contains(selected.toString())) {
                 combo.removeActionListener(this);
-                combo.setSelectedIndex(0); // vuelve a "— Selecciona hora —"
+                combo.setSelectedIndex(0);
                 combo.addActionListener(this);
             }
         }
@@ -1257,7 +1290,7 @@ public class ClientView extends JFrame {
         card.add(lblAttendees, gbc);
 
         gbc.gridx = 1;
-        txtAttendeeCount = buildTextField("10");
+        txtAttendeeCount = buildTextField("0");
         card.add(txtAttendeeCount, gbc);
 
         gbc.gridx = 2;
@@ -1320,7 +1353,7 @@ public class ClientView extends JFrame {
      * status.
      */
     private JPanel buildTableAndMessagesPanel() {
-       
+
         JPanel tableWrapper = new JPanel(new BorderLayout(0, 6));
         tableWrapper.setBackground(BG_WHITE);
 
@@ -1332,12 +1365,15 @@ public class ClientView extends JFrame {
         String[] columns = {"ID", "Fecha", "Horario", "Estado", "Vigencia"};
         tblModel = new DefaultTableModel(columns, 0) {
             @Override
-            public boolean isCellEditable(int r, int c) { return false; }
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
 
         tblClientReservations = new JTable(tblModel) {
             @Override
-            public Component prepareRenderer(TableCellRenderer r, int row, int col) {
+            public Component prepareRenderer(TableCellRenderer r, int row,
+                    int col) {
                 Component c = super.prepareRenderer(r, row, col);
                 c.setBackground(row % 2 == 0 ? BG_WHITE : BG_LIGHT);
                 c.setForeground(TEXT_DARK);
@@ -1345,12 +1381,20 @@ public class ClientView extends JFrame {
                     ((JComponent) c).setBorder(new EmptyBorder(0, 8, 0, 8));
                 }
                 Object status = tblModel.getValueAt(row, 3);
-                if ("CONFIRMADA".equals(status))       c.setForeground(SUCCESS_GREEN);
-                else if ("CANCELADA".equals(status))   c.setForeground(ACCENT_RED);
-                else if ("TEMPORAL".equals(status))    c.setForeground(WARNING_AMBER);
-                else if ("ENVIANDO...".equals(status)) c.setForeground(TEXT_MUTED);
-                else if ("EXPIRADA".equals(status))    c.setForeground(ACCENT_RED);
-                if (isRowSelected(row)) c.setBackground(new Color(220, 38, 38, 20));
+                if ("CONFIRMADA".equals(status)) {
+                    c.setForeground(SUCCESS_GREEN);
+                } else if ("CANCELADA".equals(status)) {
+                    c.setForeground(ACCENT_RED);
+                } else if ("TEMPORAL".equals(status)) {
+                    c.setForeground(WARNING_AMBER);
+                } else if ("ENVIANDO...".equals(status)) {
+                    c.setForeground(TEXT_MUTED);
+                } else if ("EXPIRADA".equals(status)) {
+                    c.setForeground(ACCENT_RED);
+                }
+                if (isRowSelected(row)) {
+                    c.setBackground(new Color(220, 38, 38, 20));
+                }
                 return c;
             }
         };
@@ -1367,7 +1411,8 @@ public class ClientView extends JFrame {
         tableHeader.setBackground(ACCENT_RED);
         tableHeader.setForeground(Color.WHITE);
         tableHeader.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        tableHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, ACCENT_RED));
+        tableHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, 
+                ACCENT_RED));
         tableHeader.setPreferredSize(new Dimension(0, 32));
         tableHeader.setDefaultRenderer(new DefaultTableCellRenderer() {
             @Override
@@ -1380,7 +1425,8 @@ public class ClientView extends JFrame {
                 lbl.setForeground(Color.WHITE);
                 lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
                 lbl.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(200, 30, 45)),
+                        BorderFactory.createMatteBorder(0, 0, 0, 1,
+                                new Color(200, 30, 45)),
                         new EmptyBorder(0, 8, 0, 8)));
                 lbl.setOpaque(true);
                 lbl.setHorizontalAlignment(SwingConstants.LEFT);
@@ -1393,7 +1439,6 @@ public class ClientView extends JFrame {
         tableScroll.getViewport().setBackground(BG_WHITE);
         tableWrapper.add(tableScroll, BorderLayout.CENTER);
 
-        
         JPanel messagesWrapper = new JPanel(new BorderLayout(0, 6));
         messagesWrapper.setBackground(BG_WHITE);
         messagesWrapper.setBorder(new EmptyBorder(8, 0, 0, 0));
@@ -1413,10 +1458,10 @@ public class ClientView extends JFrame {
         txtServerLogs.setBorder(new EmptyBorder(8, 14, 8, 14));
 
         JScrollPane messagesScroll = new JScrollPane(txtServerLogs);
-        messagesScroll.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
+        messagesScroll.setBorder(BorderFactory.createLineBorder(
+                BORDER_COLOR, 1));
         messagesWrapper.add(messagesScroll, BorderLayout.CENTER);
 
-        
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
                 tableWrapper, messagesWrapper);
         splitPane.setResizeWeight(0.65);
@@ -2602,7 +2647,7 @@ public class ClientView extends JFrame {
 
                     updateTableStatus(expiredId, "EXPIRADA");
                     clearTTL(expiredId);
-
+                    refreshComboRenderers();
                     logMessage("Reserva " + expiredId + " expiró.");
 
                     JOptionPane.showMessageDialog(this,

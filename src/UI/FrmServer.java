@@ -1094,20 +1094,24 @@ public class FrmServer extends JFrame {
                 + " | cliente: " + clientId);
 
         synchronized (ServerApp.connectedClients) {
-            for (ClientHandler handler
-                    : ServerApp.connectedClients) {
-                if (handler.getClientId()
-                        .equals(clientId)) {
-                    try {
+            for (ClientHandler handler : ServerApp.connectedClients) {
+                try {
+                    if (handler.getClientId().equals(clientId)) {
                         handler.send("OK|EDITADO|" + resId
                                 + "|" + newRes.getReservationId()
                                 + "|" + newRes.getDate()
                                 + "|" + newRes.getStartTime()
                                 + "|" + newRes.getEndTime()
                                 + "|" + newRes.getStatus().toString());
-                    } catch (Exception ignored) {
+                    } else {
+                        handler.send("SLOT_LIBRE|" + original.getDate()
+                                + "|" + original.getStartTime()
+                                + "|" + original.getEndTime());
+                        handler.send("SLOT_NUEVO|" + newRes.getDate()
+                                + "|" + newRes.getStartTime()
+                                + "|" + newRes.getEndTime());
                     }
-                    break;
+                } catch (Exception ignored) {
                 }
             }
         }
@@ -1160,57 +1164,53 @@ public class FrmServer extends JFrame {
             return;
         }
 
-        String resId
-                = (String) tableModel.getValueAt(selectedRow, 0);
-        String clientId
-                = (String) tableModel.getValueAt(selectedRow, 1);
+        String resId = (String) tableModel.getValueAt(selectedRow, 0);
+        String clientId = (String) tableModel.getValueAt(selectedRow, 1);
+
+        Reservation res = ServerApp.calendar.getReservationById(resId);
+        if (res == null) {
+            JOptionPane.showMessageDialog(this, "Reserva no encontrada.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        String resDate = res.getDate();
+        String resStart = res.getStartTime();
+        String resEnd = res.getEndTime();
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "¿Cancelar la reserva " + resId
-                + " del cliente " + clientId + "?",
-                "Confirmar cancelación",
-                JOptionPane.YES_NO_OPTION,
+                "¿Cancelar la reserva " + resId + " del cliente " + clientId + "?",
+                "Confirmar cancelación", JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
         if (confirm != JOptionPane.YES_OPTION) {
             return;
         }
 
-        boolean success
-                = ServerApp.calendar
-                        .cancelReservation(resId);
+        boolean success = ServerApp.calendar.cancelReservation(resId);
         if (!success) {
-            JOptionPane.showMessageDialog(this,
-                    "No se pudo cancelar la reserva.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "No se pudo cancelar la reserva.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         ServerApp.ttlQueue.remove(resId);
-        ReservationPersistence.save(
-                ServerApp.calendar);
+        ReservationPersistence.save(ServerApp.calendar);
         ServerApp.log.log("CANCELACION-SERVIDOR",
-                "Servidor canceló reserva " + resId
-                + " del cliente " + clientId);
+                "Servidor canceló reserva " + resId + " del cliente " + clientId);
 
         synchronized (ServerApp.connectedClients) {
-            for (ClientHandler handler
-                    : ServerApp.connectedClients) {
-                if (handler.getClientId()
-                        .equals(clientId)) {
-                    try {
-                        handler.send("OK|CANCELADO|"
-                                + resId);
-                    } catch (Exception ignored) {
-                        // Client might have disconnected
+            for (ClientHandler handler : ServerApp.connectedClients) {
+                try {
+                    if (handler.getClientId().equals(clientId)) {
+                        handler.send("OK|CANCELADO|" + resId);
+                    } else {
+                        handler.send("SLOT_LIBRE|" + resDate
+                                + "|" + resStart + "|" + resEnd);
                     }
-                    break;
+                } catch (Exception ignored) {
                 }
             }
         }
-
-        log("✖ Reserva " + resId
-                + " cancelada por el servidor.");
+        log("✖ Reserva " + resId + " cancelada por el servidor.");
         refreshView();
     }
 

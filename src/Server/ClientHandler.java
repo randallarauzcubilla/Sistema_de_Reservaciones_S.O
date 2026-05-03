@@ -527,6 +527,19 @@ public class ClientHandler extends Thread {
         System.out.println("[HILO] Reserva editada: " + reservationId + " - " 
                 + newRes.getReservationId());
     }
+    
+    /**
+     * Sends a list of all currently occupied time slots to the client.
+     *
+     * This method retrieves all reservations from the calendar and filters out
+     * those that are canceled or expired. It then builds a response string
+     * containing the date, start time, and end time of each active reservation,
+     * formatted as:
+     *
+     * SLOTS_OCUPADOS|date,startTime,endTime|...
+     *
+     * Finally, the constructed message is sent back to the client.
+     */
     private void sendOccupiedSlots() {
         List<Reservation> all = calendar.getAllReservations();
         StringBuilder sb = new StringBuilder("SLOTS_OCUPADOS");
@@ -541,6 +554,15 @@ public class ClientHandler extends Thread {
         sendResponse(sb.toString());
     }
 
+    /**
+     * Broadcasts a message to all connected clients except the current one.
+     *
+     * This method iterates through the list of connected clients in a
+     * thread-safe manner (synchronized block) and sends the given message to
+     * each client, excluding the sender (this instance).
+     *
+     * @param msg The message to be broadcast to other clients.
+     */
     private void broadcastToOthers(String msg) {
         synchronized (ServerApp.connectedClients) {
             for (ClientHandler ch : ServerApp.connectedClients) {
