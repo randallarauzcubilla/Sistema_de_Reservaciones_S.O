@@ -77,15 +77,16 @@ public class ReservationTTLThread extends Thread {
      * @param r the expired reservation
      */
     private void notifyClientExpiration(Reservation r) {
-        for (ClientHandler hilo : ServerApp.connectedClients) {
-            if (hilo.getClientId().equals(r.getClientId())) {
-                try {
-                    hilo.send("EXPIRACION|" + r.getReservationId());
-                } catch (Exception ignored) {
-                    System.out.println("[TTL-DEBUG] Error al enviar: "
-                            + ignored.getMessage());
+        for (ClientHandler handler : ServerApp.connectedClients) {
+            try {
+                if (handler.getClientId().equals(r.getClientId())) {
+                    handler.send("EXPIRACION|" + r.getReservationId());
+                } else {
+                    handler.send("SLOT_LIBRE|" + r.getDate()
+                            + "|" + r.getStartTime()
+                            + "|" + r.getEndTime());
                 }
-                break;
+            } catch (Exception ignored) {
             }
         }
     }
