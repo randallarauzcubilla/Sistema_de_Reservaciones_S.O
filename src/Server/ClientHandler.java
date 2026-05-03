@@ -98,6 +98,7 @@ public class ClientHandler extends Thread {
         log.log("CONEXION",clientName+" conectado como " + clientRole);
         sendResponse("OK|CONECTADO");
         sendHistory();
+        sendOccupiedSlots();
 
         while (true) {
             try {
@@ -302,6 +303,7 @@ public class ClientHandler extends Thread {
                     + reservation.getRemainingSeconds());
             System.out.println("[HILO] Reserva temporal creada: " 
                     + reservation.getReservationId());
+            broadcastToOthers("SLOT_NUEVO|" + date + "|" + startTime + "|" + endTime);
 
         } catch (NumberFormatException e) {
             sendResponse("ERROR|ASISTENTES_INVALIDOS");
@@ -399,6 +401,8 @@ public class ClientHandler extends Thread {
             log.logCancellation(reservation, "Cancelado por cliente");
             sendResponse("OK|CANCELADO|" + reservationId);
             System.out.println("[HILO] Reserva cancelada: " + reservationId);
+            broadcastToOthers("SLOT_LIBRE|" + reservation.getDate() + "|"
+                + reservation.getStartTime() + "|" + reservation.getEndTime());
         } else {
             sendResponse("ERROR|NO_SE_PUDO_CANCELAR");
         }
@@ -522,6 +526,29 @@ public class ClientHandler extends Thread {
         sendResponse("OK|EDITADO|" + newRes.getReservationId());
         System.out.println("[HILO] Reserva editada: " + reservationId + " - " 
                 + newRes.getReservationId());
+    }
+    private void sendOccupiedSlots() {
+        List<Reservation> all = calendar.getAllReservations();
+        StringBuilder sb = new StringBuilder("SLOTS_OCUPADOS");
+        for (Reservation r : all) {
+            String s = r.getStatus().toString();
+            if ("CANCELADA".equals(s) || "CANCELADO".equals(s) 
+                    || "EXPIRADA".equals(s)) continue;
+            sb.append("|").append(r.getDate())
+              .append(",").append(r.getStartTime())
+              .append(",").append(r.getEndTime());
+        }
+        sendResponse(sb.toString());
+    }
+
+    private void broadcastToOthers(String msg) {
+        synchronized (ServerApp.connectedClients) {
+            for (ClientHandler ch : ServerApp.connectedClients) {
+                if (ch != this) {
+                    ch.send(msg);
+                }
+            }
+        }
     }
 
     /**
