@@ -544,12 +544,15 @@ public class ClientHandler extends Thread {
         List<Reservation> all = calendar.getAllReservations();
         StringBuilder sb = new StringBuilder("SLOTS_OCUPADOS");
         for (Reservation r : all) {
-            String s = r.getStatus().toString();
-            if ("CANCELADA".equals(s) || "CANCELADO".equals(s) 
-                    || "EXPIRADA".equals(s)) continue;
-            sb.append("|").append(r.getDate())
-              .append(",").append(r.getStartTime())
-              .append(",").append(r.getEndTime());
+            Reservation.Status s = r.getStatus();
+            if (s == Reservation.Status.CANCELADO
+                    || s == Reservation.Status.EXPIRADO) {
+                continue;
+            }
+            sb.append("|")
+                    .append(r.getDate()).append(",")
+                    .append(r.getStartTime()).append(",")
+                    .append(r.getEndTime());
         }
         sendResponse(sb.toString());
     }
