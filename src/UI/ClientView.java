@@ -1464,9 +1464,10 @@ public class ClientView extends JFrame {
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
                 tableWrapper, messagesWrapper);
-        splitPane.setResizeWeight(0.65);
+        splitPane.setResizeWeight(0.55);
         splitPane.setBorder(null);
-        splitPane.setDividerSize(5);
+        splitPane.setDividerSize(6);
+        splitPane.setDividerLocation(0.55);
 
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(BG_WHITE);
@@ -2703,7 +2704,7 @@ public class ClientView extends JFrame {
      * duration label and custom renderers.
      */
     private void clearReservationForm() {
-        txtAttendeeCount.setText("");
+        txtAttendeeCount.setText("0");
         cmbStartTime.setSelectedIndex(0);
         cmbEndTime.setSelectedIndex(0);
         cbEquipmentType.setSelectedIndex(0);
@@ -3003,16 +3004,19 @@ public class ClientView extends JFrame {
         txtServerLogs.append("[" + time + "]  " + msg + "\n");
         txtServerLogs.setCaretPosition(txtServerLogs.getDocument().getLength());
     }
+
     /**
-    * Enables or disables all input controls in the reservation form.
-    *
-    * Used to lock user interaction before a server connection is established,
-    * and to restore it once the client is authenticated. The affected components
-    * include the date field, start and end time selectors, attendee count field,
-    * equipment type selector, and the submit, confirm, and cancel buttons.
-    *
-    * @param enabled {@code true} to enable the form controls, {@code false} to disable them.
-    */
+     * Enables or disables all input controls in the reservation form.
+     *
+     * Used to lock user interaction before a server connection is established,
+     * and to restore it once the client is authenticated. The affected
+     * components include the date field, start and end time selectors, attendee
+     * count field, equipment type selector, and the submit, confirm, and cancel
+     * buttons.
+     *
+     * @param enabled {@code true} to enable the form controls, {@code false} to
+     * disable them.
+     */
 
     private void setFormEnabled(boolean enabled) {
         txtReservationDate.setEnabled(enabled);
