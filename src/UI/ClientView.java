@@ -83,6 +83,7 @@ public class ClientView extends JFrame {
     private JButton btnSubmitRequest;
     private JButton btnConfirmSelection;
     private JButton btnAbortReservation;
+    private JButton btnNew;
     private JLabel lblDuration;
     private JButton btnReturnToMenu;
     private JButton btnCreateNewRequest; // New: "Crear Reserva" button
@@ -245,7 +246,7 @@ public class ClientView extends JFrame {
     private JLabel loadLogo(int targetW, int targetH) {
         try {
             InputStream is = getClass().getResourceAsStream(
-                    "/resources/UNA.png");
+                    "/resources/LOGO.png");
 
             if (is == null) {
                 System.out.println("Resource not found.");
@@ -1250,7 +1251,9 @@ public class ClientView extends JFrame {
         gbc.gridx = 1;
         cmbStartTime = new JComboBox<>();
         cmbStartTime.addItem("— Selecciona hora —");
-        for (String s : timeSlots) cmbStartTime.addItem(s);
+        for (int i = 0; i < timeSlots.length - 1; i++) {
+            cmbStartTime.addItem(timeSlots[i]);
+        }
         styleCombo(cmbStartTime);
         cmbStartTime.addActionListener(e -> {
             updateEndTimeOptions();
@@ -1320,6 +1323,17 @@ public class ClientView extends JFrame {
         btnAbortReservation = buildActionButton("⊗  Cancelar", ACCENT_RED,
                 false);
 
+        btnNew = buildActionButton("🗑  Limpiar", ACCENT_RED, true);
+        btnNew.addActionListener(e -> {
+            clearReservationForm();
+            cmbStartTime.setSelectedIndex(0);
+            cmbEndTime.setSelectedIndex(0);
+            txtReservationDate.setText(
+                    java.time.LocalDate.now().toString());
+            lblDuration.setText("Duración: --");
+            refreshComboRenderers();
+        });
+
         btnSubmitRequest.addActionListener(e -> reserve());
         btnConfirmSelection.addActionListener(e -> confirmReservation());
         btnAbortReservation.addActionListener(e -> cancelReservation());
@@ -1327,6 +1341,7 @@ public class ClientView extends JFrame {
         buttonPanel.add(btnSubmitRequest);
         buttonPanel.add(btnConfirmSelection);
         buttonPanel.add(btnAbortReservation);
+        buttonPanel.add(btnNew);
 
         gbc.gridwidth = 4;
         card.add(buttonPanel, gbc);
@@ -1726,7 +1741,7 @@ public class ClientView extends JFrame {
     private String[] generateTimeSlots() {
         List<String> slots = new ArrayList<>();
         LocalTime time = LocalTime.of(8, 0);
-        LocalTime end = LocalTime.of(22, 0);
+        LocalTime end = LocalTime.of(20, 0);
 
         while (!time.isAfter(end)) {
             String ampm = time.getHour() >= 12 ? "PM" : "AM";
@@ -2162,8 +2177,9 @@ public class ClientView extends JFrame {
         Socket tempSocket = null;
         try {
             tempSocket = new Socket();
-            tempSocket.connect(new InetSocketAddress("localhost", 8000), 3000);
-
+            tempSocket.connect(new InetSocketAddress("10.47.240.235", 8000),
+                    3000);
+    
             DataInputStream tempIn = new DataInputStream(
                     new BufferedInputStream(tempSocket.getInputStream()));
             DataOutputStream tempOut = new DataOutputStream(
@@ -3027,6 +3043,7 @@ public class ClientView extends JFrame {
         btnSubmitRequest.setEnabled(enabled);
         btnConfirmSelection.setEnabled(enabled);
         btnAbortReservation.setEnabled(enabled);
+        btnNew.setEnabled(enabled); 
     }
 
     /**
