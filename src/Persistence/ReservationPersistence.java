@@ -4,47 +4,49 @@ import Core.Reservation;
 import Core.ReservationCalendar;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
-/**
- * Handles persistence of confirmed reservations to disk (reservas.dat). Only
- * stores CONFIRMED reservations that are still valid (today or future dates).
- * Provides functionality to save and load reservations from a plain text file.
- */
 public class ReservationPersistence {
 
-    private static final String FILE
-            = System.getProperty("user.dir") + File.separator + "reservas.dat";
+    private static final String FILE =
+            System.getProperty("user.dir") + File.separator + "reservas.dat";
 
     /**
-     * Saves all CONFIRMED reservations from the given calendar to disk. Each
-     * reservation is stored in a pipe-separated format:
-     * clientId|date|startTime|endTime|attendees|equipment|priority
-     *
-     * @param calendar the reservation calendar containing all reservations
+     * Guarda CONFIRMADO y FINALIZADO al disco.
+     * Formato por línea:
+     * clientId|date|start|end|attendees|priority|status|EQUIPO:qty,EQUIPO:qty
      */
     public static void save(ReservationCalendar calendar) {
         System.out.println("[PERSISTENCIA] Guardando en: " + FILE);
-        List<Reservation> allReservations = calendar.getAllReservations();
+        List<Reservation> all = calendar.getAllReservations();
         try (PrintWriter pw = new PrintWriter(new FileWriter(FILE, false))) {
-            for (Reservation r : allReservations) {
-                if (r.getStatus() == Reservation.Status.RESERVADO_TEMPORAL) {
+            for (Reservation r : all) {
+                if (r.getStatus() == Reservation.Status.RESERVADO_TEMPORAL
+                        || r.getStatus() == Reservation.Status.CANCELADO
+                        || r.getStatus() == Reservation.Status.EXPIRADO) {
                     continue;
                 }
-
+                StringBuilder equipSb = new StringBuilder();
+                for (Map.Entry<Reservation.Equipment, Integer> e
+                        : r.getEquipmentQuantities().entrySet()) {
+                    if (equipSb.length() > 0) equipSb.append(",");
+                    equipSb.append(e.getKey().name())
+                           .append(":").append(e.getValue());
+                }
                 pw.println(
-                        r.getClientId() + "|"
-                        + r.getDate() + "|"
-                        + r.getStartTime() + "|"
-                        + r.getEndTime() + "|"
-                        + r.getAttendeeCount() + "|"
-                        + r.getEquipment().name() + "|"
-                        + r.getPriority().name() + "|"
-                        + r.getStatus().name()
+                    r.getClientId()        + "|" +
+                    r.getDate()            + "|" +
+                    r.getStartTime()       + "|" +
+                    r.getEndTime()         + "|" +
+                    r.getAttendeeCount()   + "|" +
+                    r.getPriority().name() + "|" +
+                    r.getStatus().name()   + "|" +
+                    equipSb.toString()
                 );
             }
-            System.out.println("[PERSISTENCIA] Reservas guardadas en "
-                    + FILE);
+            System.out.println("[PERSISTENCIA] Guardado OK en " + FILE);
         } catch (IOException e) {
             System.out.println("[PERSISTENCIA] Error al guardar: "
                     + e.getMessage());
@@ -52,19 +54,13 @@ public class ReservationPersistence {
     }
 
     /**
-     * Loads reservations from disk and reconstructs them into a list.
-     * Automatically filters out reservations with past dates.
-     *
-     * @return list of valid reservations restored from file
+     * Carga reservas del disco.
      */
     public static List<Reservation> load() {
         System.out.println("[PERSISTENCIA] Buscando en: " + FILE);
-        System.out.println("[PERSISTENCIA] Existe: " + new File(FILE).exists());
         List<Reservation> list = new ArrayList<>();
         File f = new File(FILE);
-        if (!f.exists()) {
-            return list;
-        }
+        if (!f.exists()) return list;
 
         try (BufferedReader br = new BufferedReader(new FileReader(f))) {
             String line;
@@ -72,63 +68,78 @@ public class ReservationPersistence {
 
             while ((line = br.readLine()) != null) {
                 line = line.trim();
-                if (line.isEmpty()) {
-                    continue;
-                }
+                if (line.isEmpty()) continue;
 
-                String[] p = line.split("\\|");
-                if (p.length < 7) {
-                    continue;
-                }
+                String[] p = line.split("\\|", -1);
+                if (p.length < 7) continue;
 
                 try {
-                    String clientId = p[0];
-                    String date = p[1];
+                    String clientId  = p[0];
+                    String date      = p[1];
                     String startTime = p[2];
-                    String endTime = p[3];
-                    int attendees = Integer.parseInt(p[4]);
+                    String endTime   = p[3];
+                    int attendees    = Integer.parseInt(p[4]);
+                    Reservation.Priority pr =
+                            Reservation.Priority.valueOf(p[5]);
+                    Reservation.Status status =
+                            Reservation.Status.valueOf(p[6]);
 
-                    Reservation.Equipment eq
-                            = Reservation.Equipment.valueOf(p[5]);
+                    // Parsear mapa de equipos (campo 7, opcional)
+                    Map<Reservation.Equipment, Integer> equipMap =
+                            new LinkedHashMap<>();
+                    if (p.length >= 8 && !p[7].isEmpty()) {
+                        for (String token : p[7].split(",")) {
+                            String[] kv = token.trim().split(":");
+                            if (kv.length < 2) continue;
+                            try {
+                                Reservation.Equipment eq =
+                                        Reservation.Equipment.valueOf(
+                                                kv[0].trim());
+                                int qty = Integer.parseInt(kv[1].trim());
+                                equipMap.put(eq, qty);
+                            } catch (Exception ignored) {}
+                        }
+                    }
 
-                    Reservation.Priority pr
-                            = Reservation.Priority.valueOf(p[6]);
-
-                    Reservation.Status status = p.length >= 8
-                            ? Reservation.Status.valueOf(p[7])
-                            : Reservation.Status.CONFIRMADO;
-
-                    java.time.LocalDate reservationDate
-                            = java.time.LocalDate.parse(date);
-
-                    if (reservationDate.isBefore(today)
+                    java.time.LocalDate resDate =
+                            java.time.LocalDate.parse(date);
+                    if (resDate.isBefore(today)
                             && status == Reservation.Status.CONFIRMADO) {
                         continue;
                     }
 
-                    Reservation r = new Reservation(
-                            clientId,
-                            date,
-                            startTime,
-                            endTime,
-                            attendees,
-                            eq,
-                            pr,
-                            true
-                    );
+                    // Extraer primario y extra
+                    Reservation.Equipment primary =
+                            Reservation.Equipment.NINGUNO;
+                    int primaryQty = 1;
+                    Map<Reservation.Equipment, Integer> extra =
+                            new LinkedHashMap<>();
 
+                    if (!equipMap.isEmpty()) {
+                        var it    = equipMap.entrySet().iterator();
+                        var first = it.next();
+                        primary    = first.getKey();
+                        primaryQty = first.getValue();
+                        while (it.hasNext()) {
+                            var entry = it.next();
+                            extra.put(entry.getKey(), entry.getValue());
+                        }
+                    }
+
+                    Reservation r = new Reservation(
+                            clientId, date, startTime, endTime,
+                            attendees, primary, primaryQty,
+                            extra, pr, true);
                     r.setStatus(status);
                     list.add(r);
 
-                } catch (NumberFormatException e) {
+                } catch (Exception e) {
                     System.out.println(
-                            "[PERSISTENCIA] Línea invalida ignorada: " + line);
+                            "[PERSISTENCIA] Línea inválida ignorada: " + line);
                 }
             }
-
             System.out.println("[PERSISTENCIA] " + list.size()
                     + " reservas restauradas.");
-
         } catch (IOException e) {
             System.out.println("[PERSISTENCIA] Error al cargar: "
                     + e.getMessage());

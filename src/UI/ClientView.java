@@ -80,6 +80,7 @@ public class ClientView extends JFrame {
     private JComboBox<String> cmbEndTime;
     private JTextField txtAttendeeCount;
     private JComboBox<String> cbEquipmentType;
+    private JSpinner spnEquipQuantity;
     private JButton btnSubmitRequest;
     private JButton btnConfirmSelection;
     private JButton btnAbortReservation;
@@ -1207,149 +1208,173 @@ public class ClientView extends JFrame {
      *
      * @return A JPanel representing the high-fidelity reservation input form.
      */
-    private JPanel buildFormPanel() {
-        JPanel panel = new JPanel(new BorderLayout(0, 10));
-        panel.setBackground(BG_WHITE);
+       private JPanel buildFormPanel() {
+    JPanel panel = new JPanel(new BorderLayout(0, 10));
+    panel.setBackground(BG_WHITE);
 
-        JLabel header = new JLabel("Nueva Reserva");
-        header.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        header.setForeground(ACCENT_RED);
-        header.setBorder(new EmptyBorder(0, 0, 6, 0));
-        panel.add(header, BorderLayout.NORTH);
+    JLabel header = new JLabel("Nueva Reserva");
+    header.setFont(new Font("Segoe UI", Font.BOLD, 20));
+    header.setForeground(ACCENT_RED);
+    header.setBorder(new EmptyBorder(0, 0, 6, 0));
+    panel.add(header, BorderLayout.NORTH);
 
-        JPanel card = new JPanel(new GridBagLayout());
-        card.setBackground(BG_LIGHT);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
-                new EmptyBorder(12, 20, 12, 20)));
+    JPanel card = new JPanel(new GridBagLayout());
+    card.setBackground(BG_LIGHT);
+    card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER_COLOR, 1),
+            new EmptyBorder(12, 20, 12, 20)));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(4, 8, 4, 8  );
+    GridBagConstraints gbc = new GridBagConstraints();
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.insets = new Insets(4, 8, 4, 8);
 
-        String[] timeSlots = generateTimeSlots();
+    String[] timeSlots = generateTimeSlots();
 
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 0.5;
-        JLabel lblDate = new JLabel("📅  Fecha");
-        lblDate.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
-        lblDate.setForeground(TEXT_DARK);
-        card.add(lblDate, gbc);
+    gbc.gridx = 0;
+    gbc.gridy = 0;
+    gbc.weightx = 0.5;
+    JLabel lblDate = new JLabel("📅  Fecha");
+    lblDate.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
+    lblDate.setForeground(TEXT_DARK);
+    card.add(lblDate, gbc);
 
-        gbc.gridx = 1;
-        JPanel datePickerPanel = buildCalendarDatePicker();
-        card.add(datePickerPanel, gbc);
+    gbc.gridx = 1;
+    JPanel datePickerPanel = buildCalendarDatePicker();
+    card.add(datePickerPanel, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        JLabel lblStart = new JLabel("🕒  Hora Inicio");
-        lblStart.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
-        lblStart.setForeground(TEXT_DARK);
-        card.add(lblStart, gbc);
+    gbc.gridx = 0;
+    gbc.gridy = 1;
+    JLabel lblStart = new JLabel("🕒  Hora Inicio");
+    lblStart.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
+    lblStart.setForeground(TEXT_DARK);
+    card.add(lblStart, gbc);
 
-        gbc.gridx = 1;
-        cmbStartTime = new JComboBox<>();
-        cmbStartTime.addItem("— Selecciona hora —");
-        for (int i = 0; i < timeSlots.length - 1; i++) {
-            cmbStartTime.addItem(timeSlots[i]);
-        }
-        styleCombo(cmbStartTime);
-        cmbStartTime.addActionListener(e -> {
-            updateEndTimeOptions();
-            updateDuration();
-            refreshComboRenderers();
-        });
-        card.add(cmbStartTime, gbc);
-
-        gbc.gridx = 2;
-        JLabel lblEnd = new JLabel("🕒  Hora de Fin");
-        lblEnd.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
-        lblEnd.setForeground(TEXT_DARK);
-        card.add(lblEnd, gbc);
-
-        gbc.gridx = 3;
-        cmbEndTime = new JComboBox<>();
-        cmbEndTime.addItem("— Selecciona hora —");
-        for (String s : timeSlots) cmbEndTime.addItem(s);
-        styleCombo(cmbEndTime);
-        cmbEndTime.addActionListener(e -> updateDuration());
-        card.add(cmbEndTime, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        gbc.gridwidth = 2;
-        lblDuration = new JLabel("Duración: --");
-        lblDuration.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblDuration.setForeground(SUCCESS_GREEN);
-        card.add(lblDuration, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 3;
-        gbc.gridwidth = 1;
-        JLabel lblAttendees = new JLabel("👥  N° Asistentes");
-        lblAttendees.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
-        lblAttendees.setForeground(TEXT_DARK);
-        card.add(lblAttendees, gbc);
-
-        gbc.gridx = 1;
-        txtAttendeeCount = buildTextField("0");
-        card.add(txtAttendeeCount, gbc);
-
-        gbc.gridx = 2;
-        JLabel lblEquipment = new JLabel("Equipamiento");
-        lblEquipment.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblEquipment.setForeground(TEXT_DARK);
-        card.add(lblEquipment, gbc);
-
-        gbc.gridx = 3;
-        cbEquipmentType = new JComboBox<>(new String[]{
-            "NINGUNO", "PROYECTOR", "MICROFONO", "SONIDO", "COMPLETO"
-        });
-        styleCombo(cbEquipmentType);
-        card.add(cbEquipmentType, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 4;
-        gbc.gridwidth = 1;
-        gbc.insets = new Insets(10, 8, 6, 8);
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
-        buttonPanel.setBackground(BG_LIGHT);
-
-        btnSubmitRequest = buildActionButton("💾  Reservar", ACCENT_RED, true);
-        btnConfirmSelection = buildActionButton("✓  Confirmar", SUCCESS_GREEN,
-                true);
-        btnAbortReservation = buildActionButton("⊗  Cancelar", ACCENT_RED,
-                false);
-
-        btnNew = buildActionButton("🗑  Limpiar", ACCENT_RED, true);
-        btnNew.addActionListener(e -> {
-            clearReservationForm();
-            cmbStartTime.setSelectedIndex(0);
-            cmbEndTime.setSelectedIndex(0);
-            txtReservationDate.setText(
-                    java.time.LocalDate.now().toString());
-            lblDuration.setText("Duración: --");
-            refreshComboRenderers();
-        });
-
-        btnSubmitRequest.addActionListener(e -> reserve());
-        btnConfirmSelection.addActionListener(e -> confirmReservation());
-        btnAbortReservation.addActionListener(e -> cancelReservation());
-
-        buttonPanel.add(btnSubmitRequest);
-        buttonPanel.add(btnConfirmSelection);
-        buttonPanel.add(btnAbortReservation);
-        buttonPanel.add(btnNew);
-
-        gbc.gridwidth = 4;
-        card.add(buttonPanel, gbc);
-
-        panel.add(card, BorderLayout.CENTER);
-        setFormEnabled(false);
-        return panel;
+    gbc.gridx = 1;
+    cmbStartTime = new JComboBox<>();
+    cmbStartTime.addItem("— Selecciona hora —");
+    for (int i = 0; i < timeSlots.length - 1; i++) {
+        cmbStartTime.addItem(timeSlots[i]);
     }
+    styleCombo(cmbStartTime);
+    cmbStartTime.addActionListener(e -> {
+        updateEndTimeOptions();
+        updateDuration();
+        refreshComboRenderers();
+    });
+    card.add(cmbStartTime, gbc);
+
+    gbc.gridx = 2;
+    JLabel lblEnd = new JLabel("🕒  Hora de Fin");
+    lblEnd.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
+    lblEnd.setForeground(TEXT_DARK);
+    card.add(lblEnd, gbc);
+
+    gbc.gridx = 3;
+    cmbEndTime = new JComboBox<>();
+    cmbEndTime.addItem("— Selecciona hora —");
+    for (String s : timeSlots) cmbEndTime.addItem(s);
+    styleCombo(cmbEndTime);
+    cmbEndTime.addActionListener(e -> updateDuration());
+    card.add(cmbEndTime, gbc);
+
+    gbc.gridx = 0;
+    gbc.gridy = 2;
+    gbc.gridwidth = 2;
+    lblDuration = new JLabel("Duración: --");
+    lblDuration.setFont(new Font("Segoe UI", Font.BOLD, 12));
+    lblDuration.setForeground(SUCCESS_GREEN);
+    card.add(lblDuration, gbc);
+
+    gbc.gridx = 0;
+    gbc.gridy = 3;
+    gbc.gridwidth = 1;
+    JLabel lblAttendees = new JLabel("👥  N° Asistentes");
+    lblAttendees.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
+    lblAttendees.setForeground(TEXT_DARK);
+    card.add(lblAttendees, gbc);
+
+    gbc.gridx = 1;
+    txtAttendeeCount = buildTextField("0");
+    card.add(txtAttendeeCount, gbc);
+
+    // === Equipamiento: label ===
+    gbc.gridx = 2;
+    gbc.gridwidth = 1;
+    JLabel lblEquipment = new JLabel("Equipamiento");
+    lblEquipment.setFont(new Font("Segoe UI", Font.BOLD, 13));
+    lblEquipment.setForeground(TEXT_DARK);
+    card.add(lblEquipment, gbc);
+
+    // === Equipamiento: combo de tipo ===
+    gbc.gridx = 3;
+    cbEquipmentType = new JComboBox<>(new String[]{
+        "NINGUNO", "PROYECTOR", "MICROFONO", "SONIDO", "COMPLETO"
+    });
+    styleCombo(cbEquipmentType);
+    cbEquipmentType.addActionListener(e -> {
+        String sel = (String) cbEquipmentType.getSelectedItem();
+        boolean needsQty = !"NINGUNO".equals(sel) && !"COMPLETO".equals(sel);
+        spnEquipQuantity.setEnabled(needsQty);
+    });
+    card.add(cbEquipmentType, gbc);
+
+    // === Cantidad: label ===
+    gbc.gridx = 2;
+    gbc.gridy = 4;
+    JLabel lblQty = new JLabel("Cantidad");
+    lblQty.setFont(new Font("Segoe UI", Font.BOLD, 13));
+    lblQty.setForeground(TEXT_DARK);
+    card.add(lblQty, gbc);
+
+    // === Cantidad: spinner ===
+    gbc.gridx = 3;
+    spnEquipQuantity = new JSpinner(new SpinnerNumberModel(1, 1, 99, 1));
+    spnEquipQuantity.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+    spnEquipQuantity.setEnabled(false); // deshabilitado por defecto (NINGUNO)
+    ((JSpinner.DefaultEditor) spnEquipQuantity.getEditor())
+            .getTextField().setHorizontalAlignment(JTextField.CENTER);
+    card.add(spnEquipQuantity, gbc);
+
+    // === Botones ===
+    gbc.gridx = 0;
+    gbc.gridy = 5;
+    gbc.gridwidth = 1;
+    gbc.insets = new Insets(10, 8, 6, 8);
+
+    JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+    buttonPanel.setBackground(BG_LIGHT);
+
+    btnSubmitRequest    = buildActionButton("💾  Reservar",  ACCENT_RED,   true);
+    btnConfirmSelection = buildActionButton("✓  Confirmar",  SUCCESS_GREEN, true);
+    btnAbortReservation = buildActionButton("⊗  Cancelar",   ACCENT_RED,   false);
+    btnNew              = buildActionButton("🗑  Limpiar",    ACCENT_RED,   true);
+
+    btnNew.addActionListener(e -> {
+        clearReservationForm();
+        cmbStartTime.setSelectedIndex(0);
+        cmbEndTime.setSelectedIndex(0);
+        txtReservationDate.setText(
+                java.time.LocalDate.now().toString());
+        lblDuration.setText("Duración: --");
+        refreshComboRenderers();
+    });
+
+    btnSubmitRequest.addActionListener(e -> reserve());
+    btnConfirmSelection.addActionListener(e -> confirmReservation());
+    btnAbortReservation.addActionListener(e -> cancelReservation());
+
+    buttonPanel.add(btnSubmitRequest);
+    buttonPanel.add(btnConfirmSelection);
+    buttonPanel.add(btnAbortReservation);
+    buttonPanel.add(btnNew);
+
+    gbc.gridwidth = 4;
+    card.add(buttonPanel, gbc);
+
+    panel.add(card, BorderLayout.CENTER);
+    setFormEnabled(false);
+    return panel;
+}
 
     /**
      * Builds the feedback section of the UI, containing the reservation history
@@ -2177,7 +2202,7 @@ public class ClientView extends JFrame {
         Socket tempSocket = null;
         try {
             tempSocket = new Socket();
-            tempSocket.connect(new InetSocketAddress("10.47.240.235", 8000),
+            tempSocket.connect(new InetSocketAddress("localhost", 8000),
                     3000);
     
             DataInputStream tempIn = new DataInputStream(
@@ -2726,6 +2751,9 @@ public class ClientView extends JFrame {
         cbEquipmentType.setSelectedIndex(0);
         lblDuration.setText("Duración: --");
         refreshComboRenderers();
+        cbEquipmentType.setSelectedIndex(0);
+        spnEquipQuantity.setValue(1);
+        spnEquipQuantity.setEnabled(false);
     }
 
     /**
@@ -2826,39 +2854,48 @@ public class ClientView extends JFrame {
      * ("ENVIANDO...") to the table. 4. Transmission: Sends the "RESERVAR"
      * command with the assembled reservation parameters to the server.
      */
-    private void reserve() {
-        if (!isConnected) {
-            return;
-        }
+       private void reserve() {
+    if (!isConnected) return;
 
-        String date = txtReservationDate.getText().trim();
-        if (date.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Seleccione una fecha.",
-                    "Campo vacío", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        String startTime = convertToServerFormat((String) 
-                cmbStartTime.getSelectedItem());
-        String endTime = convertToServerFormat((String)
-                cmbEndTime.getSelectedItem());
-        String attendees = txtAttendeeCount.getText().trim();
-        String equipment = (String) cbEquipmentType.getSelectedItem();
-        String role = (String) cbUserRole.getSelectedItem();
-
-        if (attendees.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Complete todos los campos antes de reservar.",
-                    "Campos vacíos", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        tblModel.addRow(new Object[]{"...", date,
-            startTime + " - " + endTime, "ENVIANDO...", "..."});
-        sendMessage("RESERVAR|" + date + "|" + startTime + "|" + endTime + "|"
-                + attendees + "|" + equipment + "|" + role);
+    String date = txtReservationDate.getText().trim();
+    if (date.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Seleccione una fecha.",
+                "Campo vacío", JOptionPane.WARNING_MESSAGE);
+        return;
     }
 
+    String startTime = convertToServerFormat(
+            (String) cmbStartTime.getSelectedItem());
+    String endTime = convertToServerFormat(
+            (String) cmbEndTime.getSelectedItem());
+    String attendees = txtAttendeeCount.getText().trim();
+    String role = (String) cbUserRole.getSelectedItem();
+
+    if (attendees.isEmpty()) {
+        JOptionPane.showMessageDialog(this,
+                "Complete todos los campos antes de reservar.",
+                "Campos vacíos", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    String equipType = (String) cbEquipmentType.getSelectedItem();
+    int equipQty     = (int) spnEquipQuantity.getValue();
+
+    String equipField;
+    if ("NINGUNO".equals(equipType)) {
+        equipField = "NINGUNO";
+    } else if ("COMPLETO".equals(equipType)) {
+        equipField = "COMPLETO";
+    } else {
+        equipField = equipType + ":" + equipQty;
+    }
+
+    tblModel.addRow(new Object[]{"...", date,
+        startTime + " - " + endTime, "ENVIANDO...", "..."});
+
+    sendMessage("RESERVAR|" + date + "|" + startTime + "|" + endTime
+            + "|" + attendees + "|" + equipField + "|" + role);
+}
     /**
      * Normalizes 12-hour (AM/PM) time strings into 24-hour (HH:mm) format.
      *
@@ -3044,6 +3081,10 @@ public class ClientView extends JFrame {
         btnConfirmSelection.setEnabled(enabled);
         btnAbortReservation.setEnabled(enabled);
         btnNew.setEnabled(enabled); 
+        cbEquipmentType.setEnabled(enabled);
+        spnEquipQuantity.setEnabled(enabled
+          && !"NINGUNO".equals(cbEquipmentType.getSelectedItem())
+          && !"COMPLETO".equals(cbEquipmentType.getSelectedItem()));
     }
 
     /**

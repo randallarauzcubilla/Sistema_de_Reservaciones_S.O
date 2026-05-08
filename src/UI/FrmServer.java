@@ -758,22 +758,28 @@ public class FrmServer extends JFrame {
         lblReservationsValue.setText(
                 ServerApp.calendar.getTotalReservations()
                 + " activas");
-        lblCapacityValue.setText(
-                String.valueOf(
-                        ServerApp.manager.getAvailableCapacity()));
-        int proyCount
-                = ServerApp.manager.getAvailableProjectors();
-        int micCount
-                = ServerApp.manager.getAvailableMicrophones();
-        int soundCount
-                = ServerApp.manager.getAvailableSound();
+        String nowDate = java.time.LocalDate.now().toString();
+String nowTime = java.time.LocalTime.now()
+        .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+int occupiedNow = ServerApp.calendar
+        .getOccupiedCapacityInRange(nowDate, nowTime, nowTime + ":59");
+lblCapacityValue.setText(String.valueOf(
+        Math.max(0, ServerApp.manager.getMaxCapacity() - occupiedNow)));
 
-        lblProjectorValue.setText(String.valueOf(proyCount));
-        lblMicrophoneValue.setText(String.valueOf(micCount));
-        lblSoundValue.setText(String.valueOf(soundCount));
+int usedProy  = ServerApp.calendar.getEquipmentInUseNow(Core.Reservation.Equipment.PROYECTOR);
+int usedMic   = ServerApp.calendar.getEquipmentInUseNow(Core.Reservation.Equipment.MICROFONO);
+int usedSound = ServerApp.calendar.getEquipmentInUseNow(Core.Reservation.Equipment.SONIDO);
 
-        int fullSets = Math.min(proyCount, Math.min(micCount, soundCount));
-        lblFullSetValue.setText(String.valueOf(fullSets));
+int proyCount  = ServerApp.manager.getTotalProjectors()  - usedProy;
+int micCount   = ServerApp.manager.getTotalMicrophones() - usedMic;
+int soundCount = ServerApp.manager.getTotalSound()       - usedSound;
+
+lblProjectorValue.setText(String.valueOf(Math.max(0, proyCount)));
+lblMicrophoneValue.setText(String.valueOf(Math.max(0, micCount)));
+lblSoundValue.setText(String.valueOf(Math.max(0, soundCount)));
+
+int fullSets = Math.min(proyCount, Math.min(micCount, soundCount));
+lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
 
         List<String> logEntries
                 = ServerApp.log.getLast(100);

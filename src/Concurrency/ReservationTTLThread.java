@@ -1,25 +1,25 @@
 package Concurrency;
-
+ 
 import Core.AuditoriumManager;
 import Logging.AuditoriumLog;
 import Server.ClientHandler;
 import Core.Reservation;
 import Server.ServerApp;
 import Core.ReservationCalendar;
-
+ 
 /**
  * Thread responsible for monitoring reservation time-to-live (TTL). It
  * periodically checks for expired reservations and handles their removal and
  * client notification.
  */
 public class ReservationTTLThread extends Thread {
-
+ 
     private final ReservationCalendar calendar;
     private final AuditoriumManager resources;
     private final TTLQueue ttlQueue;
     private final AuditoriumLog log;
     private volatile boolean active = true;
-
+ 
     /**
      * Creates a new TTL monitoring thread.
      *
@@ -37,23 +37,27 @@ public class ReservationTTLThread extends Thread {
         this.log = log;
         setName("TTLThread");
     }
-
+ 
     /**
      * Main execution loop of the TTL thread. Continuously checks for expired
-     * reservations and processes them.
+     * reservations and processes them. Also releases resources for reservations
+     * whose time slot has already passed.
      */
     @Override
     public void run() {
         log.log("SISTEMA", "HiloTTL iniciado");
-
+ 
         while (active) {
             try {
                 long waitTime = ttlQueue.millisUntilNext();
                 ttlQueue.awaitWithTimeout(waitTime);
-
+ 
+                // Liberar recursos de reservas cuya franja horaria ya terminó
+                calendar.markFinishedReservations();
+ 
                 java.util.List<Reservation> expiredReservations
                         = calendar.expireOverdue();
-
+ 
                 for (Reservation r : expiredReservations) {
                     ttlQueue.remove(r.getReservationId());
                     log.logExpiration(r);
@@ -61,16 +65,16 @@ public class ReservationTTLThread extends Thread {
                             + r.getReservationId());
                     notifyClientExpiration(r);
                 }
-
+ 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 active = false;
             }
         }
-
+ 
         log.log("SISTEMA", "HiloTTL detenido");
     }
-
+ 
     /**
      * Notifies the client that a reservation has expired.
      *
@@ -90,7 +94,7 @@ public class ReservationTTLThread extends Thread {
             }
         }
     }
-
+ 
     /**
      * Stops the TTL thread safely.
      */
