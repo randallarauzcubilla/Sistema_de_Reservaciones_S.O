@@ -1,236 +1,244 @@
 package Core;
-
+ 
 import Concurrency.SynchronizationManager;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-/**
- * Core class responsible for managing the auditorium's schedule. It handles the
- * creation, confirmation, and cancellation of reservations while ensuring
- * thread-safety through a SynchronizationManager.
- */
+ 
 public class ReservationCalendar {
-
-    /**
-     * Thread-safe storage for reservations, indexed by a time-based key.
-     */
+ 
     private final Map<String, Reservation> timeSlots
             = new ConcurrentHashMap<>();
-
-    /**
-     * Coordinator for read/write locks and resource semaphores.
-     */
     private final SynchronizationManager manager;
-
-    /**
-     * Constructs a new ReservationCalendar.
-     *
-     * @param manager the manager handling concurrency and resources.
-     */
+ 
     public ReservationCalendar(SynchronizationManager manager) {
         this.manager = manager;
     }
-
-    /**
-     * Generates a unique key based on the date and time range.
-     *
-     * @return a formatted string "date-startTime-endTime".
-     */
-    private String generateKey(String date, String startTime, String endTime) {
-        return date + "-" + startTime + "-" + endTime;
+ 
+    private String generateKey(String date, String start, String end) {
+        return date + "-" + start + "-" + end;
     }
-
-    /**
-     * Checks if a specific time slot is available for booking.
-     *
-     * @param date the date to check
-     * @param startTime the start of the time range
-     * @param endTime the end of the time range
-     * @return true if the slot is empty or marked as LIBRE or CANCELADO
-     */
-    public boolean isAvailable(String date, String startTime, String endTime) {
+ 
+    // =========================================================
+    // DISPONIBILIDAD
+    // =========================================================
+ 
+    public boolean isAvailable(String date, String start, String end) {
         manager.lockReadCalendar().lock();
         try {
-            String key = generateKey(date, startTime, endTime);
-            Reservation r = timeSlots.get(key);
-
-            return r == null
-                    || r.getStatus() == Reservation.Status.CANCELADO
-                    || r.getStatus() == Reservation.Status.EXPIRADO
-                    || r.getStatus() == Reservation.Status.LIBRE;
-
+            Reservation r = timeSlots.get(generateKey(date, start, end));
+            return r == null || isFreeStatus(r.getStatus());
         } finally {
             manager.lockReadCalendar().unlock();
         }
     }
-
-    /**
-     * Attempts to create a temporary reservation. Validates overlaps and
-     * acquires necessary synchronization resources.
-     *
-     * @param clientId identification of the requesting client
-     * @param date reservation date
-     * @param startTime start time of the event
-     * @param endTime end time of the event
-     * @param attendees number of people attending
-     * @param equipment requested equipment type
-     * @param priority priority level based on role
-     * @return the created Reservation object, or null if overlap occurs
-     * @throws InterruptedException if the thread is interrupted while waiting
-     * for resources
-     */
+ 
+    // =========================================================
+    // RESERVA TEMPORAL
+    // =========================================================
+ 
     public Reservation reserveTemporarily(String clientId, String date,
-            String startTime, String endTime,
-            int attendees,
-            Reservation.Equipment equipment,
+            String startTime, String endTime, int attendees,
+            Map<Reservation.Equipment, Integer> equipmentQuantities,
             Reservation.Priority priority)
             throws InterruptedException {
+ 
+        Map<Reservation.Equipment, Integer> toAcquire =
+                equipmentQuantities != null && !equipmentQuantities.isEmpty()
+                ? new LinkedHashMap<>(equipmentQuantities)
+                : Collections.emptyMap();
+ 
         manager.lockWriteCalendar().lock();
         try {
-            // Clean up any timed-out reservations before checking availability
-            expireOverdue();
-
-            // Overlap validation
+            // Limpiar reservas vencidas y finalizadas sin llamadas bloqueantes
+            markFinishedInternal();
+            expireOverdueInternal();
+ 
+            // Verificar solapamiento de franja horaria
             for (Reservation r : timeSlots.values()) {
-                if (r.getStatus() == Reservation.Status.CANCELADO
-                        || r.getStatus() == Reservation.Status.EXPIRADO
-                        || r.isExpired()) {
-                    continue;
-                }
-                if (!r.getDate().equals(date)) {
-                    continue;
-                }
-
-                if (doOverlap(startTime, endTime, r.getStartTime(),
-                        r.getEndTime())) {
+                if (isFreeStatus(r.getStatus())) continue;
+                if (!r.getDate().equals(date)) continue;
+                if (doOverlap(startTime, endTime,
+                        r.getStartTime(), r.getEndTime())) {
                     return null;
                 }
             }
-
-            // Acquire resources from the manager
-            manager.acquireEquipmentOnly(equipment);
-
-            Reservation reservation = new Reservation(clientId, date, startTime,
-                    endTime, attendees, equipment, priority);
-
+ 
+            // Verificar disponibilidad de equipos por franja (calendario, no semáforo)
+            for (Map.Entry<Reservation.Equipment, Integer> entry
+                    : toAcquire.entrySet()) {
+                int inUse = getEquipmentInUseForSlot(
+                        date, startTime, endTime, entry.getKey());
+                int total = getTotalForType(entry.getKey());
+                if (inUse + entry.getValue() > total) {
+                    return null;
+                }
+            }
+ 
+            // Extraer primario y extra para el constructor
+            Reservation.Equipment primary = Reservation.Equipment.NINGUNO;
+            int primaryQty = 1;
+            Map<Reservation.Equipment, Integer> extra = new LinkedHashMap<>();
+ 
+            if (!toAcquire.isEmpty()) {
+                var it = toAcquire.entrySet().iterator();
+                var first = it.next();
+                primary    = first.getKey();
+                primaryQty = first.getValue();
+                while (it.hasNext()) {
+                    var e = it.next();
+                    extra.put(e.getKey(), e.getValue());
+                }
+            }
+ 
+            Reservation reservation = new Reservation(
+                    clientId, date, startTime, endTime,
+                    attendees, primary, primaryQty, extra, priority);
+ 
             timeSlots.put(generateKey(date, startTime, endTime), reservation);
-
             return reservation;
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return null;
+ 
         } finally {
             manager.lockWriteCalendar().unlock();
         }
     }
-
+ 
     /**
-     * Confirms a temporary reservation, making it permanent and removing its
-     * TTL.
-     *
-     * @param reservationId the unique 8-character ID of the reservation to
-     * confirm
-     * @return true if the reservation was successfully found and confirmed
+     * Backward-compat: un solo tipo de equipo, cantidad 1.
      */
+    public Reservation reserveTemporarily(String clientId, String date,
+            String startTime, String endTime, int attendees,
+            Reservation.Equipment equipment,
+            Reservation.Priority priority)
+            throws InterruptedException {
+        Map<Reservation.Equipment, Integer> map = new LinkedHashMap<>();
+        if (equipment != null && equipment != Reservation.Equipment.NINGUNO) {
+            map.put(equipment, 1);
+        }
+        return reserveTemporarily(clientId, date, startTime, endTime,
+                attendees, map, priority);
+    }
+ 
+    // =========================================================
+    // CONFIRMAR
+    // =========================================================
+ 
     public boolean confirmReservation(String reservationId) {
         manager.lockWriteCalendar().lock();
         try {
             Reservation r = findById(reservationId);
-            if (r == null) {
+            if (r == null) return false;
+            if (r.getStatus() != Reservation.Status.RESERVADO_TEMPORAL)
                 return false;
-            }
-            if (r.getStatus() != Reservation.Status.RESERVADO_TEMPORAL) {
-                return false;
-            }
-            if (r.isExpired()) {
-                return false;
-            }
-
+            if (r.isExpired()) return false;
             r.setStatus(Reservation.Status.CONFIRMADO);
             return true;
         } finally {
             manager.lockWriteCalendar().unlock();
         }
     }
-
-    /**
-     * Cancels an active reservation and releases its resources back to the
-     * manager.
-     *
-     * @param reservationId the unique identifier of the reservation to cancel
-     * @return true if the reservation was found and successfully cancelled
-     */
+ 
+    // =========================================================
+    // CANCELAR
+    // =========================================================
+ 
     public boolean cancelReservation(String reservationId) {
         manager.lockWriteCalendar().lock();
         try {
             Reservation r = findById(reservationId);
-            if (r == null) {
+            if (r == null) return false;
+            Reservation.Status st = r.getStatus();
+            if (st == Reservation.Status.CANCELADO
+                    || st == Reservation.Status.EXPIRADO
+                    || st == Reservation.Status.FINALIZADO) {
                 return false;
             }
-            if (r.getStatus() == Reservation.Status.CANCELADO) {
-                return false;
-            }
-
             r.setStatus(Reservation.Status.CANCELADO);
-            manager.releaseEquipmentOnly(r.getEquipment());
-
+            // Sin releaseEquipmentMap — el calendario es la fuente de verdad
             return true;
         } finally {
             manager.lockWriteCalendar().unlock();
         }
     }
-
-    /**
-     * Scans for and removes temporary reservations that have exceeded their
-     * TTL.
-     *
-     * @return a list of newly expired reservations.
-     */
+ 
+    // =========================================================
+    // EXPIRAR / FINALIZAR (públicos, con su propio lock)
+    // =========================================================
+ 
     public List<Reservation> expireOverdue() {
-        List<Reservation> expiredReservations = new ArrayList<>();
+        List<Reservation> expired = new ArrayList<>();
         manager.lockWriteCalendar().lock();
         try {
             for (Reservation r : timeSlots.values()) {
                 if (r.isExpired()) {
                     r.setStatus(Reservation.Status.EXPIRADO);
-                    manager.releaseEquipmentOnly(r.getEquipment());
-                    expiredReservations.add(r);
+                    expired.add(r);
                 }
             }
-            return expiredReservations;
+            return expired;
         } finally {
             manager.lockWriteCalendar().unlock();
         }
     }
-
-    /**
-     * @return a list of all current reservations that are not cancelled.
-     */
+ 
+    public void markFinishedReservations() {
+        manager.lockWriteCalendar().lock();
+        try {
+            markFinishedInternal();
+        } finally {
+            manager.lockWriteCalendar().unlock();
+        }
+    }
+ 
+    // =========================================================
+    // INTERNOS SIN LOCK (llamar solo desde dentro del writeLock)
+    // =========================================================
+ 
+    private void expireOverdueInternal() {
+        for (Reservation r : timeSlots.values()) {
+            if (r.isExpired()) {
+                r.setStatus(Reservation.Status.EXPIRADO);
+            }
+        }
+    }
+ 
+    private void markFinishedInternal() {
+        for (Reservation r : timeSlots.values()) {
+            if (r.isFinished()) {
+                r.setStatus(Reservation.Status.FINALIZADO);
+            }
+        }
+    }
+ 
+    // =========================================================
+    // CONSULTAS
+    // =========================================================
+ 
     public List<Reservation> getActiveReservations() {
         manager.lockReadCalendar().lock();
         try {
-            List<Reservation> activeReservations = new ArrayList<>();
+            List<Reservation> active = new ArrayList<>();
             for (Reservation r : timeSlots.values()) {
-                if (r.getStatus() != Reservation.Status.CANCELADO
-                        && r.getStatus() != Reservation.Status.EXPIRADO) {
-                    activeReservations.add(r);
-                }
+                if (!isFreeStatus(r.getStatus())) active.add(r);
             }
-            return activeReservations;
+            return active;
         } finally {
             manager.lockReadCalendar().unlock();
         }
     }
-
-    /**
-     * Retrieves a specific reservation by its unique identifier.
-     *
-     * @param reservationId the unique 8-character ID to search for
-     * @return the matching Reservation object, or null if not found
-     */
+ 
+    public List<Reservation> getAllReservations() {
+        manager.lockReadCalendar().lock();
+        try {
+            return new ArrayList<>(timeSlots.values());
+        } finally {
+            manager.lockReadCalendar().unlock();
+        }
+    }
+ 
     public Reservation getReservationById(String reservationId) {
         manager.lockReadCalendar().lock();
         try {
@@ -239,70 +247,7 @@ public class ReservationCalendar {
             manager.lockReadCalendar().unlock();
         }
     }
-
-    /**
-     * Helper method to find a reservation in the values of the map.
-     */
-    private Reservation findById(String reservationId) {
-        for (Reservation r : timeSlots.values()) {
-            if (r.getReservationId().equals(reservationId)) {
-                return r;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Logic to determine if two time intervals overlap.
-     */
-    private boolean doOverlap(String start1, String end1, String start2,
-            String end2) {
-        return start1.compareTo(end2) < 0 && end1.compareTo(start2) > 0;
-    }
-
-    /**
-     * Calculates the total number of attendees currently booked within a
-     * specific time range. This is used to check if the auditorium's maximum
-     * capacity is being exceeded.
-     *
-     * @param date the date to check the capacity for
-     * @param startTime the start of the time range
-     * @param endTime the end of the time range
-     * @return the sum of attendee counts for all active reservations in the
-     * given range
-     */
-    public int getOccupiedCapacityInRange(String date, String startTime,
-            String endTime) {
-        manager.lockReadCalendar().lock();
-        try {
-            int totalOccupied = 0;
-            for (Reservation r : timeSlots.values()) {
-                if (r.getStatus() == Reservation.Status.CANCELADO
-                        || r.getStatus() == Reservation.Status.EXPIRADO) {
-                    continue;
-                }
-                if (!r.getDate().equals(date)) {
-                    continue;
-                }
-
-                if (doOverlap(startTime, endTime, r.getStartTime(),
-                        r.getEndTime())) {
-                    totalOccupied += r.getAttendeeCount();
-                }
-            }
-            return totalOccupied;
-        } finally {
-            manager.lockReadCalendar().unlock();
-        }
-    }
-
-    /**
-     * Loads a reservation from a persistent source into the calendar. This is
-     * typically used during system startup to restore saved state.
-     *
-     * @param reservation the Reservation object to be restored into the memory
-     * map
-     */
+ 
     public void loadRestoredReservation(Reservation reservation) {
         manager.lockWriteCalendar().lock();
         try {
@@ -315,30 +260,111 @@ public class ReservationCalendar {
             manager.lockWriteCalendar().unlock();
         }
     }
-
-    /**
-     * @return a copy of all reservations in the system.
-     */
-    public List<Reservation> getAllReservations() {
+ 
+    public int getOccupiedCapacityInRange(String date,
+            String startTime, String endTime) {
         manager.lockReadCalendar().lock();
         try {
-            return new ArrayList<>(timeSlots.values());
+            int total = 0;
+            for (Reservation r : timeSlots.values()) {
+                if (isFreeStatus(r.getStatus())) continue;
+                if (!r.getDate().equals(date)) continue;
+                if (doOverlap(startTime, endTime,
+                        r.getStartTime(), r.getEndTime())) {
+                    total += r.getAttendeeCount();
+                }
+            }
+            return total;
         } finally {
             manager.lockReadCalendar().unlock();
         }
     }
-
-    /**
-     * @return the count of current non-cancelled reservations.
-     */
+ 
     public int getTotalActiveReservations() {
         return getActiveReservations().size();
     }
-
-    /**
-     * @return for getTotalActiveReservations.
-     */
+ 
     public int getTotalReservations() {
         return getTotalActiveReservations();
+    }
+ 
+    /**
+     * Cuántas unidades de un tipo de equipo están en uso AHORA MISMO.
+     * Usado por el panel del admin para mostrar disponibilidad real.
+     */
+    public int getEquipmentInUseNow(Reservation.Equipment type) {
+        manager.lockReadCalendar().lock();
+        try {
+            String nowDate = java.time.LocalDate.now().toString();
+            String nowTime = java.time.LocalTime.now()
+                    .format(java.time.format.DateTimeFormatter
+                            .ofPattern("HH:mm"));
+            int inUse = 0;
+            for (Reservation r : timeSlots.values()) {
+                if (isFreeStatus(r.getStatus())) continue;
+                if (!r.getDate().equals(nowDate)) continue;
+                if (r.getStartTime().compareTo(nowTime) <= 0
+                        && r.getEndTime().compareTo(nowTime) > 0) {
+                    Integer qty = r.getEquipmentQuantities().get(type);
+                    if (qty != null) inUse += qty;
+                }
+            }
+            return inUse;
+        } finally {
+            manager.lockReadCalendar().unlock();
+        }
+    }
+ 
+    // =========================================================
+    // PRIVADOS
+    // =========================================================
+ 
+    private Reservation findById(String reservationId) {
+        for (Reservation r : timeSlots.values()) {
+            if (r.getReservationId().equals(reservationId)) return r;
+        }
+        return null;
+    }
+ 
+    private boolean doOverlap(String s1, String e1, String s2, String e2) {
+        return s1.compareTo(e2) < 0 && e1.compareTo(s2) > 0;
+    }
+ 
+    private boolean isFreeStatus(Reservation.Status st) {
+        return st == Reservation.Status.LIBRE
+            || st == Reservation.Status.CANCELADO
+            || st == Reservation.Status.EXPIRADO
+            || st == Reservation.Status.FINALIZADO;
+    }
+ 
+    /**
+     * Equipos en uso en una franja horaria específica.
+     * Fuente de verdad — no usa semáforos.
+     */
+    private int getEquipmentInUseForSlot(String date, String startTime,
+            String endTime, Reservation.Equipment type) {
+        int inUse = 0;
+        for (Reservation r : timeSlots.values()) {
+            if (isFreeStatus(r.getStatus())) continue;
+            if (!r.getDate().equals(date)) continue;
+            if (doOverlap(startTime, endTime,
+                    r.getStartTime(), r.getEndTime())) {
+                Integer qty = r.getEquipmentQuantities().get(type);
+                if (qty != null) inUse += qty;
+            }
+        }
+        return inUse;
+    }
+ 
+    /**
+     * Total de un tipo de equipo según SynchronizationManager.
+     */
+    private int getTotalForType(Reservation.Equipment type) {
+        switch (type) {
+            case PROYECTOR: return manager.getTotalProjectors();
+            case MICROFONO: return manager.getTotalMicrophones();
+            case SONIDO:    return manager.getTotalSound();
+            default:        return 0;
+        }
     }
 }
