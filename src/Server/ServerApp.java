@@ -61,7 +61,9 @@ public class ServerApp {
             try {
                 javax.swing.UIManager.setLookAndFeel(
                         javax.swing.UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignored) {
+            } catch (ClassNotFoundException | IllegalAccessException | 
+                    InstantiationException | 
+                    UnsupportedLookAndFeelException ignored) {
             }
             new FrmServer().setVisible(true);
         });

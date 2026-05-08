@@ -4,16 +4,29 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Represents a reservation in the system, including client data, schedule,
+ * equipment requirements, priority, and lifecycle status.
+ */
 public class Reservation {
 
+    /**
+     * Current state of a reservation.
+     */
     public enum Status {
         LIBRE, RESERVADO_TEMPORAL, CONFIRMADO, CANCELADO, EXPIRADO, FINALIZADO
     }
 
+    /**
+     * Type of equipment associated with a reservation.
+     */
     public enum Equipment {
         NINGUNO, PROYECTOR, MICROFONO, SONIDO, COMPLETO
     }
 
+    /**
+     * Priority level of a reservation.
+     */
     public enum Priority {
         ESTUDIANTE, DOCENTE, DECANATURA
     }
@@ -28,19 +41,18 @@ public class Reservation {
     private final Priority priority;
     private volatile Status status;
     private final long expirationTtl;
-
-    /**
-     * Mapa {tipo -> cantidad} de todos los equipos reservados.
-     * Es la fuente de verdad para adquirir y liberar semáforos.
-     */
     private final Map<Equipment, Integer> equipmentQuantities;
 
-    // =========================================================
-    // CONSTRUCTORES TEMPORALES
-    // =========================================================
-
     /**
-     * Constructor temporal sin equipo (NINGUNO).
+     * Creates a temporary reservation with default equipment quantity.
+     *
+     * @param clientId client identifier
+     * @param date reservation date
+     * @param startTime start time
+     * @param endTime end time
+     * @param attendees number of attendees
+     * @param equipment required equipment type
+     * @param priority reservation priority
      */
     public Reservation(String clientId, String date, String startTime,
             String endTime, int attendees, Equipment equipment,
@@ -50,38 +62,49 @@ public class Reservation {
     }
 
     /**
-     * Constructor temporal principal con mapa de cantidades.
+     * Creates a reservation with custom equipment quantities.
      *
-     * @param equipment    equipo primario
-     * @param equipmentQty cantidad del equipo primario
-     * @param extraQty     mapa de equipos adicionales {tipo -> cantidad}
+     * @param clientId client identifier
+     * @param date reservation date
+     * @param startTime start time
+     * @param endTime end time
+     * @param attendees number of attendees
+     * @param equipment primary equipment type
+     * @param equipmentQty quantity of primary equipment
+     * @param extraQty additional equipment quantities
+     * @param priority reservation priority
      */
     public Reservation(String clientId, String date, String startTime,
             String endTime, int attendees,
             Equipment equipment, int equipmentQty,
             Map<Equipment, Integer> extraQty,
             Priority priority) {
-        this.reservationId =
-                java.util.UUID.randomUUID().toString().substring(0, 8);
-        this.clientId      = clientId;
-        this.date          = date;
-        this.startTime     = startTime;
-        this.endTime       = endTime;
+        this.reservationId = java.util.UUID.randomUUID()
+                .toString().substring(0, 8);
+        this.clientId = clientId;
+        this.date = date;
+        this.startTime = startTime;
+        this.endTime = endTime;
         this.attendeeCount = attendees;
-        this.equipment     = equipment;
-        this.priority      = priority;
-        this.status        = Status.RESERVADO_TEMPORAL;
+        this.equipment = equipment;
+        this.priority = priority;
+        this.status = Status.RESERVADO_TEMPORAL;
         this.expirationTtl = System.currentTimeMillis() + 30_000;
         this.equipmentQuantities = buildQuantityMap(
                 equipment, equipmentQty, extraQty);
     }
 
-    // =========================================================
-    // CONSTRUCTORES RESTORED (persistencia)
-    // =========================================================
-
     /**
-     * Constructor restored sin equipo extra.
+     * Creates a confirmed reservation (non-expiring).
+     *
+     * @param clientId client identifier
+     * @param date reservation date
+     * @param startTime start time
+     * @param endTime end time
+     * @param attendees number of attendees
+     * @param equipment primary equipment type
+     * @param priority reservation priority
+     * @param restored indicates restored/confirmed state
      */
     public Reservation(String clientId, String date, String startTime,
             String endTime, int attendees, Equipment equipment,
@@ -91,39 +114,58 @@ public class Reservation {
     }
 
     /**
-     * Constructor restored principal con mapa de cantidades.
+     * Creates a confirmed reservation with custom equipment quantities.
+     *
+     * @param clientId client identifier
+     * @param date reservation date
+     * @param startTime start time
+     * @param endTime end time
+     * @param attendees number of attendees
+     * @param equipment primary equipment type
+     * @param equipmentQty quantity of primary equipment
+     * @param extraQty additional equipment quantities
+     * @param priority reservation priority
+     * @param restored indicates restored/confirmed state
      */
     public Reservation(String clientId, String date, String startTime,
             String endTime, int attendees,
             Equipment equipment, int equipmentQty,
             Map<Equipment, Integer> extraQty,
             Priority priority, boolean restored) {
-        this.reservationId =
-                java.util.UUID.randomUUID().toString().substring(0, 8);
-        this.clientId      = clientId;
-        this.date          = date;
-        this.startTime     = startTime;
-        this.endTime       = endTime;
+        this.reservationId = java.util.UUID.randomUUID()
+                .toString().substring(0, 8);
+        this.clientId = clientId;
+        this.date = date;
+        this.startTime = startTime;
+        this.endTime = endTime;
         this.attendeeCount = attendees;
-        this.equipment     = equipment;
-        this.priority      = priority;
-        this.status        = Status.CONFIRMADO;
+        this.equipment = equipment;
+        this.priority = priority;
+        this.status = Status.CONFIRMADO;
         this.expirationTtl = Long.MAX_VALUE;
         this.equipmentQuantities = buildQuantityMap(
                 equipment, equipmentQty, extraQty);
     }
 
-    // =========================================================
-    // LÓGICA DE ESTADO
-    // =========================================================
-
+    /**
+     * Checks if the reservation has expired (temporary reservations only).
+     *
+     * @return true if expired, false otherwise
+     */
     public boolean isExpired() {
         return status == Status.RESERVADO_TEMPORAL
                 && System.currentTimeMillis() > expirationTtl;
     }
 
+    /**
+     * Checks if the reservation has already finished.
+     *
+     * @return true if current time is after end time
+     */
     public boolean isFinished() {
-        if (status != Status.CONFIRMADO) return false;
+        if (status != Status.CONFIRMADO) {
+            return false;
+        }
         try {
             java.time.LocalDateTime end = java.time.LocalDateTime.of(
                     java.time.LocalDate.parse(date),
@@ -134,32 +176,76 @@ public class Reservation {
         }
     }
 
+    /**
+     * Gets remaining time in seconds for temporary reservations.
+     *
+     * @return seconds remaining, or -1 if not temporary
+     */
     public long getRemainingSeconds() {
-        if (status != Status.RESERVADO_TEMPORAL) return -1;
+        if (status != Status.RESERVADO_TEMPORAL) {
+            return -1;
+        }
         return Math.max(0,
                 (expirationTtl - System.currentTimeMillis()) / 1000);
     }
 
-    // =========================================================
-    // GETTERS
-    // =========================================================
+    public String getReservationId() {
+        return reservationId;
+    }
 
-    public String getReservationId()  { return reservationId; }
-    public String getClientId()       { return clientId; }
-    public String getDate()           { return date; }
-    public String getStartTime()      { return startTime; }
-    public String getEndTime()        { return endTime; }
-    public int getAttendeeCount()     { return attendeeCount; }
-    public Equipment getEquipment()   { return equipment; }
-    public Priority getPriority()     { return priority; }
-    public Status getStatus()         { return status; }
-    public long getTTL()              { return expirationTtl; }
+    public String getClientId() {
+        return clientId;
+    }
 
+    public String getDate() {
+        return date;
+    }
+
+    public String getStartTime() {
+        return startTime;
+    }
+
+    public String getEndTime() {
+        return endTime;
+    }
+
+    public int getAttendeeCount() {
+        return attendeeCount;
+    }
+
+    public Equipment getEquipment() {
+        return equipment;
+    }
+
+    public Priority getPriority() {
+        return priority;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public long getTTL() {
+        return expirationTtl;
+    }
+
+    /**
+     * Returns an immutable map of equipment quantities.
+     *
+     * @return equipment quantity map
+     */
     public Map<Equipment, Integer> getEquipmentQuantities() {
         return Collections.unmodifiableMap(equipmentQuantities);
     }
 
-    public void setStatus(Status status) { this.status = status; }
+    /**
+     * Updates reservation status.
+     *
+     * @param status new reservation status
+     */
+    public void setStatus(Status status) {
+        this.status = status;
+    }
 
     @Override
     public String toString() {
@@ -170,18 +256,20 @@ public class Reservation {
                 getRemainingSeconds());
     }
 
-    // =========================================================
-    // PRIVADO
-    // =========================================================
-
+    /**
+     * Builds a normalized equipment quantity map.
+     */
     private Map<Equipment, Integer> buildQuantityMap(
             Equipment primary, int primaryQty,
             Map<Equipment, Integer> extra) {
+
         Map<Equipment, Integer> map = new LinkedHashMap<>();
+
         if (primary != null && primary != Equipment.NINGUNO
                 && primary != Equipment.COMPLETO) {
             map.put(primary, Math.max(1, primaryQty));
         }
+
         if (extra != null) {
             for (Map.Entry<Equipment, Integer> e : extra.entrySet()) {
                 if (e.getKey() != null
