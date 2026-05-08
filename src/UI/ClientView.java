@@ -50,7 +50,8 @@ public class ClientView extends JFrame {
     // =========================================================
     // TSE API
     // =========================================================
-    private static final String TSE_API_URL= "https://apis.gometa.org/cedulas/";
+    private static final String TSE_API_URL =
+            "https://apis.gometa.org/cedulas/";
 
     // =========================================================
     // SERVER CONNECTION
@@ -87,7 +88,6 @@ public class ClientView extends JFrame {
     private JButton btnNew;
     private JLabel lblDuration;
     private JButton btnReturnToMenu;
-    private JButton btnCreateNewRequest; // New: "Crear Reserva" button
 
     // =========================================================
     // TABLE & MESSAGE COMPONENTS
@@ -96,8 +96,8 @@ public class ClientView extends JFrame {
     private DefaultTableModel tblModel;
     private JTextArea txtServerLogs;
     private DefaultTableModel historyModel;
-    private final java.util.List<Object[]> allReservationsData = 
-            new java.util.ArrayList<>();
+    private final java.util.List<Object[]> allReservationsData
+            = new java.util.ArrayList<>();
 
     // =========================================================
     // APPLICATION STATE
@@ -110,9 +110,9 @@ public class ClientView extends JFrame {
     private JPanel pnlMenuView;
     private JPanel pnlReservationForm;
     private volatile boolean isWorkerRunning = false;
-    private Timer ttlCountdownTimer;
-    private final Map<String, List<String[]>> otherUsersSlots = 
-            new java.util.HashMap<>();
+    private final Timer ttlCountdownTimer;
+    private final Map<String, List<String[]>> otherUsersSlots
+            = new java.util.HashMap<>();
 
     /**
      * Constructs the ClientView interface. Initializes window properties, UI
@@ -517,7 +517,7 @@ public class ClientView extends JFrame {
                 () -> {
 
                     CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
-                    cmbStartTime.setSelectedIndex(0); 
+                    cmbStartTime.setSelectedIndex(0);
                     cmbEndTime.setSelectedIndex(0);
                     refreshComboRenderers();
                     cl.show(pnlMainContainer, "RESERVATION");
@@ -527,18 +527,18 @@ public class ClientView extends JFrame {
         JPanel cardMyReservations = createMenuCard(
                 "≡",
                 "Mis Reservas",
-                "Ver historial completo",                    
-            () -> {
-                if (historyModel != null) {
-                    historyModel.setRowCount(0);
-                    for (Object[] row : allReservationsData) {
-                        historyModel.addRow(java.util.Arrays.copyOf(row,
-                                row.length));
+                "Ver historial completo",
+                () -> {
+                    if (historyModel != null) {
+                        historyModel.setRowCount(0);
+                        for (Object[] row : allReservationsData) {
+                            historyModel.addRow(java.util.Arrays.copyOf(row,
+                                    row.length));
+                        }
                     }
+                    CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
+                    cl.show(pnlMainContainer, "MY_RESERVATIONS");
                 }
-                CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
-                cl.show(pnlMainContainer, "MY_RESERVATIONS");
-            }               
         );
 
         cardsPanel.add(cardReserve);
@@ -649,9 +649,9 @@ public class ClientView extends JFrame {
             String rowStatus = (String) tblModel.getValueAt(i, 3);
             if (!date.equals(rowDate)) {
                 continue;
-            }          
+            }
             if ("CANCELADA".equals(rowStatus) || "CANCELADO".equals(rowStatus)
-                    || "EXPIRADA".equals(rowStatus) 
+                    || "EXPIRADA".equals(rowStatus)
                     || "EXPIRADO".equals(rowStatus)) {
                 continue;
             }
@@ -686,15 +686,21 @@ public class ClientView extends JFrame {
                 boolean inRange = false;
                 for (String slot : allSlots) {
                     String s24 = convertToServerFormat(slot);
-                    if (s24.equals(range[0])) inRange = true;
-                    if (inRange) taken.add(slot);
-                    if (s24.equals(range[1])) break;
+                    if (s24.equals(range[0])) {
+                        inRange = true;
+                    }
+                    if (inRange) {
+                        taken.add(slot);
+                    }
+                    if (s24.equals(range[1])) {
+                        break;
+                    }
                 }
             }
         }
         return taken;
     }
-    
+
     /**
      * Determines which end-time slots are invalid given a selected start time.
      *
@@ -728,7 +734,7 @@ public class ClientView extends JFrame {
                 continue;
             }
             if ("CANCELADA".equals(rowStatus) || "CANCELADO".equals(rowStatus)
-                    || "EXPIRADA".equals(rowStatus) 
+                    || "EXPIRADA".equals(rowStatus)
                     || "EXPIRADO".equals(rowStatus)) {
                 continue;
             }
@@ -785,7 +791,8 @@ public class ClientView extends JFrame {
         java.util.Set<String> takenStart = getTakenSlots(date);
 
         String selectedStart = (String) cmbStartTime.getSelectedItem();
-        java.util.Set<String> takenEnd = getInvalidEndSlots(date,selectedStart);
+        java.util.Set<String> takenEnd = 
+                getInvalidEndSlots(date, selectedStart);
 
         cmbStartTime.setRenderer(buildSlotRenderer(takenStart));
         cmbEndTime.setRenderer(buildSlotRenderer(takenEnd));
@@ -796,22 +803,22 @@ public class ClientView extends JFrame {
         cmbStartTime.repaint();
         cmbEndTime.repaint();
     }
-    
+
     /**
-    * Builds a custom {@link ListCellRenderer} for the time-slot 
-    * {@link JComboBox} components.
-    *
-    * The renderer visually distinguishes three types of items: the placeholder 
-    * option displayed in italic with a muted color, taken slots shown in gray 
-    * with a lock icon (🔒) to signal unavailability, and available slots styled 
-    * with an {@code ACCENT_RED} background highlight on selection.
-    *
-    * @param taken A set of strings representing unavailable slots, obtained 
-    * from {@link #getTakenSlots(String)} or 
-    * {@link #getInvalidEndSlots(String, String)}.
-    * @return A {@code ListCellRenderer<Object>} 
-    * ready to be assigned to a {@code JComboBox}.
-    */
+     * Builds a custom {@link ListCellRenderer} for the time-slot
+     * {@link JComboBox} components.
+     *
+     * The renderer visually distinguishes three types of items: the placeholder
+     * option displayed in italic with a muted color, taken slots shown in gray
+     * with a lock icon (🔒) to signal unavailability, and available slots
+     * styled with an {@code ACCENT_RED} background highlight on selection.
+     *
+     * @param taken A set of strings representing unavailable slots, obtained
+     * from {@link #getTakenSlots(String)} or
+     * {@link #getInvalidEndSlots(String, String)}.
+     * @return A {@code ListCellRenderer<Object>} ready to be assigned to a
+     * {@code JComboBox}.
+     */
     private ListCellRenderer<Object> buildSlotRenderer(
             java.util.Set<String> taken) {
         return new DefaultListCellRenderer() {
@@ -833,10 +840,10 @@ public class ClientView extends JFrame {
                     setText(value + "  🔒");
                 } else {
                     setFont(new Font("Segoe UI", Font.BOLD, 14));
-                    setForeground(isSelected && index != -1 ? Color.WHITE :
-                            TEXT_DARK);
-                    setBackground(isSelected && index != -1 ? ACCENT_RED :
-                            BG_WHITE);
+                    setForeground(isSelected && index != -1 ? Color.WHITE
+                            : TEXT_DARK);
+                    setBackground(isSelected && index != -1 ? ACCENT_RED
+                            : BG_WHITE);
                 }
                 return this;
             }
@@ -864,20 +871,17 @@ public class ClientView extends JFrame {
         }
         combo.addActionListener(new SlotGuardListener(combo, taken));
     }
-    
+
     /**
-    * An {@link ActionListener} for time-slot {@link JComboBox} components that
-    * prevents
-    * the selection of occupied or invalid slots.
-    *
-    * If the user attempts to select a slot contained in the {@code taken} 
-    * set, the
-    * combo box is automatically reverted to index 0 (the "— Selecciona hora —"
-    * placeholder),
-    * preventing invalid reservation data from being submitted to the server.
-    * This listener is registered and managed through
-    * {@link #applySelectionGuard}.
-    */
+     * An {@link ActionListener} for time-slot {@link JComboBox} components that
+     * prevents the selection of occupied or invalid slots.
+     *
+     * If the user attempts to select a slot contained in the {@code taken} set,
+     * the combo box is automatically reverted to index 0 (the "— Selecciona
+     * hora —" placeholder), preventing invalid reservation data from being
+     * submitted to the server. This listener is registered and managed through
+     * {@link #applySelectionGuard}.
+     */
     private class SlotGuardListener implements ActionListener {
 
         private final JComboBox<String> combo;
@@ -894,7 +898,7 @@ public class ClientView extends JFrame {
             this.combo = combo;
             this.taken = taken;
         }
-        
+
         /**
          * Intercepts the combo box selection event. If the chosen item belongs
          * to the {@code taken} set, it safely resets the selection back to
@@ -963,6 +967,7 @@ public class ClientView extends JFrame {
                 btnReturnToMenu.setBackground(ACCENT_RED);
                 btnReturnToMenu.setForeground(Color.WHITE);
             }
+
             @Override
             public void mouseExited(MouseEvent e) {
                 btnReturnToMenu.setOpaque(false);
@@ -1208,173 +1213,173 @@ public class ClientView extends JFrame {
      *
      * @return A JPanel representing the high-fidelity reservation input form.
      */
-       private JPanel buildFormPanel() {
-    JPanel panel = new JPanel(new BorderLayout(0, 10));
-    panel.setBackground(BG_WHITE);
+    private JPanel buildFormPanel() {
+        JPanel panel = new JPanel(new BorderLayout(0, 10));
+        panel.setBackground(BG_WHITE);
 
-    JLabel header = new JLabel("Nueva Reserva");
-    header.setFont(new Font("Segoe UI", Font.BOLD, 20));
-    header.setForeground(ACCENT_RED);
-    header.setBorder(new EmptyBorder(0, 0, 6, 0));
-    panel.add(header, BorderLayout.NORTH);
+        JLabel header = new JLabel("Nueva Reserva");
+        header.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        header.setForeground(ACCENT_RED);
+        header.setBorder(new EmptyBorder(0, 0, 6, 0));
+        panel.add(header, BorderLayout.NORTH);
 
-    JPanel card = new JPanel(new GridBagLayout());
-    card.setBackground(BG_LIGHT);
-    card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BORDER_COLOR, 1),
-            new EmptyBorder(12, 20, 12, 20)));
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(BG_LIGHT);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                new EmptyBorder(12, 20, 12, 20)));
 
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    gbc.insets = new Insets(4, 8, 4, 8);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(4, 8, 4, 8);
 
-    String[] timeSlots = generateTimeSlots();
+        String[] timeSlots = generateTimeSlots();
 
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.weightx = 0.5;
-    JLabel lblDate = new JLabel("📅  Fecha");
-    lblDate.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
-    lblDate.setForeground(TEXT_DARK);
-    card.add(lblDate, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 0.5;
+        JLabel lblDate = new JLabel("📅  Fecha");
+        lblDate.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
+        lblDate.setForeground(TEXT_DARK);
+        card.add(lblDate, gbc);
 
-    gbc.gridx = 1;
-    JPanel datePickerPanel = buildCalendarDatePicker();
-    card.add(datePickerPanel, gbc);
+        gbc.gridx = 1;
+        JPanel datePickerPanel = buildCalendarDatePicker();
+        card.add(datePickerPanel, gbc);
 
-    gbc.gridx = 0;
-    gbc.gridy = 1;
-    JLabel lblStart = new JLabel("🕒  Hora Inicio");
-    lblStart.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
-    lblStart.setForeground(TEXT_DARK);
-    card.add(lblStart, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        JLabel lblStart = new JLabel("🕒  Hora Inicio");
+        lblStart.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
+        lblStart.setForeground(TEXT_DARK);
+        card.add(lblStart, gbc);
 
-    gbc.gridx = 1;
-    cmbStartTime = new JComboBox<>();
-    cmbStartTime.addItem("— Selecciona hora —");
-    for (int i = 0; i < timeSlots.length - 1; i++) {
-        cmbStartTime.addItem(timeSlots[i]);
+        gbc.gridx = 1;
+        cmbStartTime = new JComboBox<>();
+        cmbStartTime.addItem("— Selecciona hora —");
+        for (int i = 0; i < timeSlots.length - 1; i++) {
+            cmbStartTime.addItem(timeSlots[i]);
+        }
+        styleCombo(cmbStartTime);
+        cmbStartTime.addActionListener(e -> {
+            updateEndTimeOptions();
+            updateDuration();
+            refreshComboRenderers();
+        });
+        card.add(cmbStartTime, gbc);
+
+        gbc.gridx = 2;
+        JLabel lblEnd = new JLabel("🕒  Hora de Fin");
+        lblEnd.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
+        lblEnd.setForeground(TEXT_DARK);
+        card.add(lblEnd, gbc);
+
+        gbc.gridx = 3;
+        cmbEndTime = new JComboBox<>();
+        cmbEndTime.addItem("— Selecciona hora —");
+        for (String s : timeSlots) {
+            cmbEndTime.addItem(s);
+        }
+        styleCombo(cmbEndTime);
+        cmbEndTime.addActionListener(e -> updateDuration());
+        card.add(cmbEndTime, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        lblDuration = new JLabel("Duración: --");
+        lblDuration.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblDuration.setForeground(SUCCESS_GREEN);
+        card.add(lblDuration, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 1;
+        JLabel lblAttendees = new JLabel("👥  N° Asistentes");
+        lblAttendees.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
+        lblAttendees.setForeground(TEXT_DARK);
+        card.add(lblAttendees, gbc);
+
+        gbc.gridx = 1;
+        txtAttendeeCount = buildTextField("0");
+        card.add(txtAttendeeCount, gbc);
+
+        gbc.gridx = 2;
+        gbc.gridwidth = 1;
+        JLabel lblEquipment = new JLabel("Equipamiento");
+        lblEquipment.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblEquipment.setForeground(TEXT_DARK);
+        card.add(lblEquipment, gbc);
+
+        gbc.gridx = 3;
+        cbEquipmentType = new JComboBox<>(new String[]{
+            "NINGUNO", "PROYECTOR", "MICROFONO", "SONIDO", "COMPLETO"
+        });
+        styleCombo(cbEquipmentType);
+        cbEquipmentType.addActionListener(e -> {
+            String sel = (String) cbEquipmentType.getSelectedItem();
+            boolean needsQty = !"NINGUNO".equals(sel) &&
+                    !"COMPLETO".equals(sel);
+            spnEquipQuantity.setEnabled(needsQty);
+        });
+        card.add(cbEquipmentType, gbc);
+
+        gbc.gridx = 2;
+        gbc.gridy = 4;
+        JLabel lblQty = new JLabel("Cantidad");
+        lblQty.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblQty.setForeground(TEXT_DARK);
+        card.add(lblQty, gbc);
+
+        gbc.gridx = 3;
+        spnEquipQuantity = new JSpinner(new SpinnerNumberModel(1, 1, 99, 1));
+        spnEquipQuantity.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        spnEquipQuantity.setEnabled(false);
+        ((JSpinner.DefaultEditor) spnEquipQuantity.getEditor())
+                .getTextField().setHorizontalAlignment(JTextField.CENTER);
+        card.add(spnEquipQuantity, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        gbc.gridwidth = 1;
+        gbc.insets = new Insets(10, 8, 6, 8);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        buttonPanel.setBackground(BG_LIGHT);
+
+        btnSubmitRequest = buildActionButton("💾  Reservar", ACCENT_RED, true);
+        btnConfirmSelection = buildActionButton("✓  Confirmar", 
+                SUCCESS_GREEN, true);
+        btnAbortReservation = buildActionButton("⊗  Cancelar", 
+                ACCENT_RED, false);
+        btnNew = buildActionButton("🗑  Limpiar", ACCENT_RED, true);
+
+        btnNew.addActionListener(e -> {
+            clearReservationForm();
+            cmbStartTime.setSelectedIndex(0);
+            cmbEndTime.setSelectedIndex(0);
+            txtReservationDate.setText(
+                    java.time.LocalDate.now().toString());
+            lblDuration.setText("Duración: --");
+            refreshComboRenderers();
+        });
+
+        btnSubmitRequest.addActionListener(e -> reserve());
+        btnConfirmSelection.addActionListener(e -> confirmReservation());
+        btnAbortReservation.addActionListener(e -> cancelReservation());
+
+        buttonPanel.add(btnSubmitRequest);
+        buttonPanel.add(btnConfirmSelection);
+        buttonPanel.add(btnAbortReservation);
+        buttonPanel.add(btnNew);
+
+        gbc.gridwidth = 4;
+        card.add(buttonPanel, gbc);
+
+        panel.add(card, BorderLayout.CENTER);
+        setFormEnabled(false);
+        return panel;
     }
-    styleCombo(cmbStartTime);
-    cmbStartTime.addActionListener(e -> {
-        updateEndTimeOptions();
-        updateDuration();
-        refreshComboRenderers();
-    });
-    card.add(cmbStartTime, gbc);
-
-    gbc.gridx = 2;
-    JLabel lblEnd = new JLabel("🕒  Hora de Fin");
-    lblEnd.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
-    lblEnd.setForeground(TEXT_DARK);
-    card.add(lblEnd, gbc);
-
-    gbc.gridx = 3;
-    cmbEndTime = new JComboBox<>();
-    cmbEndTime.addItem("— Selecciona hora —");
-    for (String s : timeSlots) cmbEndTime.addItem(s);
-    styleCombo(cmbEndTime);
-    cmbEndTime.addActionListener(e -> updateDuration());
-    card.add(cmbEndTime, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = 2;
-    gbc.gridwidth = 2;
-    lblDuration = new JLabel("Duración: --");
-    lblDuration.setFont(new Font("Segoe UI", Font.BOLD, 12));
-    lblDuration.setForeground(SUCCESS_GREEN);
-    card.add(lblDuration, gbc);
-
-    gbc.gridx = 0;
-    gbc.gridy = 3;
-    gbc.gridwidth = 1;
-    JLabel lblAttendees = new JLabel("👥  N° Asistentes");
-    lblAttendees.setFont(new Font("Segoe UI Symbol", Font.BOLD, 13));
-    lblAttendees.setForeground(TEXT_DARK);
-    card.add(lblAttendees, gbc);
-
-    gbc.gridx = 1;
-    txtAttendeeCount = buildTextField("0");
-    card.add(txtAttendeeCount, gbc);
-
-    // === Equipamiento: label ===
-    gbc.gridx = 2;
-    gbc.gridwidth = 1;
-    JLabel lblEquipment = new JLabel("Equipamiento");
-    lblEquipment.setFont(new Font("Segoe UI", Font.BOLD, 13));
-    lblEquipment.setForeground(TEXT_DARK);
-    card.add(lblEquipment, gbc);
-
-    // === Equipamiento: combo de tipo ===
-    gbc.gridx = 3;
-    cbEquipmentType = new JComboBox<>(new String[]{
-        "NINGUNO", "PROYECTOR", "MICROFONO", "SONIDO", "COMPLETO"
-    });
-    styleCombo(cbEquipmentType);
-    cbEquipmentType.addActionListener(e -> {
-        String sel = (String) cbEquipmentType.getSelectedItem();
-        boolean needsQty = !"NINGUNO".equals(sel) && !"COMPLETO".equals(sel);
-        spnEquipQuantity.setEnabled(needsQty);
-    });
-    card.add(cbEquipmentType, gbc);
-
-    // === Cantidad: label ===
-    gbc.gridx = 2;
-    gbc.gridy = 4;
-    JLabel lblQty = new JLabel("Cantidad");
-    lblQty.setFont(new Font("Segoe UI", Font.BOLD, 13));
-    lblQty.setForeground(TEXT_DARK);
-    card.add(lblQty, gbc);
-
-    // === Cantidad: spinner ===
-    gbc.gridx = 3;
-    spnEquipQuantity = new JSpinner(new SpinnerNumberModel(1, 1, 99, 1));
-    spnEquipQuantity.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-    spnEquipQuantity.setEnabled(false); // deshabilitado por defecto (NINGUNO)
-    ((JSpinner.DefaultEditor) spnEquipQuantity.getEditor())
-            .getTextField().setHorizontalAlignment(JTextField.CENTER);
-    card.add(spnEquipQuantity, gbc);
-
-    // === Botones ===
-    gbc.gridx = 0;
-    gbc.gridy = 5;
-    gbc.gridwidth = 1;
-    gbc.insets = new Insets(10, 8, 6, 8);
-
-    JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
-    buttonPanel.setBackground(BG_LIGHT);
-
-    btnSubmitRequest    = buildActionButton("💾  Reservar",  ACCENT_RED,   true);
-    btnConfirmSelection = buildActionButton("✓  Confirmar",  SUCCESS_GREEN, true);
-    btnAbortReservation = buildActionButton("⊗  Cancelar",   ACCENT_RED,   false);
-    btnNew              = buildActionButton("🗑  Limpiar",    ACCENT_RED,   true);
-
-    btnNew.addActionListener(e -> {
-        clearReservationForm();
-        cmbStartTime.setSelectedIndex(0);
-        cmbEndTime.setSelectedIndex(0);
-        txtReservationDate.setText(
-                java.time.LocalDate.now().toString());
-        lblDuration.setText("Duración: --");
-        refreshComboRenderers();
-    });
-
-    btnSubmitRequest.addActionListener(e -> reserve());
-    btnConfirmSelection.addActionListener(e -> confirmReservation());
-    btnAbortReservation.addActionListener(e -> cancelReservation());
-
-    buttonPanel.add(btnSubmitRequest);
-    buttonPanel.add(btnConfirmSelection);
-    buttonPanel.add(btnAbortReservation);
-    buttonPanel.add(btnNew);
-
-    gbc.gridwidth = 4;
-    card.add(buttonPanel, gbc);
-
-    panel.add(card, BorderLayout.CENTER);
-    setFormEnabled(false);
-    return panel;
-}
 
     /**
      * Builds the feedback section of the UI, containing the reservation history
@@ -1451,7 +1456,7 @@ public class ClientView extends JFrame {
         tableHeader.setBackground(ACCENT_RED);
         tableHeader.setForeground(Color.WHITE);
         tableHeader.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        tableHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, 
+        tableHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0,
                 ACCENT_RED));
         tableHeader.setPreferredSize(new Dimension(0, 32));
         tableHeader.setDefaultRenderer(new DefaultTableCellRenderer() {
@@ -1799,7 +1804,7 @@ public class ClientView extends JFrame {
 
         String currentEnd = (String) cmbEndTime.getSelectedItem();
         cmbEndTime.removeAllItems();
-        cmbEndTime.addItem("— Selecciona hora —"); 
+        cmbEndTime.addItem("— Selecciona hora —");
 
         String[] allSlots = generateTimeSlots();
         boolean startFound = false;
@@ -2204,7 +2209,7 @@ public class ClientView extends JFrame {
             tempSocket = new Socket();
             tempSocket.connect(new InetSocketAddress("localhost", 8000),
                     3000);
-    
+
             DataInputStream tempIn = new DataInputStream(
                     new BufferedInputStream(tempSocket.getInputStream()));
             DataOutputStream tempOut = new DataOutputStream(
@@ -2301,7 +2306,7 @@ public class ClientView extends JFrame {
             }
         } catch (IOException ignored) {
         }
-        
+
         allReservationsData.clear();
         if (tblModel != null) {
             tblModel.setRowCount(0);
@@ -2504,11 +2509,11 @@ public class ClientView extends JFrame {
                     allReservationsData.add(new Object[]{id, date,
                         timeRng, status, "—"});
 
-                    if ("RESERVADO_TEMPORAL".equals(status) || 
-                            "TEMPORAL".equals(status)
-                            || "CONFIRMADO".equals(status) || 
-                            "CONFIRMADA".equals(status)) {
-                        tblModel.addRow(new Object[]{id, date, timeRng, 
+                    if ("RESERVADO_TEMPORAL".equals(status)
+                            || "TEMPORAL".equals(status)
+                            || "CONFIRMADO".equals(status)
+                            || "CONFIRMADA".equals(status)) {
+                        tblModel.addRow(new Object[]{id, date, timeRng,
                             status, "—"});
                     }
 
@@ -2540,15 +2545,15 @@ public class ClientView extends JFrame {
 
                         if ("ENVIANDO...".equals(tblModel.getValueAt(i, 3))) {
 
-                            String date = 
-                                    String.valueOf(tblModel.getValueAt(i, 1));
-                            String timeRng = 
-                                    String.valueOf(tblModel.getValueAt(i, 2));
+                            String date
+                                    = String.valueOf(tblModel.getValueAt(i, 1));
+                            String timeRng
+                                    = String.valueOf(tblModel.getValueAt(i, 2));
 
                             tblModel.setValueAt(id, i, 0);
                             tblModel.setValueAt("TEMPORAL", i, 3);
                             tblModel.setValueAt(ttlValue, i, 4);
-                            
+
                             boolean existsInData = false;
                             for (Object[] row : allReservationsData) {
                                 if (id.equals(row[0])) {
@@ -2610,7 +2615,7 @@ public class ClientView extends JFrame {
 
                     JOptionPane.showMessageDialog(this,
                             "Reserva confirmada con éxito.\n"
-                                    + "Consulta en 'Mis Reservas'.",
+                            + "Consulta en 'Mis Reservas'.",
                             "Confirmación",
                             JOptionPane.INFORMATION_MESSAGE);
                 } else if (parts.length >= 2 && "CANCELADO".equals(parts[1])) {
@@ -2626,8 +2631,8 @@ public class ClientView extends JFrame {
                         String newId = parts[3];
                         String date = parts[4];
                         String timeRng = parts[5] + " - " + parts[6];
-                        String status = parts.length >= 8 ? parts[7] :
-                                "CONFIRMADO";
+                        String status = parts.length >= 8 ? parts[7]
+                                : "CONFIRMADO";
 
                         for (int i = tblModel.getRowCount() - 1; i >= 0; i--) {
                             if (oldId.equals(tblModel.getValueAt(i, 0))) {
@@ -2703,10 +2708,12 @@ public class ClientView extends JFrame {
                 otherUsersSlots.clear();
                 for (int i = 1; i < parts.length; i++) {
                     String[] f = parts[i].split(",");
-                    if (f.length < 3) continue;
+                    if (f.length < 3) {
+                        continue;
+                    }
                     otherUsersSlots.computeIfAbsent(f[0],
                             k -> new java.util.ArrayList<>())
-                                   .add(new String[]{f[1], f[2]});
+                            .add(new String[]{f[1], f[2]});
                 }
                 refreshComboRenderers();
                 break;
@@ -2715,7 +2722,7 @@ public class ClientView extends JFrame {
                 if (parts.length >= 4) {
                     otherUsersSlots.computeIfAbsent(parts[1],
                             k -> new java.util.ArrayList<>())
-                                   .add(new String[]{parts[2], parts[3]});
+                            .add(new String[]{parts[2], parts[3]});
                     refreshComboRenderers();
                 }
                 break;
@@ -2724,8 +2731,8 @@ public class ClientView extends JFrame {
                 if (parts.length >= 4) {
                     List<String[]> ranges = otherUsersSlots.get(parts[1]);
                     if (ranges != null) {
-                        ranges.removeIf(r -> r[0].equals(parts[2]) &&
-                                r[1].equals(parts[3]));
+                        ranges.removeIf(r -> r[0].equals(parts[2])
+                                && r[1].equals(parts[3]));
                     }
                     refreshComboRenderers();
                 }
@@ -2804,8 +2811,8 @@ public class ClientView extends JFrame {
     private void updateTableStatus(String id, String newStatus) {
         for (int i = 0; i < tblModel.getRowCount(); i++) {
             if (id != null && id.equals(tblModel.getValueAt(i, 0))) {
-                if ("CANCELADA".equals(newStatus) || 
-                        "EXPIRADA".equals(newStatus)) {
+                if ("CANCELADA".equals(newStatus)
+                        || "EXPIRADA".equals(newStatus)) {
                     tblModel.removeRow(i);
                 } else {
                     tblModel.setValueAt(newStatus, i, 3);
@@ -2854,48 +2861,51 @@ public class ClientView extends JFrame {
      * ("ENVIANDO...") to the table. 4. Transmission: Sends the "RESERVAR"
      * command with the assembled reservation parameters to the server.
      */
-       private void reserve() {
-    if (!isConnected) return;
+    private void reserve() {
+        if (!isConnected) {
+            return;
+        }
 
-    String date = txtReservationDate.getText().trim();
-    if (date.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "Seleccione una fecha.",
-                "Campo vacío", JOptionPane.WARNING_MESSAGE);
-        return;
+        String date = txtReservationDate.getText().trim();
+        if (date.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Seleccione una fecha.",
+                    "Campo vacío", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String startTime = convertToServerFormat(
+                (String) cmbStartTime.getSelectedItem());
+        String endTime = convertToServerFormat(
+                (String) cmbEndTime.getSelectedItem());
+        String attendees = txtAttendeeCount.getText().trim();
+        String role = (String) cbUserRole.getSelectedItem();
+
+        if (attendees.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Complete todos los campos antes de reservar.",
+                    "Campos vacíos", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String equipType = (String) cbEquipmentType.getSelectedItem();
+        int equipQty = (int) spnEquipQuantity.getValue();
+
+        String equipField;
+        if ("NINGUNO".equals(equipType)) {
+            equipField = "NINGUNO";
+        } else if ("COMPLETO".equals(equipType)) {
+            equipField = "COMPLETO";
+        } else {
+            equipField = equipType + ":" + equipQty;
+        }
+
+        tblModel.addRow(new Object[]{"...", date,
+            startTime + " - " + endTime, "ENVIANDO...", "..."});
+
+        sendMessage("RESERVAR|" + date + "|" + startTime + "|" + endTime
+                + "|" + attendees + "|" + equipField + "|" + role);
     }
 
-    String startTime = convertToServerFormat(
-            (String) cmbStartTime.getSelectedItem());
-    String endTime = convertToServerFormat(
-            (String) cmbEndTime.getSelectedItem());
-    String attendees = txtAttendeeCount.getText().trim();
-    String role = (String) cbUserRole.getSelectedItem();
-
-    if (attendees.isEmpty()) {
-        JOptionPane.showMessageDialog(this,
-                "Complete todos los campos antes de reservar.",
-                "Campos vacíos", JOptionPane.WARNING_MESSAGE);
-        return;
-    }
-
-    String equipType = (String) cbEquipmentType.getSelectedItem();
-    int equipQty     = (int) spnEquipQuantity.getValue();
-
-    String equipField;
-    if ("NINGUNO".equals(equipType)) {
-        equipField = "NINGUNO";
-    } else if ("COMPLETO".equals(equipType)) {
-        equipField = "COMPLETO";
-    } else {
-        equipField = equipType + ":" + equipQty;
-    }
-
-    tblModel.addRow(new Object[]{"...", date,
-        startTime + " - " + endTime, "ENVIANDO...", "..."});
-
-    sendMessage("RESERVAR|" + date + "|" + startTime + "|" + endTime
-            + "|" + attendees + "|" + equipField + "|" + role);
-}
     /**
      * Normalizes 12-hour (AM/PM) time strings into 24-hour (HH:mm) format.
      *
@@ -3070,7 +3080,6 @@ public class ClientView extends JFrame {
      * @param enabled {@code true} to enable the form controls, {@code false} to
      * disable them.
      */
-
     private void setFormEnabled(boolean enabled) {
         txtReservationDate.setEnabled(enabled);
         cmbStartTime.setEnabled(enabled);
@@ -3080,11 +3089,11 @@ public class ClientView extends JFrame {
         btnSubmitRequest.setEnabled(enabled);
         btnConfirmSelection.setEnabled(enabled);
         btnAbortReservation.setEnabled(enabled);
-        btnNew.setEnabled(enabled); 
+        btnNew.setEnabled(enabled);
         cbEquipmentType.setEnabled(enabled);
         spnEquipQuantity.setEnabled(enabled
-          && !"NINGUNO".equals(cbEquipmentType.getSelectedItem())
-          && !"COMPLETO".equals(cbEquipmentType.getSelectedItem()));
+                && !"NINGUNO".equals(cbEquipmentType.getSelectedItem())
+                && !"COMPLETO".equals(cbEquipmentType.getSelectedItem()));
     }
 
     /**

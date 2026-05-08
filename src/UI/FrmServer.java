@@ -759,27 +759,33 @@ public class FrmServer extends JFrame {
                 ServerApp.calendar.getTotalReservations()
                 + " activas");
         String nowDate = java.time.LocalDate.now().toString();
-String nowTime = java.time.LocalTime.now()
-        .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
-int occupiedNow = ServerApp.calendar
-        .getOccupiedCapacityInRange(nowDate, nowTime, nowTime + ":59");
-lblCapacityValue.setText(String.valueOf(
-        Math.max(0, ServerApp.manager.getMaxCapacity() - occupiedNow)));
+        String nowTime = java.time.LocalTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+        String nowTimePlus1 = java.time.LocalTime.now()
+                .plusMinutes(1)
+                .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+        int occupiedNow = ServerApp.calendar.getOccupiedCapacityInRange(
+                nowDate, nowTime, nowTimePlus1);
+        lblCapacityValue.setText(String.valueOf(
+                Math.max(0, ServerApp.manager.getMaxCapacity() - occupiedNow)));
 
-int usedProy  = ServerApp.calendar.getEquipmentInUseNow(Core.Reservation.Equipment.PROYECTOR);
-int usedMic   = ServerApp.calendar.getEquipmentInUseNow(Core.Reservation.Equipment.MICROFONO);
-int usedSound = ServerApp.calendar.getEquipmentInUseNow(Core.Reservation.Equipment.SONIDO);
+        int usedProy = ServerApp.calendar.getEquipmentInUseNow(
+                Core.Reservation.Equipment.PROYECTOR);
+        int usedMic = ServerApp.calendar.getEquipmentInUseNow(
+                Core.Reservation.Equipment.MICROFONO);
+        int usedSound = ServerApp.calendar.getEquipmentInUseNow(
+                Core.Reservation.Equipment.SONIDO);
 
-int proyCount  = ServerApp.manager.getTotalProjectors()  - usedProy;
-int micCount   = ServerApp.manager.getTotalMicrophones() - usedMic;
-int soundCount = ServerApp.manager.getTotalSound()       - usedSound;
+        int proyCount = ServerApp.manager.getTotalProjectors() - usedProy;
+        int micCount = ServerApp.manager.getTotalMicrophones() - usedMic;
+        int soundCount = ServerApp.manager.getTotalSound() - usedSound;
 
-lblProjectorValue.setText(String.valueOf(Math.max(0, proyCount)));
-lblMicrophoneValue.setText(String.valueOf(Math.max(0, micCount)));
-lblSoundValue.setText(String.valueOf(Math.max(0, soundCount)));
+        lblProjectorValue.setText(String.valueOf(Math.max(0, proyCount)));
+        lblMicrophoneValue.setText(String.valueOf(Math.max(0, micCount)));
+        lblSoundValue.setText(String.valueOf(Math.max(0, soundCount)));
 
-int fullSets = Math.min(proyCount, Math.min(micCount, soundCount));
-lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
+        int fullSets = Math.min(proyCount, Math.min(micCount, soundCount));
+        lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
 
         List<String> logEntries
                 = ServerApp.log.getLast(100);
@@ -831,7 +837,8 @@ lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
         int finalSelectedRow = calendarTable.getSelectedRow();
         boolean hasSelection = finalSelectedRow >= 0;
         boolean canEdit = hasSelection && isServerRunning
-             && !"CANCELADO".equals(tableModel.getValueAt(finalSelectedRow, 4));
+                && !"CANCELADO".equals(tableModel.getValueAt(
+                        finalSelectedRow, 4));
         btnEditReservation.setEnabled(canEdit);
         btnCancelReservation.setEnabled(canEdit);
     }
@@ -983,9 +990,16 @@ lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
                     "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        
+        if (original.getStatus() != Reservation.Status.CONFIRMADO) {
+            JOptionPane.showMessageDialog(this,
+                    "Solo se pueden editar reservas confirmadas.",
+                    "Operación no permitida",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
         LocalDateTime now = LocalDateTime.now();
-
         LocalDateTime newStartFull = LocalDateTime.of(newDate, newStart);
         LocalDateTime newEndFull = LocalDateTime.of(newDate, newEnd);
 
@@ -1016,7 +1030,7 @@ lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
             if (!newStartFull.equals(oldStartFull)) {
                 JOptionPane.showMessageDialog(this,
                         "No puedes modificar la hora de inicio de una reserva "
-                                + "en curso.",
+                        + "en curso.",
                         "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -1050,7 +1064,7 @@ lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
 
         Reservation newRes;
         try {
-            newRes = ServerApp.calendar.reserveTemporarily(
+            newRes = ServerApp.calendar.reserveTemporarilySingleEquipment(
                     clientId, newDateStr,
                     newStartStr, newEndStr,
                     Integer.parseInt(newAttStr),
@@ -1060,7 +1074,7 @@ lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
             JOptionPane.showMessageDialog(this,
                     "Asistentes debe ser un número.",
                     "Error", JOptionPane.ERROR_MESSAGE);
-            ServerApp.calendar.reserveTemporarily(
+            ServerApp.calendar.reserveTemporarilySingleEquipment(
                     clientId, original.getDate(),
                     original.getStartTime(),
                     original.getEndTime(),
@@ -1076,7 +1090,7 @@ lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
                     "Conflicto",
                     JOptionPane.ERROR_MESSAGE);
             Reservation rest
-                    = ServerApp.calendar.reserveTemporarily(
+                    = ServerApp.calendar.reserveTemporarilySingleEquipment(
                             clientId, original.getDate(),
                             original.getStartTime(),
                             original.getEndTime(),
@@ -1183,8 +1197,35 @@ lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
         String resStart = res.getStartTime();
         String resEnd = res.getEndTime();
 
+        Reservation.Status st = res.getStatus();
+
+        if (st == Reservation.Status.CANCELADO) {
+            JOptionPane.showMessageDialog(this,
+                    "La reserva ya está cancelada.",
+                    "Operación no válida",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (st == Reservation.Status.EXPIRADO) {
+            JOptionPane.showMessageDialog(this,
+                    "La reserva ya expiró.",
+                    "Operación no válida",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (st == Reservation.Status.FINALIZADO) {
+            JOptionPane.showMessageDialog(this,
+                    "La reserva ya finalizó y no puede cancelarse.",
+                    "Operación no válida",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         int confirm = JOptionPane.showConfirmDialog(this,
-                "¿Cancelar la reserva " + resId + " del cliente " + clientId + "?",
+                "¿Cancelar la reserva " + resId + " del cliente "
+                + clientId + "?",
                 "Confirmar cancelación", JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
         if (confirm != JOptionPane.YES_OPTION) {
@@ -1193,15 +1234,19 @@ lblFullSetValue.setText(String.valueOf(Math.max(0, fullSets)));
 
         boolean success = ServerApp.calendar.cancelReservation(resId);
         if (!success) {
-            JOptionPane.showMessageDialog(this, "No se pudo cancelar la reserva.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo cancelar la reserva.\n"
+                    + "Puede haber sido modificada o ya no existe.",
+                    "Operación fallida",
+                    JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         ServerApp.ttlQueue.remove(resId);
         ReservationPersistence.save(ServerApp.calendar);
         ServerApp.log.log("CANCELACION-SERVIDOR",
-                "Servidor canceló reserva " + resId + " del cliente " + clientId);
+                "Servidor cancelo reserva " + resId
+                + " del cliente " + clientId);
 
         synchronized (ServerApp.connectedClients) {
             for (ClientHandler handler : ServerApp.connectedClients) {
