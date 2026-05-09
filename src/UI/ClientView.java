@@ -2704,6 +2704,17 @@ public class ClientView extends JFrame {
                             JOptionPane.WARNING_MESSAGE);
                 }
                 break;
+
+            case "FINALIZADO":
+                if (parts.length >= 2) {
+                    String finId = parts[1];
+                    updateTableStatus(finId, "FINALIZADA");
+                    clearTTL(finId);
+                    refreshComboRenderers();
+                    logMessage("Reserva " + finId + " finalizada.");
+                }
+                break;
+
             case "SLOTS_OCUPADOS":
                 otherUsersSlots.clear();
                 for (int i = 1; i < parts.length; i++) {
@@ -2812,7 +2823,8 @@ public class ClientView extends JFrame {
         for (int i = 0; i < tblModel.getRowCount(); i++) {
             if (id != null && id.equals(tblModel.getValueAt(i, 0))) {
                 if ("CANCELADA".equals(newStatus)
-                        || "EXPIRADA".equals(newStatus)) {
+                        || "EXPIRADA".equals(newStatus) 
+                        || "FINALIZADA".equals(newStatus)) {
                     tblModel.removeRow(i);
                 } else {
                     tblModel.setValueAt(newStatus, i, 3);

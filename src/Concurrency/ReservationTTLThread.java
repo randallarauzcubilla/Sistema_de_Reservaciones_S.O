@@ -46,17 +46,21 @@ public class ReservationTTLThread extends Thread {
     @Override
     public void run() {
         log.log("SISTEMA", "HiloTTL iniciado");
-
         while (active) {
             try {
                 long waitTime = ttlQueue.millisUntilNext();
                 ttlQueue.awaitWithTimeout(waitTime);
-                calendar.markFinishedReservations();
 
-                java.util.List<Reservation> expiredReservations
-                        = calendar.expireOverdue();
+                java.util.List<Reservation> finished = 
+                        calendar.markFinishedReservations();
+                for (Reservation r : finished) {
+                    log.log("FINALIZADO", "Reserva " + r.getReservationId()
+                            + " finalizada. Cliente: " + r.getClientId());
+                    notifyClientFinished(r);
+                }
 
-                for (Reservation r : expiredReservations) {
+                java.util.List<Reservation> expired = calendar.expireOverdue();
+                for (Reservation r : expired) {
                     ttlQueue.remove(r.getReservationId());
                     log.logExpiration(r);
                     System.out.println("[TTL] Expirada: "
@@ -69,8 +73,27 @@ public class ReservationTTLThread extends Thread {
                 active = false;
             }
         }
-
         log.log("SISTEMA", "HiloTTL detenido");
+    }
+
+    /**
+     * Notifies the client that a reservation has finished.
+     *
+     * @param r the finished reservation
+     */
+    private void notifyClientFinished(Reservation r) {
+        for (ClientHandler handler : ServerApp.connectedClients) {
+            try {
+                if (handler.getClientId().equals(r.getClientId())) {
+                    handler.send("FINALIZADO|" + r.getReservationId());
+                } else {
+                    handler.send("SLOT_LIBRE|" + r.getDate()
+                            + "|" + r.getStartTime()
+                            + "|" + r.getEndTime());
+                }
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     /**
