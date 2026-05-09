@@ -2207,7 +2207,7 @@ public class ClientView extends JFrame {
         Socket tempSocket = null;
         try {
             tempSocket = new Socket();
-            tempSocket.connect(new InetSocketAddress("localhost", 8000),
+            tempSocket.connect(new InetSocketAddress("10.47.240.235", 8000),
                     3000);
 
             DataInputStream tempIn = new DataInputStream(
