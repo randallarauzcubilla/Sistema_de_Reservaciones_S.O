@@ -33,15 +33,15 @@ public class Reservation {
 
     private final String reservationId;
     private final String clientId;
-    private final String date;
-    private final String startTime;
-    private final String endTime;
-    private final int attendeeCount;
-    private final Equipment equipment;
+    private String date;               // ← mutable for in-place editing
+    private String startTime;          // ← mutable for in-place editing
+    private String endTime;            // ← mutable for in-place editing
+    private int attendeeCount;         // ← mutable for in-place editing
+    private Equipment equipment;       // ← mutable for in-place editing
     private final Priority priority;
     private volatile Status status;
     private final long expirationTtl;
-    private final Map<Equipment, Integer> equipmentQuantities;
+    private Map<Equipment, Integer> equipmentQuantities; // ← mutable for in-place editing
 
     /**
      * Creates a temporary reservation with default equipment quantity.
@@ -189,6 +189,10 @@ public class Reservation {
                 (expirationTtl - System.currentTimeMillis()) / 1000);
     }
 
+    // =========================================================
+    // GETTERS
+    // =========================================================
+
     public String getReservationId() {
         return reservationId;
     }
@@ -230,13 +234,18 @@ public class Reservation {
     }
 
     /**
-     * Returns an immutable map of equipment quantities.
+     * Returns an immutable view of the equipment quantities map.
      *
      * @return equipment quantity map
      */
     public Map<Equipment, Integer> getEquipmentQuantities() {
         return Collections.unmodifiableMap(equipmentQuantities);
     }
+
+    // =========================================================
+    // SETTERS (used for in-place editing — do NOT use to bypass
+    // calendar validation; always go through ReservationCalendar)
+    // =========================================================
 
     /**
      * Updates reservation status.
@@ -245,6 +254,64 @@ public class Reservation {
      */
     public void setStatus(Status status) {
         this.status = status;
+    }
+
+    /**
+     * Updates the reservation date.
+     *
+     * @param date new date in YYYY-MM-DD format
+     */
+    public void setDate(String date) {
+        this.date = date;
+    }
+
+    /**
+     * Updates the reservation start time.
+     *
+     * @param startTime new start time in HH:mm format
+     */
+    public void setStartTime(String startTime) {
+        this.startTime = startTime;
+    }
+
+    /**
+     * Updates the reservation end time.
+     *
+     * @param endTime new end time in HH:mm format
+     */
+    public void setEndTime(String endTime) {
+        this.endTime = endTime;
+    }
+
+    /**
+     * Updates the number of attendees.
+     *
+     * @param attendeeCount new attendee count
+     */
+    public void setAttendeeCount(int attendeeCount) {
+        this.attendeeCount = attendeeCount;
+    }
+
+    /**
+     * Updates the primary equipment type.
+     *
+     * @param equipment new equipment type
+     */
+    public void setEquipment(Equipment equipment) {
+        this.equipment = equipment;
+    }
+
+    /**
+     * Replaces the equipment quantities map in-place (clears and refills).
+     * The existing map instance is reused so external references remain valid.
+     *
+     * @param newQuantities new equipment quantities; null is treated as empty
+     */
+    public void setEquipmentQuantities(Map<Equipment, Integer> newQuantities) {
+        this.equipmentQuantities.clear();
+        if (newQuantities != null) {
+            this.equipmentQuantities.putAll(newQuantities);
+        }
     }
 
     @Override

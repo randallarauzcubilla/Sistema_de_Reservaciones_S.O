@@ -224,6 +224,127 @@ public class ReservationCalendar {
     }
 
     /**
+     * Edits an existing confirmed reservation in-place, preserving its ID.
+     * Re-keys the slot in the internal map if the schedule changes.
+     * Validates time conflicts and equipment availability against all other
+     * reservations before applying any change.
+     *
+     * @param reservationId  ID of the reservation to edit
+     * @param newDate        new date (YYYY-MM-DD)
+     * @param newStart       new start time (HH:mm)
+     * @param newEnd         new end time (HH:mm)
+     * @param newAttendees   new attendee count
+     * @param newEquipMap    new equipment quantities (empty map = NINGUNO)
+     * @return true if the edit was applied successfully,
+     *         false if a conflict was detected or the reservation was not found
+     */
+    public boolean editReservation(String reservationId,
+            String newDate, String newStart, String newEnd,
+            int newAttendees,
+            Map<Reservation.Equipment, Integer> newEquipMap) {
+
+        manager.lockWriteCalendar().lock();
+        try {
+            markFinishedInternal();
+            expireOverdueInternal();
+
+            // 1. Find and validate the original reservation
+            Reservation original = findById(reservationId);
+            if (original == null
+                    || original.getStatus() != Reservation.Status.CONFIRMADO) {
+                return false;
+            }
+
+            String oldKey = generateKey(
+                    original.getDate(),
+                    original.getStartTime(),
+                    original.getEndTime());
+            String newKey = generateKey(newDate, newStart, newEnd);
+            boolean scheduleChanged = !oldKey.equals(newKey);
+
+            // 2. If the schedule changes, check for time conflicts
+            //    against every OTHER active reservation
+            if (scheduleChanged) {
+                for (Reservation r : timeSlots.values()) {
+                    if (r.getReservationId().equals(reservationId)) {
+                        continue; // skip the reservation being edited
+                    }
+                    if (isFreeStatus(r.getStatus())) {
+                        continue;
+                    }
+                    if (!r.getDate().equals(newDate)) {
+                        continue;
+                    }
+                    if (doOverlap(newStart, newEnd,
+                            r.getStartTime(), r.getEndTime())) {
+                        return false; // time conflict with another reservation
+                    }
+                }
+            }
+
+            // 3. Check equipment availability excluding the current reservation
+            Map<Reservation.Equipment, Integer> toAcquire =
+                    (newEquipMap != null && !newEquipMap.isEmpty())
+                    ? new LinkedHashMap<>(newEquipMap)
+                    : Collections.emptyMap();
+
+            for (Map.Entry<Reservation.Equipment, Integer> entry
+                    : toAcquire.entrySet()) {
+                int inUse = 0;
+                for (Reservation r : timeSlots.values()) {
+                    if (r.getReservationId().equals(reservationId)) {
+                        continue; // exclude self from equipment count
+                    }
+                    if (isFreeStatus(r.getStatus())) {
+                        continue;
+                    }
+                    if (!r.getDate().equals(newDate)) {
+                        continue;
+                    }
+                    if (doOverlap(newStart, newEnd,
+                            r.getStartTime(), r.getEndTime())) {
+                        Integer qty = r.getEquipmentQuantities()
+                                .get(entry.getKey());
+                        if (qty != null) {
+                            inUse += qty;
+                        }
+                    }
+                }
+                int total = getTotalForType(entry.getKey());
+                if (inUse + entry.getValue() > total) {
+                    return false; // equipment conflict
+                }
+            }
+
+            // 4. Apply all changes in-place on the existing Reservation object
+            original.setDate(newDate);
+            original.setStartTime(newStart);
+            original.setEndTime(newEnd);
+            original.setAttendeeCount(newAttendees);
+
+            // Determine primary equipment type for the equipment field
+            Reservation.Equipment primaryEquip = Reservation.Equipment.NINGUNO;
+            if (!toAcquire.isEmpty()) {
+                primaryEquip = toAcquire.keySet().iterator().next();
+            }
+            original.setEquipment(primaryEquip);
+            original.setEquipmentQuantities(toAcquire);
+            // Status stays CONFIRMADO — no change needed
+
+            // 5. Re-key in the map only if the schedule actually changed
+            if (scheduleChanged) {
+                timeSlots.remove(oldKey);
+                timeSlots.put(newKey, original);
+            }
+
+            return true;
+
+        } finally {
+            manager.lockWriteCalendar().unlock();
+        }
+    }
+
+    /**
      * Marks all expired reservations and returns them.
      *
      * @return list of reservations that were marked as expired
@@ -246,6 +367,7 @@ public class ReservationCalendar {
 
     /**
      * Marks reservations as finished if their end time has passed.
+     *
      * @return reservations whose status was updated to FINALIZADO.
      */
     public List<Reservation> markFinishedReservations() {
@@ -439,7 +561,7 @@ public class ReservationCalendar {
     }
 
     /**
-     * Finds a reservation by its ID (internal lookup).
+     * Finds a reservation by its ID (internal lookup, no locking).
      *
      * @param reservationId reservation identifier
      * @return reservation if found, null otherwise
