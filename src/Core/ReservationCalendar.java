@@ -246,11 +246,19 @@ public class ReservationCalendar {
 
     /**
      * Marks reservations as finished if their end time has passed.
+     * @return reservations whose status was updated to FINALIZADO.
      */
-    public void markFinishedReservations() {
+    public List<Reservation> markFinishedReservations() {
+        List<Reservation> finished = new ArrayList<>();
         manager.lockWriteCalendar().lock();
         try {
-            markFinishedInternal();
+            for (Reservation r : timeSlots.values()) {
+                if (r.isFinished()) {
+                    r.setStatus(Reservation.Status.FINALIZADO);
+                    finished.add(r);
+                }
+            }
+            return finished;
         } finally {
             manager.lockWriteCalendar().unlock();
         }

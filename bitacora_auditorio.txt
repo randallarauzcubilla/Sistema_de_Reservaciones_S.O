@@ -66,4 +66,25 @@
 [07/05/2026 23:05:16] [CONFIRMACION    ] Reserva e9c4f254 confirmada por 604830418
 [07/05/2026 23:07:22] [SISTEMA         ] Bitacora inicializada
 [07/05/2026 23:07:24] [SISTEMA         ] HiloTTL iniciado
-[07/05/2026 23:07:33] [CANCELACION-SERVIDOR] Servidor canceló reserva 496c1c11 del cliente 604830418
+[07/05/2026 23:07:33] [CANCELACION-SERVIDOR] Servidor canceló reserva 496c1c11 del cliente 604830418[08/05/2026 17:57:18] [SISTEMA         ] Bitacora inicializada
+[08/05/2026 17:57:21] [SISTEMA         ] HiloTTL iniciado
+[08/05/2026 17:57:26] [FINALIZADO      ] Reserva 160f80aa finalizada. Cliente: 603820472
+[08/05/2026 17:57:29] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[08/05/2026 17:57:46] [RESERVA_TEMPORAL] [fc1a5846] 604940262 | 2026-05-08 18:00-18:30 | 0 personas | {} | RESERVADO_TEMPORAL | TTL:29s
+[08/05/2026 17:57:48] [CONFIRMACION    ] Reserva fc1a5846 confirmada por 604940262
+[08/05/2026 17:58:22] [RESERVA_TEMPORAL] [fbbdb6de] 604940262 | 2026-05-08 19:00-19:30 | 100 personas | {MICROFONO=3} | RESERVADO_TEMPORAL | TTL:30s
+[08/05/2026 17:58:24] [CONFIRMACION    ] Reserva fbbdb6de confirmada por 604940262
+[08/05/2026 17:59:06] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[08/05/2026 17:59:21] [SISTEMA         ] Bitacora inicializada
+[08/05/2026 17:59:44] [SISTEMA         ] HiloTTL iniciado
+[08/05/2026 18:00:01] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[08/05/2026 18:26:02] [SISTEMA         ] Bitacora inicializada
+[08/05/2026 18:26:30] [SISTEMA         ] HiloTTL iniciado
+[08/05/2026 18:26:52] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[08/05/2026 18:30:00] [FINALIZADO      ] Reserva c001f256 finalizada. Cliente: 604940262
+[08/05/2026 18:30:21] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[08/05/2026 18:42:13] [SISTEMA         ] Bitacora inicializada
+[08/05/2026 18:42:45] [SISTEMA         ] HiloTTL iniciado
+[08/05/2026 18:43:21] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[08/05/2026 18:44:53] [EDICION-SERVIDOR] Servidor editó reserva cf621feb - 26a6399c | cliente: 604940262
+[08/05/2026 18:47:21] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado

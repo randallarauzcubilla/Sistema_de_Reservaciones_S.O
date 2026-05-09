@@ -14,7 +14,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -900,6 +902,24 @@ public class FrmServer extends JFrame {
         formPanel.add(createFormLabel("Equipo:"));
         formPanel.add(cbEquipment);
 
+        JSpinner spnQty = new JSpinner(new SpinnerNumberModel(1, 1, 99, 1));
+        spnQty.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+        cbEquipment.addActionListener(e -> {
+            String sel = (String) cbEquipment.getSelectedItem();
+            spnQty.setEnabled(!"NINGUNO".equals(sel) && !"COMPLETO".equals(sel));
+        });
+
+        Reservation orig = ServerApp.calendar.getReservationById(resId);
+        if (orig != null && !orig.getEquipmentQuantities().isEmpty()) {
+            Map.Entry<Reservation.Equipment, Integer> first
+                    = orig.getEquipmentQuantities().entrySet().iterator().next();
+            spnQty.setValue(first.getValue());
+        }
+
+        formPanel.add(createFormLabel("Cantidad equipo:"));
+        formPanel.add(spnQty);
+
         int result = JOptionPane.showConfirmDialog(
                 this, formPanel,
                 "Editar reserva " + resId
@@ -1064,12 +1084,26 @@ public class FrmServer extends JFrame {
 
         Reservation newRes;
         try {
-            newRes = ServerApp.calendar.reserveTemporarilySingleEquipment(
-                    clientId, newDateStr,
-                    newStartStr, newEndStr,
-                    Integer.parseInt(newAttStr),
-                    Reservation.Equipment.valueOf(newEquipStr),
-                    original.getPriority());
+            Map<Reservation.Equipment, Integer> newEquipMap =
+                    new LinkedHashMap<>();
+            String sel = (String) cbEquipment.getSelectedItem();
+            if (!"NINGUNO".equals(sel)) {
+                if ("COMPLETO".equals(sel)) {
+                    newEquipMap.put(Reservation.Equipment.PROYECTOR,
+                            ServerApp.manager.getTotalProjectors());
+                    newEquipMap.put(Reservation.Equipment.MICROFONO,
+                            ServerApp.manager.getTotalMicrophones());
+                    newEquipMap.put(Reservation.Equipment.SONIDO,
+                            ServerApp.manager.getTotalSound());
+                } else {
+                    newEquipMap.put(Reservation.Equipment.valueOf(sel),
+                            (int) spnQty.getValue());
+                }
+            }
+
+            newRes = ServerApp.calendar.reserveTemporarily(
+                    clientId, newDateStr, newStartStr, newEndStr,
+                    attendees, newEquipMap, original.getPriority());
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this,
                     "Asistentes debe ser un número.",
