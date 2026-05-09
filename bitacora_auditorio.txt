@@ -88,3 +88,50 @@
 [08/05/2026 18:43:21] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
 [08/05/2026 18:44:53] [EDICION-SERVIDOR] Servidor editó reserva cf621feb - 26a6399c | cliente: 604940262
 [08/05/2026 18:47:21] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[08/05/2026 20:31:34] [SISTEMA         ] Bitacora inicializada
+[08/05/2026 20:31:37] [SISTEMA         ] HiloTTL iniciado
+[08/05/2026 20:31:42] [FINALIZADO      ] Reserva baed99e6 finalizada. Cliente: 604940262
+[08/05/2026 20:36:07] [SISTEMA         ] Bitacora inicializada
+[08/05/2026 20:36:12] [SISTEMA         ] HiloTTL iniciado
+[08/05/2026 20:36:33] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[08/05/2026 20:38:36] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[08/05/2026 20:38:44] [CONEXION        ] KEILOR JAFET MUÑOZ CHAVARRIA conectado como ESTUDIANTE
+[08/05/2026 20:39:04] [RESERVA_TEMPORAL] [653b4895] 402520321 | 2026-05-10 08:00-08:30 | 200 personas | {} | RESERVADO_TEMPORAL | TTL:29s
+[08/05/2026 20:39:10] [CONFIRMACION    ] Reserva 653b4895 confirmada por 402520321
+[08/05/2026 20:39:27] [RESERVA_TEMPORAL] [8f91c99d] 402520321 | 2026-05-11 09:00-10:30 | 150 personas | {MICROFONO=3} | RESERVADO_TEMPORAL | TTL:30s
+[08/05/2026 20:39:29] [CONFIRMACION    ] Reserva 8f91c99d confirmada por 402520321
+[08/05/2026 20:41:17] [EDICION-SERVIDOR] Servidor editó reserva 8f91c99d - 99305ddf | cliente: 402520321
+[08/05/2026 20:42:09] [EDICION-SERVIDOR] Servidor editó reserva 49f836f6 - 873bfd2b | cliente: 402520321
+[08/05/2026 20:42:48] [EDICION-SERVIDOR] Servidor editó reserva 873bfd2b - aaa39caa | cliente: 402520321
+[08/05/2026 20:43:11] [EDICION-SERVIDOR] Servidor editó reserva aaa39caa - c3c11fb8 | cliente: 402520321
+[08/05/2026 20:44:02] [RESERVA_TEMPORAL] [28f1de5e] 402520321 | 2026-05-25 08:00-08:30 | 45 personas | {PROYECTOR=3, MICROFONO=5, SONIDO=2} | RESERVADO_TEMPORAL | TTL:29s
+[08/05/2026 20:44:16] [RESERVA_TEMPORAL] [255b6e0d] 402520321 | 2026-05-25 10:30-12:30 | 14 personas | {MICROFONO=3} | RESERVADO_TEMPORAL | TTL:30s
+[08/05/2026 20:44:18] [CONFIRMACION    ] Reserva 28f1de5e confirmada por 402520321
+[08/05/2026 20:44:23] [CONFIRMACION    ] Reserva 255b6e0d confirmada por 402520321
+[08/05/2026 20:44:42] [RESERVA_TEMPORAL] [20443f9d] 402520321 | 2026-05-28 14:30-15:30 | 175 personas | {SONIDO=2} | RESERVADO_TEMPORAL | TTL:30s
+[08/05/2026 20:44:45] [CONFIRMACION    ] Reserva 20443f9d confirmada por 402520321
+[08/05/2026 20:45:28] [DESCONEXION     ] KEILOR JAFET MUÑOZ CHAVARRIA (DNI: 402520321) desconectado
+[08/05/2026 20:51:46] [SISTEMA         ] Bitacora inicializada
+[08/05/2026 20:51:49] [SISTEMA         ] HiloTTL iniciado
+[08/05/2026 20:52:24] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[08/05/2026 20:52:35] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
+[08/05/2026 20:56:50] [EDICION-SERVIDOR] Servidor editó reserva 50550aa2 - ebec5ec6 | cliente: 402520321
+[08/05/2026 20:56:56] [EDICION-SERVIDOR] Servidor editó reserva ebec5ec6 - 6c5b9be4 | cliente: 402520321
+[08/05/2026 20:57:05] [EDICION-SERVIDOR] Servidor editó reserva 6c5b9be4 - 96ddb5dc | cliente: 402520321
+[08/05/2026 20:57:50] [EDICION-SERVIDOR] Servidor editó reserva cbbf3efd - 168d8166 | cliente: 402520321
+[08/05/2026 21:00:19] [EDICION-SERVIDOR] Servidor editó reserva 168d8166 - 669f6bb1 | cliente: 402520321
+[08/05/2026 21:00:34] [EDICION-SERVIDOR] Servidor editó reserva 669f6bb1 - 8d2fdb31 | cliente: 402520321
+[08/05/2026 21:03:56] [CANCELACION-SERVIDOR] Servidor cancelo reserva 264fb5eb del cliente 604830418
+[08/05/2026 21:04:00] [CANCELACION-SERVIDOR] Servidor cancelo reserva c1bc6d4f del cliente 402520321
+[08/05/2026 21:04:03] [CANCELACION-SERVIDOR] Servidor cancelo reserva 4f4aa414 del cliente 604830418
+[08/05/2026 21:04:09] [CANCELACION-SERVIDOR] Servidor cancelo reserva 256472a0 del cliente 402520321
+[08/05/2026 21:04:25] [CANCELACION-SERVIDOR] Servidor cancelo reserva 2bd07f51 del cliente 402520321
+[08/05/2026 21:11:51] [SISTEMA         ] Bitacora inicializada
+[08/05/2026 21:11:53] [SISTEMA         ] HiloTTL iniciado
+[08/05/2026 21:13:41] [SISTEMA         ] Bitacora inicializada
+[08/05/2026 21:13:44] [SISTEMA         ] HiloTTL iniciado
+[08/05/2026 21:59:50] [SISTEMA         ] Bitacora inicializada
+[08/05/2026 21:59:53] [SISTEMA         ] HiloTTL iniciado
+[08/05/2026 22:00:36] [EDICION-SERVIDOR] Servidor editó reserva 499bb9f1 | cliente: 604830418
+[08/05/2026 22:00:45] [EDICION-SERVIDOR] Servidor editó reserva 499bb9f1 | cliente: 604830418
+[08/05/2026 22:00:55] [EDICION-SERVIDOR] Servidor editó reserva 499bb9f1 | cliente: 604830418
