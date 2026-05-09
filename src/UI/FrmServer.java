@@ -204,7 +204,8 @@ public class FrmServer extends JFrame {
         JPanel sidebar = new JPanel(new BorderLayout());
         sidebar.setPreferredSize(new Dimension(320, 0));
         sidebar.setBackground(BG_SIDEBAR);
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER_CARD));
+        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1,
+                BORDER_CARD));
 
         JPanel infoHeader = new JPanel(new BorderLayout(0, 8));
         infoHeader.setBackground(BG_SIDEBAR);
@@ -254,8 +255,10 @@ public class FrmServer extends JFrame {
         btnStart = createButton("▶  Iniciar Servidor", UNA_BLUE, false);
         btnStop = createButton("■  Detener Servidor", UNA_RED, false);
         btnLog = createButton("↻  Actualizar Vista", UNA_GRAY, true);
-        btnEditReservation = createButton("✎  Editar Reserva", COLOR_AMBAR, true);
-        btnCancelReservation = createButton("✖  Cancelar Reserva", UNA_RED, true);
+        btnEditReservation = createButton("✎  Editar Reserva", 
+                COLOR_AMBAR, true);
+        btnCancelReservation = createButton("✖  Cancelar Reserva",
+                UNA_RED, true);
 
         btnStop.setEnabled(false);
         btnEditReservation.setEnabled(false);
@@ -324,7 +327,7 @@ public class FrmServer extends JFrame {
      * @param isSecondary If true, renders a subtle, semi-transparent style.
      * @return A customized JButton with advanced graphics.
      */
-    private JButton createButton(String text, Color color, boolean isSecondary) {
+    private JButton createButton(String text, Color color, boolean isSecondary){
         JButton btn = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -745,7 +748,8 @@ public class FrmServer extends JFrame {
         }
 
         tableModel.setRowCount(0);
-        List<Reservation> allReservations = ServerApp.calendar.getAllReservations();
+        List<Reservation> allReservations = 
+                ServerApp.calendar.getAllReservations();
         int rowToRestore = -1;
         int rowCounter = 0;
 
@@ -774,7 +778,8 @@ public class FrmServer extends JFrame {
         int finalSelectedRow = calendarTable.getSelectedRow();
         boolean hasSelection = finalSelectedRow >= 0;
         boolean canEdit = hasSelection && isServerRunning
-                && !"CANCELADO".equals(tableModel.getValueAt(finalSelectedRow, 4));
+                && !"CANCELADO".equals(tableModel.getValueAt(finalSelectedRow, 
+                        4));
         btnEditReservation.setEnabled(canEdit);
         btnCancelReservation.setEnabled(canEdit);
     }
@@ -803,8 +808,10 @@ public class FrmServer extends JFrame {
         JTextField txtAttendees = new JTextField(
                 tableModel.getValueAt(selectedRow, 5).toString());
         JComboBox<String> cbEquipment = new JComboBox<>(
-                new String[]{"NINGUNO", "PROYECTOR", "MICROFONO", "SONIDO", "COMPLETO"});
-        cbEquipment.setSelectedItem(tableModel.getValueAt(selectedRow, 6).toString());
+                new String[]{"NINGUNO", "PROYECTOR", "MICROFONO", "SONIDO",
+                    "COMPLETO"});
+        cbEquipment.setSelectedItem(tableModel.getValueAt(selectedRow,
+                6).toString());
 
         styleFormField(txtDate);
         styleFormField(txtStart);
@@ -830,14 +837,23 @@ public class FrmServer extends JFrame {
 
         cbEquipment.addActionListener(e -> {
             String sel = (String) cbEquipment.getSelectedItem();
-            spnQty.setEnabled(!"NINGUNO".equals(sel) && !"COMPLETO".equals(sel));
+            spnQty.setEnabled(!"NINGUNO".equals(sel) &&
+                    !"COMPLETO".equals(sel));
         });
+
+        String initialSel = (String) cbEquipment.getSelectedItem();
+        spnQty.setEnabled(!"NINGUNO".equals(initialSel)
+                && !"COMPLETO".equals(initialSel));
 
         Reservation orig = ServerApp.calendar.getReservationById(resId);
         if (orig != null && !orig.getEquipmentQuantities().isEmpty()) {
             Map.Entry<Reservation.Equipment, Integer> first
                     = orig.getEquipmentQuantities().entrySet().iterator().next();
             spnQty.setValue(first.getValue());
+            String currentEquip = tableModel.getValueAt(selectedRow,
+                    6).toString();
+            spnQty.setEnabled(!"NINGUNO".equals(currentEquip)
+                    && !"COMPLETO".equals(currentEquip));
         }
 
         formPanel.add(createFormLabel("Cantidad equipo:"));
@@ -852,8 +868,6 @@ public class FrmServer extends JFrame {
         if (result != JOptionPane.OK_OPTION) {
             return;
         }
-
-        // ── Read and validate form fields ──────────────────────────────────
 
         String newDateStr = txtDate.getText().trim();
         String newStartStr = txtStart.getText().trim();
@@ -891,16 +905,32 @@ public class FrmServer extends JFrame {
             return;
         }
 
-        LocalTime newStart, newEnd;
-        try {
-            newStart = LocalTime.parse(newStartStr);
-            newEnd = LocalTime.parse(newEndStr);
-        } catch (Exception e) {
+        if (!newStartStr.matches("^\\d{2}:\\d{2}$")
+                || !newEndStr.matches("^\\d{2}:\\d{2}$")) {
+
             JOptionPane.showMessageDialog(this,
-                    "Hora inválida. Use HH:mm.",
+                    "La hora debe tener formato HH:mm.",
                     "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
+
+        LocalTime newStart;
+        LocalTime newEnd;
+
+        try {
+            DateTimeFormatter formatter
+                    = DateTimeFormatter.ofPattern("HH:mm");
+
+            newStart = LocalTime.parse(newStartStr, formatter);
+            newEnd = LocalTime.parse(newEndStr, formatter);
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                    "Hora inválida.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         if (!newStart.isBefore(newEnd)) {
             JOptionPane.showMessageDialog(this,
                     "La hora de inicio debe ser menor a la hora fin.",
@@ -923,8 +953,6 @@ public class FrmServer extends JFrame {
                     "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-
-        // ── Fetch original reservation and apply business rules ───────────
 
         Reservation original = ServerApp.calendar.getReservationById(resId);
         if (original == null) {
@@ -959,7 +987,6 @@ public class FrmServer extends JFrame {
             return;
         }
 
-        // Reservation is currently in progress
         if (oldStartFull.isBefore(now) && oldEndFull.isAfter(now)) {
             if (!newDate.equals(oldStartFull.toLocalDate())) {
                 JOptionPane.showMessageDialog(this,
@@ -969,7 +996,8 @@ public class FrmServer extends JFrame {
             }
             if (!newStartFull.equals(oldStartFull)) {
                 JOptionPane.showMessageDialog(this,
-                        "No puedes modificar la hora de inicio de una reserva en curso.",
+                        "No puedes modificar la hora de inicio"
+                                + " de una reserva en curso.",
                         "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -997,8 +1025,6 @@ public class FrmServer extends JFrame {
             }
         }
 
-        // ── Build new equipment map ───────────────────────────────────────
-
         Map<Reservation.Equipment, Integer> newEquipMap = new LinkedHashMap<>();
         String sel = (String) cbEquipment.getSelectedItem();
         if (!"NINGUNO".equals(sel)) {
@@ -1015,21 +1041,35 @@ public class FrmServer extends JFrame {
             }
         }
 
-        // ── Delegate to calendar: edit in-place, same ID ─────────────────
-
         boolean edited = ServerApp.calendar.editReservation(
                 resId, newDateStr, newStartStr, newEndStr,
                 attendees, newEquipMap);
 
         if (!edited) {
-            JOptionPane.showMessageDialog(this,
-                    "No se pudo editar la reserva:\n"
-                    + "conflicto de horario o equipo con otra reserva activa.",
-                    "Conflicto", JOptionPane.ERROR_MESSAGE);
+            Reservation check = ServerApp.calendar.getReservationById(resId);
+            String motivo;
+            if (check == null) {
+                motivo = "La reserva no fue encontrada.";
+            } else if (check.getStatus() != Reservation.Status.CONFIRMADO) {
+                motivo = "Solo se pueden editar reservas confirmadas.";
+            } else {
+                motivo = "Conflicto detectado:\n"
+                        + "• Realice su reserva en otro horario.\n"
+                        + "• Sobrepaso el limite de equipamiento disponible.";
+            }
+            JOptionPane.showMessageDialog(this, motivo,
+                    "No se pudo editar", JOptionPane.ERROR_MESSAGE);
+            
+            synchronized (ServerApp.connectedClients) {
+                for (ClientHandler handler : ServerApp.connectedClients) {
+                    if (handler.getClientId().equals(clientId)) {
+                        handler.send("ERROR|EDICION_FALLIDA|" + resId);
+                        break;
+                    }
+                }
+            }
             return;
         }
-
-        // ── Persist and notify clients ────────────────────────────────────
 
         ReservationPersistence.save(ServerApp.calendar);
         ServerApp.log.log("EDICION-SERVIDOR",
@@ -1044,7 +1084,7 @@ public class FrmServer extends JFrame {
                     if (handler.getClientId().equals(clientId)) {
                         // Notify the owner: same reservation ID, updated data
                         handler.send("OK|EDITADO|" + resId
-                                + "|" + resId                       // same ID
+                                + "|" + resId // same ID
                                 + "|" + updated.getDate()
                                 + "|" + updated.getStartTime()
                                 + "|" + updated.getEndTime()
@@ -1063,7 +1103,7 @@ public class FrmServer extends JFrame {
             }
         }
 
-        log("✎ Reserva " + resId + " editada en sitio | cliente: " + clientId);
+        log("Reserva " + resId + " editada en sitio | cliente: " + clientId);
         refreshView();
     }
 
@@ -1144,7 +1184,8 @@ public class FrmServer extends JFrame {
         }
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "¿Cancelar la reserva " + resId + " del cliente " + clientId + "?",
+                "¿Cancelar la reserva " + resId + " del cliente " + 
+                        clientId + "?",
                 "Confirmar cancelación", JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
         if (confirm != JOptionPane.YES_OPTION) {

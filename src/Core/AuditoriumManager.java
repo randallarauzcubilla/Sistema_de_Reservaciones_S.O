@@ -21,16 +21,6 @@ public class AuditoriumManager {
     }
 
     /**
-     * Releases auditorium seating capacity back to the system.
-     *
-     * @param attendees the number of seats to be freed
-     */
-    public void releaseCapacity(int attendees) {
-        manager.releaseFromReservation(attendees,
-                Reservation.Equipment.NINGUNO);
-    }
-
-    /**
      * Checks if the requested equipment is currently available. Includes a
      * check for "FULL" which requires all equipment types.
      *
@@ -54,15 +44,6 @@ public class AuditoriumManager {
             default:
                 return true;
         }
-    }
-
-    /**
-     * Releases specific equipment back to the system pool.
-     *
-     * @param equipment the equipment type to release
-     */
-    public void releaseEquipment(Reservation.Equipment equipment) {
-        manager.releaseFromReservation(0, equipment);
     }
 
     /**

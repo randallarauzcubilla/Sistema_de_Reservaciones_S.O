@@ -273,7 +273,7 @@ public class ClientHandler extends Thread {
                     attendees, equipMap, priority);
 
             if (reservation == null) {
-                sendResponse("ERROR|FRANJA_OCUPADA");
+                sendResponse("ERROR|FRANJA_OCUPADA O CAPACIDAD NO VÁLIDA.");
                 return;
             }
 

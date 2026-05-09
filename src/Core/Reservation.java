@@ -33,15 +33,15 @@ public class Reservation {
 
     private final String reservationId;
     private final String clientId;
-    private String date;               // ← mutable for in-place editing
-    private String startTime;          // ← mutable for in-place editing
-    private String endTime;            // ← mutable for in-place editing
-    private int attendeeCount;         // ← mutable for in-place editing
-    private Equipment equipment;       // ← mutable for in-place editing
+    private String date;               
+    private String startTime;         
+    private String endTime;           
+    private int attendeeCount;         
+    private Equipment equipment;       
     private final Priority priority;
     private volatile Status status;
     private final long expirationTtl;
-    private Map<Equipment, Integer> equipmentQuantities; // ← mutable for in-place editing
+    private Map<Equipment, Integer> equipmentQuantities; 
 
     /**
      * Creates a temporary reservation with default equipment quantity.
@@ -189,9 +189,7 @@ public class Reservation {
                 (expirationTtl - System.currentTimeMillis()) / 1000);
     }
 
-    // =========================================================
     // GETTERS
-    // =========================================================
 
     public String getReservationId() {
         return reservationId;
@@ -241,11 +239,6 @@ public class Reservation {
     public Map<Equipment, Integer> getEquipmentQuantities() {
         return Collections.unmodifiableMap(equipmentQuantities);
     }
-
-    // =========================================================
-    // SETTERS (used for in-place editing — do NOT use to bypass
-    // calendar validation; always go through ReservationCalendar)
-    // =========================================================
 
     /**
      * Updates reservation status.

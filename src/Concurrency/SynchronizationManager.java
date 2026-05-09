@@ -126,38 +126,6 @@ public class SynchronizationManager {
     }
 
     /**
-     * Acquires capacity and equipment for a reservation.
-     *
-     * @param attendees number of attendees
-     * @param equipment required equipment
-     * @throws InterruptedException if acquisition is interrupted
-     */
-    public void acquireForReservation(int attendees,
-            Reservation.Equipment equipment) throws InterruptedException {
-        capacitySemaphore.acquire(attendees);
-        try {
-            acquireEquipment(equipment, 1);
-        } catch (InterruptedException e) {
-            capacitySemaphore.release(attendees);
-            throw e;
-        }
-    }
-
-    /**
-     * Releases capacity and equipment from a reservation.
-     *
-     * @param attendees number of attendees
-     * @param equipment equipment to release
-     */
-    public void releaseFromReservation(int attendees,
-            Reservation.Equipment equipment) {
-        releaseEquipment(equipment, 1);
-        if (attendees > 0) {
-            capacitySemaphore.release(attendees);
-        }
-    }
-
-    /**
      * Acquires multiple equipment items atomically.
      *
      * @param items equipment and quantities required

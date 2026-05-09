@@ -225,18 +225,18 @@ public class ReservationCalendar {
 
     /**
      * Edits an existing confirmed reservation in-place, preserving its ID.
-     * Re-keys the slot in the internal map if the schedule changes.
-     * Validates time conflicts and equipment availability against all other
-     * reservations before applying any change.
+     * Re-keys the slot in the internal map if the schedule changes. Validates
+     * time conflicts and equipment availability against all other reservations
+     * before applying any change.
      *
-     * @param reservationId  ID of the reservation to edit
-     * @param newDate        new date (YYYY-MM-DD)
-     * @param newStart       new start time (HH:mm)
-     * @param newEnd         new end time (HH:mm)
-     * @param newAttendees   new attendee count
-     * @param newEquipMap    new equipment quantities (empty map = NINGUNO)
-     * @return true if the edit was applied successfully,
-     *         false if a conflict was detected or the reservation was not found
+     * @param reservationId ID of the reservation to edit
+     * @param newDate new date (YYYY-MM-DD)
+     * @param newStart new start time (HH:mm)
+     * @param newEnd new end time (HH:mm)
+     * @param newAttendees new attendee count
+     * @param newEquipMap new equipment quantities (empty map = NINGUNO)
+     * @return true if the edit was applied successfully, false if a conflict
+     * was detected or the reservation was not found
      */
     public boolean editReservation(String reservationId,
             String newDate, String newStart, String newEnd,
@@ -283,8 +283,8 @@ public class ReservationCalendar {
             }
 
             // 3. Check equipment availability excluding the current reservation
-            Map<Reservation.Equipment, Integer> toAcquire =
-                    (newEquipMap != null && !newEquipMap.isEmpty())
+            Map<Reservation.Equipment, Integer> toAcquire
+                    = (newEquipMap != null && !newEquipMap.isEmpty())
                     ? new LinkedHashMap<>(newEquipMap)
                     : Collections.emptyMap();
 

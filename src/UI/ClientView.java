@@ -2207,7 +2207,7 @@ public class ClientView extends JFrame {
         Socket tempSocket = null;
         try {
             tempSocket = new Socket();
-            tempSocket.connect(new InetSocketAddress("10.47.240.124", 8000),
+            tempSocket.connect(new InetSocketAddress("10.47.240.235", 8000),
                     3000);
 
             DataInputStream tempIn = new DataInputStream(
@@ -2483,7 +2483,15 @@ public class ClientView extends JFrame {
      * server.
      */
     private void handleServerResponse(String msg) {
-        logMessage(" - " + msg);
+        boolean esTecnico = msg.startsWith("HISTORIAL")
+                || msg.startsWith("SLOTS_OCUPADOS")
+                || msg.startsWith("SLOT_NUEVO")
+                || msg.startsWith("SLOT_LIBRE");
+
+        if (!esTecnico) {
+            logMessage("← " + msg);
+        }
+
         String[] parts = msg.split("\\|");
 
         switch (parts[0]) {
@@ -2677,6 +2685,11 @@ public class ClientView extends JFrame {
                 if (parts.length > 1 && "SERVIDOR_DETENIDO".equals(parts[1])) {
                     handleDisconnection();
                     return;
+                }
+                
+                if (parts.length > 1 && "EDICION_FALLIDA".equals(parts[1])) {
+                    String id = parts.length >= 3 ? parts[2] : "";
+                    logMessage("⚠ No se pudo completar la edición de " + id);
                 }
 
                 for (int i = tblModel.getRowCount() - 1; i >= 0; i--) {
