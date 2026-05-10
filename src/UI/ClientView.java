@@ -85,7 +85,6 @@ public class ClientView extends JFrame {
     private JButton btnSubmitRequest;
     private JButton btnConfirmSelection;
     private JButton btnAbortReservation;
-    private JButton btnNew;
     private JLabel lblDuration;
     private JButton btnReturnToMenu;
 
@@ -1352,17 +1351,6 @@ public class ClientView extends JFrame {
                 SUCCESS_GREEN, true);
         btnAbortReservation = buildActionButton("⊗  Cancelar", 
                 ACCENT_RED, false);
-        btnNew = buildActionButton("🗑  Limpiar", ACCENT_RED, true);
-
-        btnNew.addActionListener(e -> {
-            clearReservationForm();
-            cmbStartTime.setSelectedIndex(0);
-            cmbEndTime.setSelectedIndex(0);
-            txtReservationDate.setText(
-                    java.time.LocalDate.now().toString());
-            lblDuration.setText("Duración: --");
-            refreshComboRenderers();
-        });
 
         btnSubmitRequest.addActionListener(e -> reserve());
         btnConfirmSelection.addActionListener(e -> confirmReservation());
@@ -1371,7 +1359,6 @@ public class ClientView extends JFrame {
         buttonPanel.add(btnSubmitRequest);
         buttonPanel.add(btnConfirmSelection);
         buttonPanel.add(btnAbortReservation);
-        buttonPanel.add(btnNew);
 
         gbc.gridwidth = 4;
         card.add(buttonPanel, gbc);
@@ -2785,6 +2772,7 @@ public class ClientView extends JFrame {
         cbEquipmentType.setSelectedIndex(0);
         spnEquipQuantity.setValue(1);
         spnEquipQuantity.setEnabled(false);
+        txtReservationDate.setText(java.time.LocalDate.now().toString());
     }
 
     /**
@@ -3114,7 +3102,6 @@ public class ClientView extends JFrame {
         btnSubmitRequest.setEnabled(enabled);
         btnConfirmSelection.setEnabled(enabled);
         btnAbortReservation.setEnabled(enabled);
-        btnNew.setEnabled(enabled);
         cbEquipmentType.setEnabled(enabled);
         spnEquipQuantity.setEnabled(enabled
                 && !"NINGUNO".equals(cbEquipmentType.getSelectedItem())
