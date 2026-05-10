@@ -228,3 +228,12 @@
 [09/05/2026 15:02:53] [SISTEMA         ] Bitacora inicializada
 [09/05/2026 15:02:58] [SISTEMA         ] HiloTTL iniciado
 [09/05/2026 18:05:40] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 18:46:34] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 18:46:37] [SISTEMA         ] HiloTTL iniciado
+[09/05/2026 18:47:08] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[09/05/2026 18:47:26] [RESERVA_TEMPORAL] [ec8f8c1d] 604940262 | 2026-05-24 08:00-08:30 | 0 personas | {} | RESERVADO_TEMPORAL | TTL:29s
+[09/05/2026 18:47:30] [CANCELACION     ] Reserva 405f1e48 cancelada. Motivo: Cancelado por cliente
+[09/05/2026 18:47:33] [CANCELACION     ] Reserva ec8f8c1d cancelada. Motivo: Cancelado por cliente
+[09/05/2026 18:47:44] [CANCELACION     ] Reserva a0f6fe02 cancelada. Motivo: Cancelado por cliente
+[09/05/2026 18:47:45] [CANCELACION     ] Reserva 113a577f cancelada. Motivo: Cancelado por cliente
+[09/05/2026 18:47:50] [DESCONEXION     ] RANDALL ANEL ARAUZ CUBILLA (DNI: 604940262) desconectado
