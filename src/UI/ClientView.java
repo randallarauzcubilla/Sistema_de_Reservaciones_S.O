@@ -578,6 +578,68 @@ public class ClientView extends JFrame {
         gbcCard.insets = new Insets(30, 10, 10, 10);
         menuCard.add(cardsPanel, gbcCard);
 
+        JButton btnUpdateEmail = new JButton(
+                "Actualizar correo institucional");
+
+        btnUpdateEmail.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnUpdateEmail.setForeground(BG_WHITE);
+        btnUpdateEmail.setBackground(ACCENT_RED);
+
+        btnUpdateEmail.setOpaque(true);
+        btnUpdateEmail.setBorderPainted(false);
+
+        btnUpdateEmail.setFocusPainted(false);
+        btnUpdateEmail.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btnUpdateEmail.setBorder(new EmptyBorder(10, 18, 10, 18));
+
+        btnUpdateEmail.addActionListener(e -> {
+            String actual = EmailStorage.getEmail(sessionCheckedId);
+
+            String nuevo = JOptionPane.showInputDialog(
+                    this,
+                    "Correo actual: "
+                    + (actual != null ? actual : "ninguno")
+                    + "\n\nIngrese el nuevo correo institucional:",
+                    "Actualizar correo",
+                    JOptionPane.PLAIN_MESSAGE
+            );
+
+            if (nuevo != null && !nuevo.trim().isEmpty()) {
+
+                nuevo = nuevo.trim();
+
+                if (nuevo.endsWith("@est.una.ac.cr")
+                        || nuevo.endsWith("@una.ac.cr")) {
+
+                    EmailStorage.updateEmail(sessionCheckedId, nuevo);
+
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Correo actualizado correctamente.",
+                            "Listo",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+
+                } else {
+
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Solo se permiten correos "
+                            + "@est.una.ac.cr o @una.ac.cr",
+                            "Correo inválido",
+                            JOptionPane.WARNING_MESSAGE
+                    );
+                }
+            }
+        });
+
+        gbcCard.gridy = 3;
+        gbcCard.insets = new Insets(0, 10, 10, 10);
+        gbcCard.anchor = GridBagConstraints.CENTER;
+
+        menuCard.add(btnUpdateEmail, gbcCard);
+
         panel.add(menuCard, gbc);
 
         return panel;
