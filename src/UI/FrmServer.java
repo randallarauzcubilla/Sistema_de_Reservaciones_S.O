@@ -1652,6 +1652,26 @@ public class FrmServer extends JFrame {
             }
         }
 
+        String correoDelCliente = EmailStorage.getEmail(clientId);
+        if (correoDelCliente != null) {
+            final String msg
+                    = "Estimado(a) usuario,\n\n"
+                    + "Su reserva ha sido modificada por el administrador.\n\n"
+                    + "Detalles actualizados:\n"
+                    + "  • ID Reserva: " + resId + "\n"
+                    + "  • Nueva Fecha: " + updated.getDate() + "\n"
+                    + "  • Nuevo Horario: " + updated.getStartTime()
+                    + " - " + updated.getEndTime() + "\n\n"
+                    + "Sistema de Reservas — Universidad Nacional\n"
+                    + "Sede Región Brunca";
+
+            new Thread(() -> EmailNotifier.send(
+                    correoDelCliente,
+                    "✏️ Reserva Modificada — UNA Sede Región Brunca",
+                    msg
+            )).start();
+        }
+
         log("Reserva " + resId + " editada en sitio | cliente: " + clientId);
         refreshView();
     }
@@ -1758,11 +1778,22 @@ public class FrmServer extends JFrame {
 
         String correoDelCliente = EmailStorage.getEmail(clientId);
         if (correoDelCliente != null) {
+            final String mensajeEmail
+                    = "Estimado(a) usuario,\n\n"
+                    + "Le informamos que su reserva ha sido cancelada por "
+                    + "el administrador.\n\n"
+                    + "Detalles:\n"
+                    + "  • ID Reserva: " + resId + "\n"
+                    + "  • Fecha: " + resDate + "\n"
+                    + "  • Horario: " + resStart + " - " + resEnd + "\n\n"
+                    + "Si tiene dudas, comuníquese con la administración.\n\n"
+                    + "Sistema de Reservas — Universidad Nacional\n"
+                    + "Sede Región Brunca";
+
             new Thread(() -> EmailNotifier.send(
                     correoDelCliente,
-                    "Reserva cancelada — UNA",
-                    "Su reserva " + resId + " del " + resDate
-                    + " fue cancelada por el administrador."
+                    "🔴 Reserva Cancelada — UNA Sede Región Brunca",
+                    mensajeEmail
             )).start();
         }
         synchronized (ServerApp.connectedClients) {
