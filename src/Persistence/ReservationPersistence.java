@@ -165,4 +165,24 @@ public class ReservationPersistence {
         }
         return list;
     }
+
+    /**
+     * Removes inactive reservations from the system and persists only active
+     * ones to storage.
+     *
+     * This method first delegates to the {@code ReservationCalendar} to remove
+     * inactive reservations from memory, and then rewrites the persistence file
+     * using {@link #save(ReservationCalendar)} so that only valid and active
+     * reservations remain stored.
+     *
+     * It is typically used as a maintenance operation to keep both in-memory
+     * and persisted data synchronized and free of obsolete entries.
+     *
+     * @param calendar the reservation calendar containing current system data
+     */
+    public static void clearInactive(ReservationCalendar calendar) {
+        calendar.removeInactiveReservations();
+        save(calendar);
+        System.out.println("[PERSISTENCIA] Historial limpiado.");
+    }
 }

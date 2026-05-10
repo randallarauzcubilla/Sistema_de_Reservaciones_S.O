@@ -85,7 +85,7 @@ public class FrmServer extends JFrame {
     // === BUTTONS ===
     private JButton btnStart;
     private JButton btnStop;
-    private JButton btnLog;
+    private JButton btnClearHistory ;
     private JButton btnEditReservation;
     private JButton btnCancelReservation;
 
@@ -267,7 +267,8 @@ public class FrmServer extends JFrame {
 
         btnStart = createButton("▶  Iniciar Servidor", UNA_BLUE, false);
         btnStop = createButton("■  Detener Servidor", UNA_RED, false);
-        btnLog = createButton("↻  Actualizar Vista", UNA_GRAY, true);
+        btnClearHistory = createButton("🗑 Limpiar historial",
+                UNA_RED, true);
         btnEditReservation = createButton("✎  Editar Reserva",
                 COLOR_AMBAR, true);
         btnCancelReservation = createButton("✖  Cancelar Reserva",
@@ -279,7 +280,34 @@ public class FrmServer extends JFrame {
 
         btnStart.addActionListener(e -> startServer());
         btnStop.addActionListener(e -> stopServer());
-        btnLog.addActionListener(e -> refreshView());
+        btnClearHistory.addActionListener(e -> {
+
+            int confirm = JOptionPane.showConfirmDialog(
+                    this,
+                    "¿Eliminar permanentemente del sistema\n"
+                    + "todas las reservas CANCELADAS, EXPIRADAS\n"
+                    + "y FINALIZADAS?\n\n"
+                    + "⚠ Esta acción no se puede deshacer.",
+                    "Confirmar limpieza",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            if (confirm != JOptionPane.YES_OPTION) {
+                return;
+            }
+
+            ReservationPersistence.clearInactive(ServerApp.calendar);
+
+            synchronized (ServerApp.connectedClients) {
+                for (ClientHandler handler : ServerApp.connectedClients) {
+                    handler.send("LIMPIAR_HISTORIAL");
+                }
+            }
+
+            log("🗑 Historial limpiado. Solo quedan reservas activas.");
+            refreshView();
+        });
         btnEditReservation.addActionListener(e -> {
             try {
                 editSelectedReservation();
@@ -292,7 +320,7 @@ public class FrmServer extends JFrame {
 
         actionPanel.add(btnStart);
         actionPanel.add(btnStop);
-        actionPanel.add(btnLog);
+        actionPanel.add(btnClearHistory);
         actionPanel.add(btnEditReservation);
         actionPanel.add(btnCancelReservation);
         sidebar.add(actionPanel, BorderLayout.SOUTH);
@@ -513,12 +541,12 @@ public class FrmServer extends JFrame {
         row.add(cmbFilterStatus);
 
         // --- Clear button ---
-        JButton btnClear = createButton("↺  Limpiar Filtros",
+        JButton btnClear = createButton("↺ Limpiar Filtros",
                 UNA_RED, false);
         btnClear.setFont(new Font("Dialog", Font.BOLD, 11));
         btnClear.addActionListener(e -> clearFilters());
         row.add(btnClear);
-
+        
         wrapper.add(row, BorderLayout.CENTER);
 
         // --- Count label ---
@@ -1447,7 +1475,7 @@ public class FrmServer extends JFrame {
                         "Fecha inválida", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-        } catch (Exception e) {
+        } catch (HeadlessException e) {
             JOptionPane.showMessageDialog(this,
                     "Formato de fecha inválido. Use YYYY-MM-DD.",
                     "Error", JOptionPane.ERROR_MESSAGE);

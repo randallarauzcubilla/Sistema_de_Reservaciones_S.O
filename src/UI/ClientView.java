@@ -3055,6 +3055,23 @@ public class ClientView extends JFrame {
                 }
                 break;
 
+            case "LIMPIAR_HISTORIAL":
+                allReservationsData.removeIf(row -> {
+                    String st = row[3].toString();
+                    return "CANCELADA".equals(st) || "CANCELADO".equals(st)
+                            || "EXPIRADA".equals(st) || "EXPIRADO".equals(st)
+                            || "FINALIZADA".equals(st) || "FINALIZADO".equals(st);
+                });
+                if (historyModel != null) {
+                    historyModel.setRowCount(0);
+                    for (Object[] row : allReservationsData) {
+                        historyModel.addRow(row);
+                    }
+                }
+                applyHistoryFilters();
+                logMessage("! El administrador limpió el historial. ¡");
+                break;
+
             case "SLOTS_OCUPADOS":
                 otherUsersSlots.clear();
                 for (int i = 1; i < parts.length; i++) {
