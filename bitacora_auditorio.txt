@@ -296,3 +296,10 @@
 [09/05/2026 23:08:59] [SISTEMA         ] Bitacora inicializada
 [09/05/2026 23:09:02] [SISTEMA         ] HiloTTL iniciado
 [09/05/2026 23:09:31] [CANCELACION-SERVIDOR] Servidor cancelo reserva ca0b910e del cliente 604940262
+[10/05/2026 01:43:47] [SISTEMA         ] Bitacora inicializada
+[10/05/2026 01:43:49] [SISTEMA         ] HiloTTL iniciado
+[10/05/2026 01:44:13] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
+[10/05/2026 01:44:25] [CANCELACION-SERVIDOR] Servidor cancelo reserva c490fb9b del cliente 604940262
+[10/05/2026 01:51:43] [SISTEMA         ] Bitacora inicializada
+[10/05/2026 01:51:46] [SISTEMA         ] HiloTTL iniciado
+[10/05/2026 01:52:46] [EDICION-SERVIDOR] Servidor editó reserva 7a9afea1 | cliente: 604940262
