@@ -578,6 +578,68 @@ public class ClientView extends JFrame {
         gbcCard.insets = new Insets(30, 10, 10, 10);
         menuCard.add(cardsPanel, gbcCard);
 
+        JButton btnUpdateEmail = new JButton(
+                "Actualizar correo institucional");
+
+        btnUpdateEmail.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnUpdateEmail.setForeground(BG_WHITE);
+        btnUpdateEmail.setBackground(ACCENT_RED);
+
+        btnUpdateEmail.setOpaque(true);
+        btnUpdateEmail.setBorderPainted(false);
+
+        btnUpdateEmail.setFocusPainted(false);
+        btnUpdateEmail.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btnUpdateEmail.setBorder(new EmptyBorder(10, 18, 10, 18));
+
+        btnUpdateEmail.addActionListener(e -> {
+            String actual = EmailStorage.getEmail(sessionCheckedId);
+
+            String nuevo = JOptionPane.showInputDialog(
+                    this,
+                    "Correo actual: "
+                    + (actual != null ? actual : "ninguno")
+                    + "\n\nIngrese el nuevo correo institucional:",
+                    "Actualizar correo",
+                    JOptionPane.PLAIN_MESSAGE
+            );
+
+            if (nuevo != null && !nuevo.trim().isEmpty()) {
+
+                nuevo = nuevo.trim();
+
+                if (nuevo.endsWith("@est.una.ac.cr")
+                        || nuevo.endsWith("@una.ac.cr")) {
+
+                    EmailStorage.updateEmail(sessionCheckedId, nuevo);
+
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Correo actualizado correctamente.",
+                            "Listo",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+
+                } else {
+
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Solo se permiten correos "
+                            + "@est.una.ac.cr o @una.ac.cr",
+                            "Correo inválido",
+                            JOptionPane.WARNING_MESSAGE
+                    );
+                }
+            }
+        });
+
+        gbcCard.gridy = 3;
+        gbcCard.insets = new Insets(0, 10, 10, 10);
+        gbcCard.anchor = GridBagConstraints.CENTER;
+
+        menuCard.add(btnUpdateEmail, gbcCard);
+
         panel.add(menuCard, gbc);
 
         return panel;
@@ -1309,12 +1371,13 @@ public class ClientView extends JFrame {
                 today.lengthOfMonth());
         String statusFilter = (String) hCmbStatus.getSelectedItem();
 
-        int shown = 0;
+        List<Object[]> filtered = new ArrayList<>();
+
         for (Object[] row : allReservationsData) {
+
             String date = row[1].toString();
             String status = row[3].toString();
 
-            // Quick filter
             if (!"ALL".equals(hActiveFilter)) {
                 try {
                     java.time.LocalDate d = java.time.LocalDate.parse(date);
@@ -1342,18 +1405,79 @@ public class ClientView extends JFrame {
                         .replace("CANCELADA", "CANCELADO")
                         .replace("EXPIRADA", "EXPIRADO")
                         .replace("FINALIZADA", "FINALIZADO");
+
                 if (!normalizado.equals(statusFilter)) {
                     continue;
                 }
             }
 
+            filtered.add(row);
+        }
+
+        filtered.sort((a, b) -> {
+
+            int pa = getStatusPriority(a[3].toString());
+            int pb = getStatusPriority(b[3].toString());
+
+            if (pa != pb) {
+                return Integer.compare(pa, pb);
+            }
+
+            return b[1].toString().compareTo(a[1].toString());
+        });
+
+        for (Object[] row : filtered) {
             historyModel.addRow(row);
-            shown++;
         }
 
         if (hLblCount != null) {
-            hLblCount.setText("Mostrando " + shown
+            hLblCount.setText("Mostrando " + filtered.size()
                     + " de " + allReservationsData.size() + " reservas");
+        }
+    }
+
+    /**
+     * Assigns a numeric priority to a reservation status for ordering entries
+     * in the client-side history view.
+     *
+     * This method is used to ensure a consistent and meaningful display order
+     * of reservations in the user interface, grouping active and relevant
+     * reservations before historical or inactive ones.
+     *
+     * Priority rules (lower value = higher display priority): -
+     * RESERVADO_TEMPORAL / TEMPORAL → highest priority (0) - CONFIRMADO /
+     * CONFIRMADA → active reservations (1) - FINALIZADO / FINALIZADA →
+     * completed reservations (2) - CANCELADO / CANCELADA → cancelled
+     * reservations (3) - EXPIRADO / EXPIRADA → expired reservations (4) - Any
+     * unknown status → lowest priority (5)
+     *
+     * @param status the reservation status as a string
+     * @return an integer priority used for sorting in the client history view
+     */
+    private int getStatusPriority(String status) {
+        switch (status) {
+            case "TEMPORAL":
+            case "RESERVADO_TEMPORAL":
+                return 0;
+
+            case "CONFIRMADA":
+            case "CONFIRMADO":
+                return 1;
+
+            case "FINALIZADA":
+            case "FINALIZADO":
+                return 2;
+
+            case "CANCELADA":
+            case "CANCELADO":
+                return 3;
+
+            case "EXPIRADA":
+            case "EXPIRADO":
+                return 4;
+
+            default:
+                return 5;
         }
     }
 
@@ -1371,7 +1495,7 @@ public class ClientView extends JFrame {
      * otherwise applies the primary button style
      * @return a fully styled JButton instance ready to be added to the UI
      */
-    private JButton createButton(String text, Color color, boolean isSecondary){
+    private JButton createButton(String text, Color color, boolean isSecondary) {
 
         JButton btn = new JButton(text) {
 
@@ -2991,6 +3115,23 @@ public class ClientView extends JFrame {
                     refreshComboRenderers();
                     logMessage("Reserva " + finId + " finalizada.");
                 }
+                break;
+
+            case "LIMPIAR_HISTORIAL":
+                allReservationsData.removeIf(row -> {
+                    String st = row[3].toString();
+                    return "CANCELADA".equals(st) || "CANCELADO".equals(st)
+                            || "EXPIRADA".equals(st) || "EXPIRADO".equals(st)
+                            || "FINALIZADA".equals(st) || "FINALIZADO".equals(st);
+                });
+                if (historyModel != null) {
+                    historyModel.setRowCount(0);
+                    for (Object[] row : allReservationsData) {
+                        historyModel.addRow(row);
+                    }
+                }
+                applyHistoryFilters();
+                logMessage("! El administrador limpió el historial. ¡");
                 break;
 
             case "SLOTS_OCUPADOS":

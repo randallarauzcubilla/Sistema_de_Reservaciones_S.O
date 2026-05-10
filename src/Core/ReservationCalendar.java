@@ -646,4 +646,28 @@ public class ReservationCalendar {
                 return 0;
         }
     }
+
+    /**
+     * Removes all inactive reservations from the internal time-slot map.
+     *
+     * This method performs a write-lock on the calendar to ensure thread safety
+     * while modifying the underlying data structure. It iterates through all
+     * stored time slots and removes entries whose status is considered inactive
+     * according to {@code isFreeStatus()}.
+     *
+     * Inactive reservations are typically those that are expired, cancelled, or
+     * otherwise no longer valid for system operations.
+     *
+     * The write lock is always released in a finally block to guarantee proper
+     * synchronization even in case of runtime exceptions.
+     */
+    public void removeInactiveReservations() {
+        manager.lockWriteCalendar().lock();
+        try {
+            timeSlots.entrySet().removeIf(entry
+                    -> isFreeStatus(entry.getValue().getStatus()));
+        } finally {
+            manager.lockWriteCalendar().unlock();
+        }
+    }
 }
