@@ -1,5 +1,6 @@
 package UI;
 
+import Notifications.EmailStorage;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.*;
@@ -113,6 +114,8 @@ public class ClientView extends JFrame {
     private boolean isConnected = false;
     private boolean isIdVerified = false;
     private String sessionCheckedId = "";
+    private JTextField txtEmail;
+    private String correoExistente;
     private JPanel pnlMainContainer;
     private JPanel pnlLoginView;
     private JPanel pnlMenuView;
@@ -343,7 +346,7 @@ public class ClientView extends JFrame {
         loginCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER_COLOR, 1),
                 new EmptyBorder(30, 40, 30, 40)));
-        loginCard.setPreferredSize(new Dimension(450, 500));
+        loginCard.setPreferredSize(new Dimension(450, 550));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -404,20 +407,44 @@ public class ClientView extends JFrame {
         loginCard.add(txtClientId, gbc);
 
         gbc.gridy = 3;
+        gbc.insets = new Insets(10, 10, 5, 10);
+
+        JLabel lblEmail = new JLabel("Correo institucional");
+        lblEmail.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblEmail.setForeground(TEXT_DARK);
+
+        loginCard.add(lblEmail, gbc);
+
+        gbc.gridy = 4;
+        gbc.insets = new Insets(0, 10, 5, 10);
+
+        txtEmail = new JTextField();
+        txtEmail.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtEmail.setEnabled(false);
+
+        txtEmail.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                new EmptyBorder(10, 15, 10, 15)));
+
+        txtEmail.setPreferredSize(new Dimension(0, 45));
+
+        loginCard.add(txtEmail, gbc);
+
+        gbc.gridy = 5;
         gbc.insets = new Insets(5, 10, 5, 10);
         lblApiFeedback = new JLabel("○  Ingrese su cédula para verificar");
         lblApiFeedback.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 11));
         lblApiFeedback.setForeground(TEXT_MUTED);
         loginCard.add(lblApiFeedback, gbc);
 
-        gbc.gridy = 4;
+        gbc.gridy = 6;
         gbc.insets = new Insets(10, 10, 5, 10);
         JLabel lblName = new JLabel("Nombre Completo");
         lblName.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblName.setForeground(TEXT_DARK);
         loginCard.add(lblName, gbc);
 
-        gbc.gridy = 5;
+        gbc.gridy = 7;
         gbc.insets = new Insets(0, 10, 5, 10);
         txtClientName = new JTextField();
         txtClientName.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -430,14 +457,14 @@ public class ClientView extends JFrame {
         txtClientName.setPreferredSize(new Dimension(0, 45));
         loginCard.add(txtClientName, gbc);
 
-        gbc.gridy = 6;
+        gbc.gridy = 8;
         gbc.insets = new Insets(10, 10, 5, 10);
         JLabel lblRole = new JLabel("Rol en la Universidad");
         lblRole.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblRole.setForeground(TEXT_DARK);
         loginCard.add(lblRole, gbc);
 
-        gbc.gridy = 7;
+        gbc.gridy = 9;
         gbc.insets = new Insets(0, 10, 5, 10);
         cbUserRole = new JComboBox<>(new String[]{"ESTUDIANTE", "DOCENTE",
             "DECANATURA"});
@@ -445,7 +472,7 @@ public class ClientView extends JFrame {
         cbUserRole.setPreferredSize(new Dimension(0, 45));
         loginCard.add(cbUserRole, gbc);
 
-        gbc.gridy = 8;
+        gbc.gridy = 10;
         gbc.insets = new Insets(25, 10, 10, 10);
         btnEstablishConnection = new JButton("Ingresar al Sistema");
         btnEstablishConnection.setFont(new Font("Segoe UI", Font.BOLD, 15));
@@ -1310,9 +1337,12 @@ public class ClientView extends JFrame {
             }
 
             if (statusFilter != null && !"Todos".equals(statusFilter)) {
-                if (!status.equalsIgnoreCase(statusFilter)
-                        && !status.equalsIgnoreCase(
-                                statusFilter.replace("O", "A"))) {
+                String normalizado = status
+                        .replace("CONFIRMADA", "CONFIRMADO")
+                        .replace("CANCELADA", "CANCELADO")
+                        .replace("EXPIRADA", "EXPIRADO")
+                        .replace("FINALIZADA", "FINALIZADO");
+                if (!normalizado.equals(statusFilter)) {
                     continue;
                 }
             }
@@ -2155,6 +2185,15 @@ public class ClientView extends JFrame {
                             lblApiFeedback.setForeground(SUCCESS_GREEN);
                             isIdVerified = true;
                             btnEstablishConnection.setEnabled(true);
+                            
+                            correoExistente = EmailStorage.getEmail(cleanId);
+                            if (correoExistente == null) {
+                                txtEmail.setText("");
+                                txtEmail.setEnabled(true);
+                            } else {
+                                txtEmail.setText(correoExistente);
+                                txtEmail.setEnabled(false);
+                            }
                         });
                     } else {
                         SwingUtilities.invokeLater(() -> {
@@ -2393,6 +2432,32 @@ public class ClientView extends JFrame {
             return;
         }
 
+        String emailIngresado = txtEmail.getText().trim();
+
+        if (correoExistente == null) {
+
+            if (emailIngresado.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Debe ingresar un correo institucional.",
+                        "Correo requerido",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            boolean valido = emailIngresado.endsWith("@est.una.ac.cr")
+                    || emailIngresado.endsWith("@una.ac.cr");
+
+            if (!valido) {
+                JOptionPane.showMessageDialog(this,
+                        "Correo institucional inválido.",
+                        "Correo inválido",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            EmailStorage.saveEmail(id, emailIngresado);
+        }
+
         Socket tempSocket = null;
         try {
             tempSocket = new Socket();
@@ -2432,6 +2497,11 @@ public class ClientView extends JFrame {
 
             isConnected = true;
             isWorkerRunning = true;
+
+            if (!emailIngresado.isEmpty() && correoExistente == null) {
+                EmailStorage.saveEmail(txtClientId.getText().trim(),
+                        emailIngresado);
+            }
 
             lblStatusIndicator.setText("");
             lblUserWelcome.setText("Bienvenido(a), " + name);
@@ -2508,6 +2578,9 @@ public class ClientView extends JFrame {
         isConnected = false;
         isIdVerified = false;
 
+        txtEmail.setText("");
+        txtEmail.setEnabled(false);
+        correoExistente = null;
         txtClientId.setText("");
         txtClientId.setEditable(true);
         sessionCheckedId = "";
@@ -2629,6 +2702,9 @@ public class ClientView extends JFrame {
 
         txtClientName.setText("");
         txtClientId.setText("");
+        txtEmail.setText("");
+        txtEmail.setEnabled(false);
+        correoExistente = null;
         lblApiFeedback.setText("○  Ingrese su cédula para verificar");
         lblApiFeedback.setForeground(TEXT_MUTED);
         isIdVerified = false;

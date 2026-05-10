@@ -4,6 +4,8 @@ import Server.ClientHandler;
 import Core.Reservation;
 import Persistence.ReservationPersistence;
 import Concurrency.ReservationTTLThread;
+import Notifications.EmailNotifier;
+import Notifications.EmailStorage;
 import Security.RoleValidator;
 import Server.ServerApp;
 import javax.swing.*;
@@ -1754,6 +1756,15 @@ public class FrmServer extends JFrame {
                 "Servidor cancelo reserva " + resId
                 + " del cliente " + clientId);
 
+        String correoDelCliente = EmailStorage.getEmail(clientId);
+        if (correoDelCliente != null) {
+            new Thread(() -> EmailNotifier.send(
+                    correoDelCliente,
+                    "Reserva cancelada — UNA",
+                    "Su reserva " + resId + " del " + resDate
+                    + " fue cancelada por el administrador."
+            )).start();
+        }
         synchronized (ServerApp.connectedClients) {
             for (ClientHandler handler : ServerApp.connectedClients) {
                 try {
