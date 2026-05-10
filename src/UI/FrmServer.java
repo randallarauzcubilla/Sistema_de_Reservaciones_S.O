@@ -962,6 +962,17 @@ public class FrmServer extends JFrame {
 
         tableModel.setRowCount(0);
         List<Reservation> filtered = getFilteredReservations();
+        filtered.sort((a, b) -> {
+
+            int pa = getStatusPriority(a.getStatus().toString());
+            int pb = getStatusPriority(b.getStatus().toString());
+
+            if (pa != pb) {
+                return Integer.compare(pa, pb);
+            }
+
+            return b.getDate().compareTo(a.getDate());
+        });
         int totalAll = ServerApp.calendar.getAllReservations().size();
         int rowToRestore = -1;
         int rowCounter = 0;
@@ -1002,6 +1013,51 @@ public class FrmServer extends JFrame {
         }
         if (btnCancelReservation != null) {
             btnCancelReservation.setEnabled(canEdit);
+        }
+    }
+
+    /**
+     * Assigns a numeric priority to a reservation status for sorting purposes.
+     *
+     * Lower values represent higher priority in the UI (i.e., they appear first
+     * in ordered lists). This method is used to ensure a consistent ordering of
+     * reservations across the server interface.
+     *
+     * Priority rules: - RESERVADO_TEMPORAL / TEMPORAL → highest priority (0) -
+     * CONFIRMADO / CONFIRMADA → active confirmed reservations (1) - FINALIZADO
+     * / FINALIZADA → completed reservations (2) - CANCELADO / CANCELADA →
+     * cancelled reservations (3) - EXPIRADO / EXPIRADA → expired reservations
+     * (4) - Any unknown status → lowest priority (5)
+     *
+     * @param status the reservation status as a string
+     * @return an integer representing sorting priority (lower = higher
+     * priority)
+     */
+    private int getStatusPriority(String status) {
+        switch (status) {
+
+            case "RESERVADO_TEMPORAL":
+            case "TEMPORAL":
+                return 0;
+
+            case "CONFIRMADO":
+            case "CONFIRMADA":
+                return 1;
+
+            case "FINALIZADO":
+            case "FINALIZADA":
+                return 2;
+
+            case "CANCELADO":
+            case "CANCELADA":
+                return 3;
+
+            case "EXPIRADO":
+            case "EXPIRADA":
+                return 4;
+
+            default:
+                return 5;
         }
     }
 
