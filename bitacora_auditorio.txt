@@ -204,3 +204,27 @@
 [09/05/2026 13:38:38] [SISTEMA         ] HiloTTL iniciado
 [09/05/2026 13:38:42] [CONEXION        ] RANDALL ANEL ARAUZ CUBILLA conectado como ESTUDIANTE
 [09/05/2026 13:40:02] [EDICION-SERVIDOR] Servidor editó reserva 8ef4d543 | cliente: 604940262
+[09/05/2026 14:19:52] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 14:20:06] [SISTEMA         ] HiloTTL iniciado
+[09/05/2026 14:20:22] [CONEXION        ] MARVIN JAFETH TORRES SEQUEIRA conectado como ESTUDIANTE
+[09/05/2026 14:20:41] [DESCONEXION     ] MARVIN JAFETH TORRES SEQUEIRA (DNI: 604950989) desconectado
+[09/05/2026 14:33:31] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 14:33:38] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 14:33:42] [SISTEMA         ] HiloTTL iniciado
+[09/05/2026 14:47:04] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 14:47:12] [SISTEMA         ] HiloTTL iniciado
+[09/05/2026 14:49:43] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 14:49:46] [SISTEMA         ] HiloTTL iniciado
+[09/05/2026 14:54:02] [CONEXION        ] MARVIN JAFETH TORRES SEQUEIRA conectado como ESTUDIANTE
+[09/05/2026 14:56:03] [DESCONEXION     ] MARVIN JAFETH TORRES SEQUEIRA (DNI: 604950989) desconectado
+[09/05/2026 14:58:09] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 14:58:21] [SISTEMA         ] HiloTTL iniciado
+[09/05/2026 15:01:04] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 15:01:39] [SISTEMA         ] HiloTTL iniciado
+[09/05/2026 15:02:00] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 15:02:02] [SISTEMA         ] HiloTTL iniciado
+[09/05/2026 15:02:19] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 15:02:21] [SISTEMA         ] HiloTTL iniciado
+[09/05/2026 15:02:53] [SISTEMA         ] Bitacora inicializada
+[09/05/2026 15:02:58] [SISTEMA         ] HiloTTL iniciado
+[09/05/2026 18:05:40] [SISTEMA         ] Bitacora inicializada

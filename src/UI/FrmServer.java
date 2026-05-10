@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,6 +89,16 @@ public class FrmServer extends JFrame {
 
     // === LOG ===
     private JTextArea txtLogArea;
+
+    // === FILTER ===
+    private JButton btnFilterAll;
+    private JButton btnFilterToday;
+    private JButton btnFilterWeek;
+    private JButton btnFilterMonth;
+    private JTextField txtFilterDate;
+    private JComboBox<String> cmbFilterStatus;
+    private JLabel lblFilterCount;
+    private String activeQuickFilter = "ALL";
 
     /**
      * Initializes the Server Frame. Sets up the window properties,
@@ -408,9 +419,553 @@ public class FrmServer extends JFrame {
         titleWrapper.add(decorativeLine, BorderLayout.SOUTH);
 
         body.add(titleWrapper, BorderLayout.NORTH);
-        body.add(createTablePanel(), BorderLayout.CENTER);
+
+        JPanel contentPanel = new JPanel(new BorderLayout(0, 8));
+        contentPanel.setBackground(BG_MAIN);
+        contentPanel.add(createFilterPanel(), BorderLayout.NORTH);
+        contentPanel.add(createTablePanel(), BorderLayout.CENTER);
+
+        body.add(contentPanel, BorderLayout.CENTER);
         body.add(createLogPanel(), BorderLayout.SOUTH);
         return body;
+    }
+
+    /**
+     * Builds the filter bar panel with quick-date buttons, a specific-date
+     * field, a status dropdown, a clear button, and a result counter. Uses
+     * custom-painted rounded controls and the institutional UNA palette.
+     *
+     * @return A styled JPanel containing all filter controls.
+     */
+    private JPanel createFilterPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 6));
+        wrapper.setBackground(BG_MAIN);
+
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        row.setBackground(BG_CARD);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_CARD, 1),
+                new EmptyBorder(2, 8, 2, 8)));
+
+        // --- Quick filter group ---
+        JLabel lblQuick = new JLabel("Filtro Rápido");
+        lblQuick.setFont(new Font("Dialog", Font.PLAIN, 10));
+        lblQuick.setForeground(TEXT_MUTED);
+        row.add(lblQuick);
+
+        btnFilterAll   = createFilterButton("Todos",       true);
+        btnFilterToday = createFilterButton("Hoy",         false);
+        btnFilterWeek  = createFilterButton("Esta Semana", false);
+        btnFilterMonth = createFilterButton("Este Mes",    false);
+
+        btnFilterAll.addActionListener(e -> setQuickFilter("ALL"));
+        btnFilterToday.addActionListener(e -> setQuickFilter("TODAY"));
+        btnFilterWeek.addActionListener(e -> setQuickFilter("WEEK"));
+        btnFilterMonth.addActionListener(e -> setQuickFilter("MONTH"));
+
+        row.add(btnFilterAll);
+        row.add(btnFilterToday);
+        row.add(btnFilterWeek);
+        row.add(btnFilterMonth);
+
+        // --- Separator ---
+        JSeparator sep = new JSeparator(JSeparator.VERTICAL);
+        sep.setPreferredSize(new Dimension(1, 24));
+        sep.setForeground(BORDER_CARD);
+        row.add(sep);
+
+        // --- Specific date ---
+        JLabel lblDateLbl = new JLabel("Fecha Específica");
+        lblDateLbl.setFont(new Font("Dialog", Font.PLAIN, 10));
+        lblDateLbl.setForeground(TEXT_MUTED);
+        row.add(lblDateLbl);
+
+        JPanel datePickerPanel = buildFilterDatePicker();
+        row.add(datePickerPanel);
+
+        // --- Separator ---
+        JSeparator sep2 = new JSeparator(JSeparator.VERTICAL);
+        sep2.setPreferredSize(new Dimension(1, 24));
+        sep2.setForeground(BORDER_CARD);
+        row.add(sep2);
+
+        // --- Status filter ---
+        JLabel lblEstadoLbl = new JLabel("Estado");
+        lblEstadoLbl.setFont(new Font("Dialog", Font.PLAIN, 10));
+        lblEstadoLbl.setForeground(TEXT_MUTED);
+        row.add(lblEstadoLbl);
+
+        String[] statuses = {
+            "Todos", "CONFIRMADO",
+            "CANCELADO", "EXPIRADO", "FINALIZADO"
+        };
+        cmbFilterStatus = new JComboBox<>(statuses);
+        cmbFilterStatus.setFont(new Font("Dialog", Font.PLAIN, 11));
+        cmbFilterStatus.setBackground(BG_FIELD);
+        cmbFilterStatus.setForeground(TEXT_DARK);
+        cmbFilterStatus.setFocusable(false);
+        cmbFilterStatus.setPreferredSize(new Dimension(155, 30));
+        cmbFilterStatus.setBorder(BorderFactory.createLineBorder(
+                BORDER_CARD, 1));
+        cmbFilterStatus.addActionListener(e -> applyFilters());
+        row.add(cmbFilterStatus);
+
+        // --- Clear button ---
+        JButton btnClear = createButton("↺  Limpiar Filtros", 
+                UNA_RED, false);
+        btnClear.setFont(new Font("Dialog", Font.BOLD, 11));
+        btnClear.addActionListener(e -> clearFilters());
+        row.add(btnClear);
+
+        wrapper.add(row, BorderLayout.CENTER);
+
+        // --- Count label ---
+        lblFilterCount = new JLabel("Mostrando — reservas");
+        lblFilterCount.setFont(new Font("Dialog", Font.PLAIN, 11));
+        lblFilterCount.setForeground(TEXT_MUTED);
+        lblFilterCount.setBorder(new EmptyBorder(4, 4, 0, 0));
+        wrapper.add(lblFilterCount, BorderLayout.SOUTH);
+
+        return wrapper;
+    }
+
+    /**
+     * Creates a date picker control for the filter bar, consisting of a
+     * read-only text field and a red calendar trigger button. Adapted from the
+     * client view's date picker, but allows selecting any date (including past
+     * ones) since the server needs to filter historical reservations.
+     *
+     * @return A styled JPanel acting as a cohesive date input control.
+     */
+    private JPanel buildFilterDatePicker() {
+        JPanel container = new JPanel(new BorderLayout());
+        container.setBackground(BG_FIELD);
+        container.setBorder(BorderFactory.createLineBorder(BORDER_CARD, 1));
+        container.setPreferredSize(new Dimension(160, 30));
+
+        txtFilterDate = new JTextField();
+        txtFilterDate.setFont(new Font("Dialog", Font.PLAIN, 11));
+        txtFilterDate.setBackground(BG_FIELD);
+        txtFilterDate.setForeground(TEXT_MUTED);
+        txtFilterDate.setEditable(false);
+        txtFilterDate.setBorder(new EmptyBorder(4, 10, 4, 6));
+        txtFilterDate.setText("dd/mm/aaaa");
+
+        JButton calBtn = new JButton("▼") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getModel().isRollover()
+                        ? UNA_RED.darker() : UNA_RED);
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        calBtn.setFont(new Font("Dialog", Font.BOLD, 11));
+        calBtn.setForeground(UNA_WHITE);
+        calBtn.setFocusPainted(false);
+        calBtn.setContentAreaFilled(false);
+        calBtn.setOpaque(false);
+        calBtn.setBorder(new EmptyBorder(4, 10, 4, 10));
+        calBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        calBtn.addActionListener(e -> showFilterCalendarPopup(calBtn));
+
+        container.add(txtFilterDate, BorderLayout.CENTER);
+        container.add(calBtn, BorderLayout.EAST);
+        return container;
+    }
+
+    /**
+     * Displays an undecorated modal popup calendar for the filter date picker.
+     * Unlike the client view's calendar, past dates are fully enabled here
+     * since the server needs to query historical reservations. Selecting a day
+     * writes the date in YYYY-MM-DD format to {@code txtFilterDate} and
+     * immediately triggers {@link #applyFilters()}.
+     *
+     * @param parent The component used as anchor for popup positioning.
+     */
+    private void showFilterCalendarPopup(Component parent) {
+        JDialog popup = new JDialog(
+                (java.awt.Frame) SwingUtilities.getWindowAncestor(parent),
+                false);
+        popup.setUndecorated(true);
+
+        final LocalDate[] view = {LocalDate.now()};
+
+        JPanel calPanel = new JPanel(new BorderLayout(0, 8));
+        calPanel.setBackground(BG_CARD);
+        calPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_CARD, 1),
+                new EmptyBorder(12, 12, 12, 12)));
+
+        JPanel navPanel = new JPanel(new BorderLayout());
+        navPanel.setBackground(BG_CARD);
+
+        JLabel monthLabel = new JLabel("", SwingConstants.CENTER);
+        monthLabel.setFont(new Font("Dialog", Font.BOLD, 13));
+        monthLabel.setForeground(TEXT_DARK);
+
+        JButton prevBtn = new JButton("‹");
+        JButton nextBtn = new JButton("›");
+        for (JButton b : new JButton[]{prevBtn, nextBtn}) {
+            b.setFont(new Font("Dialog", Font.BOLD, 16));
+            b.setBackground(BG_CARD);
+            b.setForeground(UNA_RED);
+            b.setFocusPainted(false);
+            b.setBorder(new EmptyBorder(2, 10, 2, 10));
+            b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            b.setOpaque(true);
+            b.setContentAreaFilled(true);
+        }
+
+        navPanel.add(prevBtn, BorderLayout.WEST);
+        navPanel.add(monthLabel, BorderLayout.CENTER);
+        navPanel.add(nextBtn, BorderLayout.EAST);
+
+        JPanel gridPanel = new JPanel(new GridLayout(0, 7, 4, 4));
+        gridPanel.setBackground(BG_CARD);
+
+        Runnable buildGrid = () -> {
+            gridPanel.removeAll();
+            monthLabel.setText(view[0].format(
+                    DateTimeFormatter.ofPattern("MMMM yyyy")));
+
+            for (String d : new String[]{
+                "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}) {
+                JLabel lbl = new JLabel(d, SwingConstants.CENTER);
+                lbl.setFont(new Font("Dialog", Font.BOLD, 10));
+                lbl.setForeground(TEXT_MUTED);
+                gridPanel.add(lbl);
+            }
+
+            LocalDate firstDay = view[0].withDayOfMonth(1);
+            int startCol = firstDay.getDayOfWeek().getValue() % 7;
+            LocalDate today = LocalDate.now();
+
+            for (int i = 0; i < startCol; i++) {
+                gridPanel.add(new JLabel(""));
+            }
+
+            for (int d = 1; d <= view[0].lengthOfMonth(); d++) {
+                LocalDate date = view[0].withDayOfMonth(d);
+                boolean isToday = date.equals(today);
+
+                JButton dayBtn = new JButton(String.valueOf(d)) {
+                    @Override
+                    protected void paintComponent(Graphics g) {
+                        if (isToday) {
+                            Graphics2D g2 = (Graphics2D) g.create();
+                            g2.setRenderingHint(
+                                    RenderingHints.KEY_ANTIALIASING,
+                                    RenderingHints.VALUE_ANTIALIAS_ON);
+                            g2.setColor(getBackground());
+                            g2.fillRoundRect(0, 0,
+                                    getWidth(), getHeight(), 8, 8);
+                            g2.dispose();
+                        }
+                        super.paintComponent(g);
+                    }
+                };
+
+                dayBtn.setFont(new Font("Dialog",
+                        isToday ? Font.BOLD : Font.PLAIN, 11));
+                dayBtn.setFocusPainted(false);
+                dayBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+                if (isToday) {
+                    dayBtn.setBackground(UNA_RED);
+                    dayBtn.setForeground(UNA_WHITE);
+                    dayBtn.setContentAreaFilled(false);
+                    dayBtn.setOpaque(false);
+                    dayBtn.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createLineBorder(
+                                    UNA_RED.darker(), 1),
+                            new EmptyBorder(3, 1, 3, 1)));
+                } else {
+                    dayBtn.setBackground(BG_CARD);
+                    dayBtn.setForeground(TEXT_DARK);
+                    dayBtn.setContentAreaFilled(true);
+                    dayBtn.setOpaque(true);
+                    dayBtn.setBorder(new EmptyBorder(4, 2, 4, 2));
+                }
+
+                dayBtn.addActionListener(ev -> {
+                    String formatted = date.format(
+                            DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                    txtFilterDate.setText(formatted);
+                    txtFilterDate.setForeground(TEXT_DARK);
+                    applyFilters();
+                    popup.dispose();
+                });
+                gridPanel.add(dayBtn);
+            }
+
+            gridPanel.revalidate();
+            gridPanel.repaint();
+        };
+
+        prevBtn.addActionListener(e -> {
+            view[0] = view[0].minusMonths(1);
+            buildGrid.run();
+        });
+        nextBtn.addActionListener(e -> {
+            view[0] = view[0].plusMonths(1);
+            buildGrid.run();
+        });
+
+        buildGrid.run();
+
+        calPanel.add(navPanel, BorderLayout.NORTH);
+        calPanel.add(gridPanel, BorderLayout.CENTER);
+        popup.add(calPanel);
+        popup.pack();
+
+        Point loc = parent.getLocationOnScreen();
+        popup.setLocation(loc.x, loc.y + parent.getHeight());
+        popup.setVisible(true);
+
+        popup.addWindowFocusListener(new java.awt.event.WindowFocusListener() {
+            @Override
+            public void windowGainedFocus(java.awt.event.WindowEvent e) {}
+
+            @Override
+            public void windowLostFocus(java.awt.event.WindowEvent e) {
+                popup.dispose();
+            }
+        });
+    }
+
+    /**
+     * Creates a custom-painted quick-filter toggle button with rounded corners,
+     * anti-aliased rendering, and hover/active states. Uses UNA_RED when active
+     * to stay consistent with the institutional color palette.
+     *
+     * @param text   Button label.
+     * @param active Whether this button starts in its selected state.
+     * @return A fully styled, self-painting JButton.
+     */
+    private JButton createFilterButton(String text, boolean active) {
+        JButton btn = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                        RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+                boolean isActive = Boolean.TRUE.equals(
+                        getClientProperty("active"));
+
+                if (isActive) {
+                    g2.setColor(UNA_RED);
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                    g2.setColor(new Color(0, 0, 0, 20));
+                    g2.fillRoundRect(0, getHeight() / 2,
+                            getWidth(), getHeight() / 2, 20, 20);
+                } else if (getModel().isRollover()) {
+                    g2.setColor(new Color(0xCD, 0x17, 0x19, 18));
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                    g2.setColor(new Color(0xCD, 0x17, 0x19, 60));
+                    g2.setStroke(new BasicStroke(1.2f));
+                    g2.drawRoundRect(0, 0, getWidth() - 1,
+                            getHeight() - 1, 20, 20);
+                } else {
+                    g2.setColor(BG_CARD);
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                    g2.setColor(BORDER_CARD);
+                    g2.setStroke(new BasicStroke(1.0f));
+                    g2.drawRoundRect(0, 0, getWidth() - 1,
+                            getHeight() - 1, 20, 20);
+                }
+
+                FontMetrics fm = g2.getFontMetrics(getFont());
+                String label = getText();
+                int tx = (getWidth() - fm.stringWidth(label)) / 2;
+                int ty = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+                g2.setColor(isActive ? UNA_WHITE : TEXT_DARK);
+                g2.setFont(getFont());
+                g2.drawString(label, tx, ty);
+                g2.dispose();
+            }
+        };
+        btn.putClientProperty("active", active);
+        btn.setFont(new Font("Dialog", Font.BOLD, 11));
+        btn.setFocusPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setOpaque(false);
+        btn.setBorderPainted(false);
+        btn.setBorder(new EmptyBorder(6, 16, 6, 16));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    /**
+     * Applies active or inactive visual state to a quick-filter button by
+     * toggling its "active" client property and repainting.
+     *
+     * @param btn    The button to update.
+     * @param active True for selected (red fill), false for default.
+     */
+    private void applyFilterButtonStyle(JButton btn, boolean active) {
+        btn.putClientProperty("active", active);
+        btn.repaint();
+    }
+
+    /**
+     * Sets the active quick-filter, updates button styles, and refreshes the
+     * table via applyFilters().
+     *
+     * @param filter One of "ALL", "TODAY", "WEEK", "MONTH".
+     */
+    private void setQuickFilter(String filter) {
+        activeQuickFilter = filter;
+        applyFilterButtonStyle(btnFilterAll,   "ALL".equals(filter));
+        applyFilterButtonStyle(btnFilterToday, "TODAY".equals(filter));
+        applyFilterButtonStyle(btnFilterWeek,  "WEEK".equals(filter));
+        applyFilterButtonStyle(btnFilterMonth, "MONTH".equals(filter));
+        applyFilters();
+    }
+
+    /**
+     * Resets all filters to their default state and refreshes the table.
+     */
+    private void clearFilters() {
+        activeQuickFilter = "ALL";
+        applyFilterButtonStyle(btnFilterAll,   true);
+        applyFilterButtonStyle(btnFilterToday, false);
+        applyFilterButtonStyle(btnFilterWeek,  false);
+        applyFilterButtonStyle(btnFilterMonth, false);
+        txtFilterDate.setText("dd/mm/aaaa");
+        txtFilterDate.setForeground(TEXT_MUTED);
+        cmbFilterStatus.setSelectedIndex(0);
+        applyFilters();
+    }
+
+    /**
+     * Returns the subset of all reservations that match the current filter
+     * criteria (quick filter, specific date, and status dropdown).
+     *
+     * @return Filtered list of reservations.
+     */
+    private List<Reservation> getFilteredReservations() {
+        List<Reservation> all = ServerApp.calendar.getAllReservations();
+        List<Reservation> result = new ArrayList<>();
+
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate weekEnd = today.plusDays(6);
+        java.time.LocalDate monthEnd = today.withDayOfMonth(
+                today.lengthOfMonth());
+
+        // Specific date — picker writes yyyy-MM-dd directly
+        String specificDate = null;
+        String rawDate = txtFilterDate != null ? txtFilterDate.getText() : "";
+        if (!rawDate.isBlank() && !rawDate.equals("dd/mm/aaaa")) {
+            specificDate = rawDate; // already in yyyy-MM-dd format
+        }
+
+        String statusFilter = cmbFilterStatus != null
+                ? (String) cmbFilterStatus.getSelectedItem() : "Todos";
+
+        for (Reservation r : all) {
+            // --- Quick filter ---
+            if (!"ALL".equals(activeQuickFilter)) {
+                try {
+                    java.time.LocalDate rDate =
+                            java.time.LocalDate.parse(r.getDate());
+                    boolean passQuick;
+                    if ("TODAY".equals(activeQuickFilter)) {
+                        passQuick = rDate.equals(today);
+                    } else if ("WEEK".equals(activeQuickFilter)) {
+                        passQuick = !rDate.isBefore(today)
+                                && !rDate.isAfter(weekEnd);
+                    } else if ("MONTH".equals(activeQuickFilter)) {
+                        passQuick = !rDate.isBefore(today)
+                                && !rDate.isAfter(monthEnd);
+                    } else {
+                        passQuick = true;
+                    }
+                    if (!passQuick) continue;
+                } catch (Exception ignored) { continue; }
+            }
+
+            // --- Specific date ---
+            if (specificDate != null && !r.getDate().equals(specificDate)) {
+                continue;
+            }
+
+            // --- Status ---
+            if (statusFilter != null && !"Todos".equals(statusFilter)) {
+                if (!r.getStatus().toString().equals(statusFilter)) {
+                    continue;
+                }
+            }
+
+            result.add(r);
+        }
+        return result;
+    }
+
+    /**
+     * Re-populates the reservation table using the current filter state.
+     * Preserves the user's row selection when possible and updates the
+     * result-count label.
+     */
+    private void applyFilters() {
+        if (tableModel == null) return;
+
+        String selectedId = null;
+        int currentRow = calendarTable.getSelectedRow();
+        if (currentRow >= 0) {
+            selectedId = (String) tableModel.getValueAt(currentRow, 0);
+        }
+
+        tableModel.setRowCount(0);
+        List<Reservation> filtered = getFilteredReservations();
+        int totalAll = ServerApp.calendar.getAllReservations().size();
+        int rowToRestore = -1;
+        int rowCounter = 0;
+
+        for (Reservation r : filtered) {
+            tableModel.addRow(new Object[]{
+                r.getReservationId(),
+                r.getClientId(),
+                r.getDate(),
+                r.getStartTime() + "-" + r.getEndTime(),
+                r.getStatus().toString(),
+                r.getAttendeeCount(),
+                r.getEquipment().toString(),
+                r.getStatus() == Reservation.Status.RESERVADO_TEMPORAL
+                        ? r.getRemainingSeconds() + "s" : "—"
+            });
+            if (r.getReservationId().equals(selectedId)) {
+                rowToRestore = rowCounter;
+            }
+            rowCounter++;
+        }
+
+        if (rowToRestore >= 0) {
+            calendarTable.setRowSelectionInterval(rowToRestore, rowToRestore);
+        }
+
+        if (lblFilterCount != null) {
+            lblFilterCount.setText("Mostrando " + filtered.size()
+                    + " de " + totalAll + " reservas");
+        }
+
+        int finalRow = calendarTable.getSelectedRow();
+        boolean hasSelection = finalRow >= 0;
+        boolean canEdit = hasSelection && isServerRunning
+                && !"CANCELADO".equals(tableModel.getValueAt(finalRow, 4));
+        if (btnEditReservation != null) {
+            btnEditReservation.setEnabled(canEdit);
+        }
+        if (btnCancelReservation != null) {
+            btnCancelReservation.setEnabled(canEdit);
+        }
     }
 
     /**
@@ -747,38 +1302,22 @@ public class FrmServer extends JFrame {
             selectedId = (String) tableModel.getValueAt(currentRow, 0);
         }
 
-        tableModel.setRowCount(0);
-        List<Reservation> allReservations = 
-                ServerApp.calendar.getAllReservations();
-        int rowToRestore = -1;
-        int rowCounter = 0;
+        applyFilters();
 
-        for (Reservation r : allReservations) {
-            tableModel.addRow(new Object[]{
-                r.getReservationId(),
-                r.getClientId(),
-                r.getDate(),
-                r.getStartTime() + "-" + r.getEndTime(),
-                r.getStatus().toString(),
-                r.getAttendeeCount(),
-                r.getEquipment().toString(),
-                r.getStatus() == Reservation.Status.RESERVADO_TEMPORAL
-                        ? r.getRemainingSeconds() + "s"
-                        : "—"
-            });
-            if (r.getReservationId().equals(selectedId)) {
-                rowToRestore = rowCounter;
+        // Restore selection if it still exists after filter
+        if (selectedId != null) {
+            for (int i = 0; i < tableModel.getRowCount(); i++) {
+                if (selectedId.equals(tableModel.getValueAt(i, 0))) {
+                    calendarTable.setRowSelectionInterval(i, i);
+                    break;
+                }
             }
-            rowCounter++;
         }
 
-        if (rowToRestore >= 0) {
-            calendarTable.setRowSelectionInterval(rowToRestore, rowToRestore);
-        }
         int finalSelectedRow = calendarTable.getSelectedRow();
         boolean hasSelection = finalSelectedRow >= 0;
         boolean canEdit = hasSelection && isServerRunning
-                && !"CANCELADO".equals(tableModel.getValueAt(finalSelectedRow, 
+                && !"CANCELADO".equals(tableModel.getValueAt(finalSelectedRow,
                         4));
         btnEditReservation.setEnabled(canEdit);
         btnCancelReservation.setEnabled(canEdit);
