@@ -74,6 +74,15 @@ public class ClientView extends JFrame {
     private JLabel lblUserWelcome;
 
     // =========================================================
+    // FILTER
+    // =========================================================
+    private JButton hBtnAll, hBtnToday, hBtnWeek, hBtnMonth;
+    private JTextField hTxtDate;
+    private JComboBox<String> hCmbStatus;
+    private JLabel hLblCount;
+    private String hActiveFilter = "ALL";
+
+    // =========================================================
     // RESERVATION FORM COMPONENTS
     // =========================================================
     private JTextField txtReservationDate;
@@ -528,13 +537,8 @@ public class ClientView extends JFrame {
                 "Mis Reservas",
                 "Ver historial completo",
                 () -> {
-                    if (historyModel != null) {
-                        historyModel.setRowCount(0);
-                        for (Object[] row : allReservationsData) {
-                            historyModel.addRow(java.util.Arrays.copyOf(row,
-                                    row.length));
-                        }
-                    }
+                    applyHistoryFilters();
+
                     CardLayout cl = (CardLayout) pnlMainContainer.getLayout();
                     cl.show(pnlMainContainer, "MY_RESERVATIONS");
                 }
@@ -1011,7 +1015,14 @@ public class ClientView extends JFrame {
         JLabel title = new JLabel("Historial de Reservas");
         title.setFont(new Font("SansSerif", Font.BOLD, 20));
         title.setForeground(ACCENT_RED);
-        panel.add(title, BorderLayout.NORTH);
+
+        JPanel topSection = new JPanel(new BorderLayout(0, 6));
+        topSection.setBackground(BG_WHITE);
+
+        topSection.add(title, BorderLayout.NORTH);
+        topSection.add(buildHistoryFilterPanel(), BorderLayout.CENTER);
+
+        panel.add(topSection, BorderLayout.NORTH);
 
         String[] cols = {
             "ID Reserva", "Fecha", "Horario", "Estado", "Vigencia"
@@ -1123,6 +1134,197 @@ public class ClientView extends JFrame {
         panel.add(bottom, BorderLayout.SOUTH);
 
         return panel;
+    }
+
+    /**
+     * Creates the UI panel for filtering reservation history, including
+     * time-based filters, status dropdown, and reset action. Also shows a
+     * dynamic count of filtered results.
+     */
+    private JPanel buildHistoryFilterPanel() {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        row.setBackground(BG_LIGHT);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                new EmptyBorder(2, 8, 2, 8)));
+
+        hBtnAll = buildHistoryFilterBtn("Todos", true);
+        hBtnToday = buildHistoryFilterBtn("Hoy", false);
+        hBtnWeek = buildHistoryFilterBtn("Esta Semana", false);
+        hBtnMonth = buildHistoryFilterBtn("Este Mes", false);
+
+        hBtnAll.addActionListener(e -> setHistoryFilter("ALL"));
+        hBtnToday.addActionListener(e -> setHistoryFilter("TODAY"));
+        hBtnWeek.addActionListener(e -> setHistoryFilter("WEEK"));
+        hBtnMonth.addActionListener(e -> setHistoryFilter("MONTH"));
+
+        row.add(new JLabel("Filtro:") {
+            {
+                setFont(new Font("Segoe UI", Font.PLAIN, 10));
+                setForeground(TEXT_MUTED);
+            }
+        });
+        row.add(hBtnAll);
+        row.add(hBtnToday);
+        row.add(hBtnWeek);
+        row.add(hBtnMonth);
+
+        hCmbStatus = new JComboBox<>(new String[]{
+            "Todos", "CONFIRMADO", "CANCELADO", "EXPIRADO", "FINALIZADO"
+        });
+        hCmbStatus.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        hCmbStatus.setPreferredSize(new Dimension(140, 28));
+        hCmbStatus.addActionListener(e -> applyHistoryFilters());
+        row.add(new JLabel("Estado:") {
+            {
+                setFont(new Font("Segoe UI", Font.PLAIN, 10));
+                setForeground(TEXT_MUTED);
+            }
+        });
+        row.add(hCmbStatus);
+
+        JButton btnClear = createButton("↺ Limpiar", ACCENT_RED, true);
+        btnClear.addActionListener(e -> {
+            hActiveFilter = "ALL";
+            hBtnAll.putClientProperty("active", true);
+            hBtnAll.repaint();
+            hBtnToday.putClientProperty("active", false);
+            hBtnToday.repaint();
+            hBtnWeek.putClientProperty("active", false);
+            hBtnWeek.repaint();
+            hBtnMonth.putClientProperty("active", false);
+            hBtnMonth.repaint();
+            hCmbStatus.setSelectedIndex(0);
+            applyHistoryFilters();
+        });
+        row.add(btnClear);
+
+        hLblCount = new JLabel("Mostrando — reservas");
+        hLblCount.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        hLblCount.setForeground(TEXT_MUTED);
+
+        JPanel wrapper = new JPanel(new BorderLayout(0, 4));
+        wrapper.setBackground(BG_WHITE);
+        wrapper.add(row, BorderLayout.CENTER);
+        wrapper.add(hLblCount, BorderLayout.SOUTH);
+        return wrapper;
+    }
+
+    /**
+     * Builds a custom rounded button for history filtering with support for
+     * active state styling and hover rendering.
+     */
+    private JButton buildHistoryFilterBtn(String text, boolean active) {
+        JButton btn = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+                boolean isActive = Boolean.TRUE.equals(
+                        getClientProperty("active"));
+                g2.setColor(isActive ? ACCENT_RED
+                        : getModel().isRollover()
+                        ? new Color(205, 23, 25, 20) : BG_WHITE);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                g2.setColor(isActive ? ACCENT_RED : BORDER_COLOR);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
+                FontMetrics fm = g2.getFontMetrics(getFont());
+                g2.setColor(isActive ? Color.WHITE : TEXT_DARK);
+                g2.setFont(getFont());
+                int tx = (getWidth() - fm.stringWidth(getText())) / 2;
+                int ty = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+                g2.drawString(getText(), tx, ty);
+                g2.dispose();
+            }
+        };
+        btn.putClientProperty("active", active);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        btn.setFocusPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        btn.setBorder(new EmptyBorder(5, 14, 5, 14));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    /**
+     * Sets the active history filter and updates the UI state of filter
+     * buttons. Triggers a refresh of the reservation history table.
+     */
+    private void setHistoryFilter(String filter) {
+        hActiveFilter = filter;
+        hBtnAll.putClientProperty("active", "ALL".equals(filter));
+        hBtnToday.putClientProperty("active", "TODAY".equals(filter));
+        hBtnWeek.putClientProperty("active", "WEEK".equals(filter));
+        hBtnMonth.putClientProperty("active", "MONTH".equals(filter));
+        hBtnAll.repaint();
+        hBtnToday.repaint();
+        hBtnWeek.repaint();
+        hBtnMonth.repaint();
+        applyHistoryFilters();
+    }
+
+    /**
+     * Applies active filters to the reservation history table. Filters by date
+     * range (today, week, month) and reservation status, and updates the table
+     * model with the matching results.
+     */
+    private void applyHistoryFilters() {
+        if (historyModel == null) {
+            return;
+        }
+        historyModel.setRowCount(0);
+
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate weekEnd = today.plusDays(6);
+        java.time.LocalDate monthEnd = today.withDayOfMonth(
+                today.lengthOfMonth());
+        String statusFilter = (String) hCmbStatus.getSelectedItem();
+
+        int shown = 0;
+        for (Object[] row : allReservationsData) {
+            String date = row[1].toString();
+            String status = row[3].toString();
+
+            // Quick filter
+            if (!"ALL".equals(hActiveFilter)) {
+                try {
+                    java.time.LocalDate d = java.time.LocalDate.parse(date);
+                    boolean pass;
+                    if ("TODAY".equals(hActiveFilter)) {
+                        pass = d.equals(today);
+                    } else if ("WEEK".equals(hActiveFilter)) {
+                        pass = !d.isBefore(today) && !d.isAfter(weekEnd);
+                    } else if ("MONTH".equals(hActiveFilter)) {
+                        pass = !d.isBefore(today) && !d.isAfter(monthEnd);
+                    } else {
+                        pass = true;
+                    }
+                    if (!pass) {
+                        continue;
+                    }
+                } catch (Exception ignored) {
+                    continue;
+                }
+            }
+
+            if (statusFilter != null && !"Todos".equals(statusFilter)) {
+                if (!status.equalsIgnoreCase(statusFilter)
+                        && !status.equalsIgnoreCase(
+                                statusFilter.replace("O", "A"))) {
+                    continue;
+                }
+            }
+
+            historyModel.addRow(row);
+            shown++;
+        }
+
+        if (hLblCount != null) {
+            hLblCount.setText("Mostrando " + shown
+                    + " de " + allReservationsData.size() + " reservas");
+        }
     }
 
     /**
@@ -2602,7 +2804,7 @@ public class ClientView extends JFrame {
                     }
                 } else if (parts.length >= 2 && "CONFIRMADO".equals(parts[1])) {
 
-                    String id = parts.length >= 3 ? parts[2] : lastReservationId;
+                    String id = parts.length >= 3 ? parts[2] :lastReservationId;
 
                     updateTableStatus(id, "CONFIRMADA");
                     clearTTL(id);
@@ -2615,7 +2817,7 @@ public class ClientView extends JFrame {
                             JOptionPane.INFORMATION_MESSAGE);
                 } else if (parts.length >= 2 && "CANCELADO".equals(parts[1])) {
 
-                    String id = parts.length >= 3 ? parts[2] : lastReservationId;
+                    String id = parts.length >= 3 ? parts[2] :lastReservationId;
 
                     updateTableStatus(id, "CANCELADA");
                     clearTTL(id);
@@ -2660,7 +2862,7 @@ public class ClientView extends JFrame {
                         }
 
                         refreshComboRenderers();
-                        logMessage("Reserva editada: " + oldId + " → " + newId);
+                        logMessage("Reserva editada: " + oldId + " → " +newId);
                     }
                 }
                 break;

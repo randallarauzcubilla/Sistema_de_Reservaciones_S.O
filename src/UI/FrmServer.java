@@ -266,7 +266,7 @@ public class FrmServer extends JFrame {
         btnStart = createButton("▶  Iniciar Servidor", UNA_BLUE, false);
         btnStop = createButton("■  Detener Servidor", UNA_RED, false);
         btnLog = createButton("↻  Actualizar Vista", UNA_GRAY, true);
-        btnEditReservation = createButton("✎  Editar Reserva", 
+        btnEditReservation = createButton("✎  Editar Reserva",
                 COLOR_AMBAR, true);
         btnCancelReservation = createButton("✖  Cancelar Reserva",
                 UNA_RED, true);
@@ -286,7 +286,7 @@ public class FrmServer extends JFrame {
                         .log(Level.SEVERE, null, ex);
             }
         });
-        btnCancelReservation.addActionListener(e -> cancelSelectedReservation());
+        btnCancelReservation.addActionListener(e ->cancelSelectedReservation());
 
         actionPanel.add(btnStart);
         actionPanel.add(btnStop);
@@ -453,10 +453,10 @@ public class FrmServer extends JFrame {
         lblQuick.setForeground(TEXT_MUTED);
         row.add(lblQuick);
 
-        btnFilterAll   = createFilterButton("Todos",       true);
-        btnFilterToday = createFilterButton("Hoy",         false);
-        btnFilterWeek  = createFilterButton("Esta Semana", false);
-        btnFilterMonth = createFilterButton("Este Mes",    false);
+        btnFilterAll = createFilterButton("Todos", true);
+        btnFilterToday = createFilterButton("Hoy", false);
+        btnFilterWeek = createFilterButton("Esta Semana", false);
+        btnFilterMonth = createFilterButton("Este Mes", false);
 
         btnFilterAll.addActionListener(e -> setQuickFilter("ALL"));
         btnFilterToday.addActionListener(e -> setQuickFilter("TODAY"));
@@ -511,7 +511,7 @@ public class FrmServer extends JFrame {
         row.add(cmbFilterStatus);
 
         // --- Clear button ---
-        JButton btnClear = createButton("↺  Limpiar Filtros", 
+        JButton btnClear = createButton("↺  Limpiar Filtros",
                 UNA_RED, false);
         btnClear.setFont(new Font("Dialog", Font.BOLD, 11));
         btnClear.addActionListener(e -> clearFilters());
@@ -729,7 +729,8 @@ public class FrmServer extends JFrame {
 
         popup.addWindowFocusListener(new java.awt.event.WindowFocusListener() {
             @Override
-            public void windowGainedFocus(java.awt.event.WindowEvent e) {}
+            public void windowGainedFocus(java.awt.event.WindowEvent e) {
+            }
 
             @Override
             public void windowLostFocus(java.awt.event.WindowEvent e) {
@@ -743,7 +744,7 @@ public class FrmServer extends JFrame {
      * anti-aliased rendering, and hover/active states. Uses UNA_RED when active
      * to stay consistent with the institutional color palette.
      *
-     * @param text   Button label.
+     * @param text Button label.
      * @param active Whether this button starts in its selected state.
      * @return A fully styled, self-painting JButton.
      */
@@ -807,7 +808,7 @@ public class FrmServer extends JFrame {
      * Applies active or inactive visual state to a quick-filter button by
      * toggling its "active" client property and repainting.
      *
-     * @param btn    The button to update.
+     * @param btn The button to update.
      * @param active True for selected (red fill), false for default.
      */
     private void applyFilterButtonStyle(JButton btn, boolean active) {
@@ -823,9 +824,9 @@ public class FrmServer extends JFrame {
      */
     private void setQuickFilter(String filter) {
         activeQuickFilter = filter;
-        applyFilterButtonStyle(btnFilterAll,   "ALL".equals(filter));
+        applyFilterButtonStyle(btnFilterAll, "ALL".equals(filter));
         applyFilterButtonStyle(btnFilterToday, "TODAY".equals(filter));
-        applyFilterButtonStyle(btnFilterWeek,  "WEEK".equals(filter));
+        applyFilterButtonStyle(btnFilterWeek, "WEEK".equals(filter));
         applyFilterButtonStyle(btnFilterMonth, "MONTH".equals(filter));
         applyFilters();
     }
@@ -835,9 +836,9 @@ public class FrmServer extends JFrame {
      */
     private void clearFilters() {
         activeQuickFilter = "ALL";
-        applyFilterButtonStyle(btnFilterAll,   true);
+        applyFilterButtonStyle(btnFilterAll, true);
         applyFilterButtonStyle(btnFilterToday, false);
-        applyFilterButtonStyle(btnFilterWeek,  false);
+        applyFilterButtonStyle(btnFilterWeek, false);
         applyFilterButtonStyle(btnFilterMonth, false);
         txtFilterDate.setText("dd/mm/aaaa");
         txtFilterDate.setForeground(TEXT_MUTED);
@@ -874,8 +875,8 @@ public class FrmServer extends JFrame {
             // --- Quick filter ---
             if (!"ALL".equals(activeQuickFilter)) {
                 try {
-                    java.time.LocalDate rDate =
-                            java.time.LocalDate.parse(r.getDate());
+                    java.time.LocalDate rDate
+                            = java.time.LocalDate.parse(r.getDate());
                     boolean passQuick;
                     if ("TODAY".equals(activeQuickFilter)) {
                         passQuick = rDate.equals(today);
@@ -888,8 +889,12 @@ public class FrmServer extends JFrame {
                     } else {
                         passQuick = true;
                     }
-                    if (!passQuick) continue;
-                } catch (Exception ignored) { continue; }
+                    if (!passQuick) {
+                        continue;
+                    }
+                } catch (Exception ignored) {
+                    continue;
+                }
             }
 
             // --- Specific date ---
@@ -915,7 +920,9 @@ public class FrmServer extends JFrame {
      * result-count label.
      */
     private void applyFilters() {
-        if (tableModel == null) return;
+        if (tableModel == null) {
+            return;
+        }
 
         String selectedId = null;
         int currentRow = calendarTable.getSelectedRow();
@@ -939,7 +946,7 @@ public class FrmServer extends JFrame {
                 r.getAttendeeCount(),
                 r.getEquipment().toString(),
                 r.getStatus() == Reservation.Status.RESERVADO_TEMPORAL
-                        ? r.getRemainingSeconds() + "s" : "—"
+                ? r.getRemainingSeconds() + "s" : "—"
             });
             if (r.getReservationId().equals(selectedId)) {
                 rowToRestore = rowCounter;
@@ -1058,7 +1065,8 @@ public class FrmServer extends JFrame {
             if (!e.getValueIsAdjusting()) {
                 boolean hasSelection = calendarTable.getSelectedRow() >= 0;
                 btnEditReservation.setEnabled(hasSelection && isServerRunning);
-                btnCancelReservation.setEnabled(hasSelection && isServerRunning);
+                btnCancelReservation.setEnabled(hasSelection &&
+                        isServerRunning);
             }
         });
 
@@ -1376,8 +1384,8 @@ public class FrmServer extends JFrame {
 
         cbEquipment.addActionListener(e -> {
             String sel = (String) cbEquipment.getSelectedItem();
-            spnQty.setEnabled(!"NINGUNO".equals(sel) &&
-                    !"COMPLETO".equals(sel));
+            spnQty.setEnabled(!"NINGUNO".equals(sel)
+                    && !"COMPLETO".equals(sel));
         });
 
         String initialSel = (String) cbEquipment.getSelectedItem();
@@ -1387,7 +1395,7 @@ public class FrmServer extends JFrame {
         Reservation orig = ServerApp.calendar.getReservationById(resId);
         if (orig != null && !orig.getEquipmentQuantities().isEmpty()) {
             Map.Entry<Reservation.Equipment, Integer> first
-                    = orig.getEquipmentQuantities().entrySet().iterator().next();
+                   = orig.getEquipmentQuantities().entrySet().iterator().next();
             spnQty.setValue(first.getValue());
             String currentEquip = tableModel.getValueAt(selectedRow,
                     6).toString();
@@ -1536,7 +1544,7 @@ public class FrmServer extends JFrame {
             if (!newStartFull.equals(oldStartFull)) {
                 JOptionPane.showMessageDialog(this,
                         "No puedes modificar la hora de inicio"
-                                + " de una reserva en curso.",
+                        + " de una reserva en curso.",
                         "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -1598,7 +1606,7 @@ public class FrmServer extends JFrame {
             }
             JOptionPane.showMessageDialog(this, motivo,
                     "No se pudo editar", JOptionPane.ERROR_MESSAGE);
-            
+
             synchronized (ServerApp.connectedClients) {
                 for (ClientHandler handler : ServerApp.connectedClients) {
                     if (handler.getClientId().equals(clientId)) {
@@ -1723,8 +1731,8 @@ public class FrmServer extends JFrame {
         }
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "¿Cancelar la reserva " + resId + " del cliente " + 
-                        clientId + "?",
+                "¿Cancelar la reserva " + resId + " del cliente "
+                + clientId + "?",
                 "Confirmar cancelación", JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
         if (confirm != JOptionPane.YES_OPTION) {
