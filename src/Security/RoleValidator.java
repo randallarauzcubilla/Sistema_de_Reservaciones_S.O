@@ -1,5 +1,6 @@
 package Security;
 
+import Core.AppPaths;
 import java.io.*;
 import java.util.HashSet;
 import java.util.Set;
@@ -13,8 +14,20 @@ import java.util.Set;
  */
 public class RoleValidator {
 
-    private static final String PROFESSORS_FILE = "profesores.txt";
-    private static final String DEANS_FILE = "decanos.txt";
+    private static final String BASE_DIR = AppPaths.getDataDir();
+
+    private static final String PROFESSORS_FILE
+            = BASE_DIR + File.separator + "profesores.txt";
+
+    private static final String DEANS_FILE
+            = BASE_DIR + File.separator + "decanos.txt";
+
+    static {
+        File dir = new File(BASE_DIR);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+    }
 
     private static Set<String> professors = new HashSet<>();
     private static Set<String> deans = new HashSet<>();

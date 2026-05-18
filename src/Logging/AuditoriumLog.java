@@ -1,7 +1,9 @@
 package Logging;
 
 import Concurrency.SynchronizationManager;
+import Core.AppPaths;
 import Core.Reservation;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -19,7 +21,18 @@ public class AuditoriumLog {
 
     private final SynchronizationManager manager;
     private final List<String> entries = new ArrayList<>();
-    private final String logFile = "bitacora_auditorio.txt";
+    private static final String BASE_DIR = AppPaths.getDataDir();
+
+    private final String logFile
+            = BASE_DIR + File.separator + "bitacora_auditorio.txt";
+
+    static {
+        File dir = new File(System.getProperty("user.dir") + File.separator + 
+                "data");
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+}
     private final SimpleDateFormat sdf
             = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 
