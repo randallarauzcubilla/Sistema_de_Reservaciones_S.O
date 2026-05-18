@@ -2504,7 +2504,7 @@ public class ClientView extends JFrame {
      *
      * Workflow: 1. UI Validation: Checks for mandatory ID and handles TSE
      * verification fallback. 2. Socket Initiation: Attempts to establish a TCP
-     * connection to localhost:8000 with a 3-second timeout. 3. Protocol
+     * connection to localhost:9000 with a 3-second timeout. 3. Protocol
      * Handshake: Sends client credentials (Name|ID|Role) and waits for server
      * authorization (e.g., "OK|CONECTADO" or "ERROR|ROL_NO_AUTORIZADO"). 4.
      * State Management: Upon success, initializes I/O streams, updates the UI
@@ -2585,7 +2585,7 @@ public class ClientView extends JFrame {
         Socket tempSocket = null;
         try {
             tempSocket = new Socket();
-            tempSocket.connect(new InetSocketAddress("10.47.240.235", 8000),
+            tempSocket.connect(new InetSocketAddress("localhost", 9000),
                     3000);
 
             DataInputStream tempIn = new DataInputStream(
@@ -2652,7 +2652,7 @@ public class ClientView extends JFrame {
         } catch (ConnectException e) {
             closeSilently(tempSocket);
             JOptionPane.showMessageDialog(this,
-                    "No hay servidor activo en el puerto 8000.\n"
+                    "No hay servidor activo en el puerto 9000.\n"
                     + "¿Está corriendo el servidor?",
                     "Sin conexión", JOptionPane.ERROR_MESSAGE);
         } catch (SocketTimeoutException e) {

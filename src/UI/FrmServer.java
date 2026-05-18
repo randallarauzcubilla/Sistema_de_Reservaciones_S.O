@@ -1222,7 +1222,7 @@ public class FrmServer extends JFrame {
         lblStatusValue.setForeground(COLOR_ACTIVE);
         btnStart.setEnabled(false);
         btnStop.setEnabled(true);
-        log("Servidor INICIADO en puerto 8000.");
+        log("Servidor INICIADO en puerto 9000.");
 
         serverThread = new Thread(() -> {
             RoleValidator.load();
@@ -1241,7 +1241,7 @@ public class FrmServer extends JFrame {
             });
 
             try {
-                activeSocket = new java.net.ServerSocket(8000);
+                activeSocket = new java.net.ServerSocket(9000);
 
                 ReservationTTLThread ttlHandler = new ReservationTTLThread(
                         ServerApp.calendar,
@@ -1251,7 +1251,7 @@ public class FrmServer extends JFrame {
                 ttlHandler.setDaemon(true);
                 ttlHandler.start();
 
-                System.out.println("[SERVIDOR] Puerto 8000 abierto, "
+                System.out.println("[SERVIDOR] Puerto 9000 abierto, "
                         + "esperando clientes...");
 
                 while (!Thread.currentThread().isInterrupted()
