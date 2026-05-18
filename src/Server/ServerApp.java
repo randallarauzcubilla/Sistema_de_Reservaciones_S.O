@@ -6,6 +6,7 @@ import Core.AuditoriumManager;
 import Core.ReservationCalendar;
 import Logging.AuditoriumLog;
 import UI.FrmServer;
+import java.io.File;
 import java.util.*;
 import javax.swing.UnsupportedLookAndFeelException;
 
@@ -56,7 +57,7 @@ public class ServerApp {
      *
      * @param args command line arguments.
      */
-     public static void main(String[] args) {
+    public static void main(String[] args) {
         javax.swing.SwingUtilities.invokeLater(() -> {
             try {
                 javax.swing.UIManager.setLookAndFeel(

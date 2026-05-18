@@ -1,5 +1,6 @@
 package Persistence;
 
+import Core.AppPaths;
 import Core.Reservation;
 import Core.ReservationCalendar;
 import java.io.*;
@@ -17,8 +18,17 @@ public class ReservationPersistence {
     /**
      * File path where reservations are stored.
      */
+    private static final String BASE_DIR = AppPaths.getDataDir();
+
     private static final String FILE
-            = System.getProperty("user.dir") + File.separator + "reservas.dat";
+            = BASE_DIR + File.separator + "reservas.dat";
+
+    static {
+        File dir = new File(BASE_DIR);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+    }
 
     /**
      * Saves all valid reservations from the calendar into a file. Temporary,
