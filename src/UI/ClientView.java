@@ -1,5 +1,6 @@
 package UI;
 
+import Core.AppPaths;
 import Notifications.EmailStorage;
 import javax.swing.*;
 import javax.swing.border.*;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.Properties;
 import javax.imageio.ImageIO;
 
 /**
@@ -2355,21 +2357,72 @@ public class ClientView extends JFrame {
 
             } catch (SocketTimeoutException e) {
                 SwingUtilities.invokeLater(() -> {
-                    lblApiFeedback.setText("⚠  TSE sin respuesta");
+                    lblApiFeedback.setText("⚠  TSE sin respuesta — verifique "
+                            + "manualmente");
                     lblApiFeedback.setForeground(WARNING_AMBER);
+                    isIdVerified = true;
+                    sessionCheckedId = id;
                     btnEstablishConnection.setEnabled(true);
+
+                    if (txtClientName.getText().trim().isEmpty()) {
+                        txtClientName.setText("");
+                        txtClientName.setEditable(true); 
+                    }
+
+                    String correoExistente = EmailStorage.getEmail(id);
+                    if (correoExistente != null) {
+                        txtEmail.setText(correoExistente);
+                        txtEmail.setEnabled(false);
+                        lblApiFeedback.setText(
+                                "⚠  TSE sin respuesta — correo cargado"
+                                        + " desde registro");
+                    } else {
+                        txtEmail.setText("");
+                        txtEmail.setEnabled(true);
+                        txtEmail.requestFocus();
+                    }
                 });
             } catch (UnknownHostException e) {
                 SwingUtilities.invokeLater(() -> {
-                    lblApiFeedback.setText("⚠  Sin internet");
+                    lblApiFeedback.setText("⚠  Sin internet — verifique "
+                            + "manualmente");
                     lblApiFeedback.setForeground(WARNING_AMBER);
+                    isIdVerified = true;
+                    sessionCheckedId = cleanId;
                     btnEstablishConnection.setEnabled(true);
+                    if (txtClientName.getText().trim().isEmpty()) {
+                        txtClientName.setEditable(true);
+                    }
+                    String correoExistente = EmailStorage.getEmail(cleanId);
+                    if (correoExistente != null) {
+                        txtEmail.setText(correoExistente);
+                        txtEmail.setEnabled(false);
+                    } else {
+                        txtEmail.setText("");
+                        txtEmail.setEnabled(true);
+                        txtEmail.requestFocus();
+                    }
                 });
             } catch (IOException e) {
                 SwingUtilities.invokeLater(() -> {
-                    lblApiFeedback.setText("⚠  Error de red");
+                    lblApiFeedback.setText("⚠  Error de red — verifique "
+                            + "manualmente");
                     lblApiFeedback.setForeground(WARNING_AMBER);
+                    isIdVerified = true;
+                    sessionCheckedId = cleanId;
                     btnEstablishConnection.setEnabled(true);
+                    if (txtClientName.getText().trim().isEmpty()) {
+                        txtClientName.setEditable(true);
+                    }
+                    String correoExistente = EmailStorage.getEmail(cleanId);
+                    if (correoExistente != null) {
+                        txtEmail.setText(correoExistente);
+                        txtEmail.setEnabled(false);
+                    } else {
+                        txtEmail.setText("");
+                        txtEmail.setEnabled(true);
+                        txtEmail.requestFocus();
+                    }
                 });
             } finally {
                 if (conn != null) {
@@ -2584,18 +2637,32 @@ public class ClientView extends JFrame {
 
         Socket tempSocket = null;
         try {
+            String host = "localhost";
+            int port = 9000;
+            try {
+                Properties config = new Properties();
+                File serverConfig = new File(
+                        AppPaths.getDataDir() + File.separator + 
+                                "server.properties");
+                if (serverConfig.exists()) {
+                    config.load(new FileReader(serverConfig));
+                    host = config.getProperty("server.host","localhost").trim();
+                    port = Integer.parseInt(
+                            config.getProperty("server.port", "9000").trim());
+                }
+            } catch (Exception ignored) {
+                // Fallback a localhost:9000
+            }
+
             tempSocket = new Socket();
-            tempSocket.connect(new InetSocketAddress("localhost", 9000),
-                    3000);
+            tempSocket.connect(new InetSocketAddress(host, port), 3000);
 
             DataInputStream tempIn = new DataInputStream(
                     new BufferedInputStream(tempSocket.getInputStream()));
             DataOutputStream tempOut = new DataOutputStream(
                     new BufferedOutputStream(tempSocket.getOutputStream()));
-
             tempOut.writeUTF(name + "|" + id + "|" + role);
             tempOut.flush();
-
             tempSocket.setSoTimeout(3000);
             String response = tempIn.readUTF();
             tempSocket.setSoTimeout(0);

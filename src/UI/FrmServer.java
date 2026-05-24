@@ -277,35 +277,35 @@ public class FrmServer extends JFrame {
         btnStop.setEnabled(false);
         btnEditReservation.setEnabled(false);
         btnCancelReservation.setEnabled(false);
-
+        btnClearHistory.setEnabled(false);
         btnStart.addActionListener(e -> startServer());
         btnStop.addActionListener(e -> stopServer());
         btnClearHistory.addActionListener(e -> {
-
             int confirm = JOptionPane.showConfirmDialog(
                     this,
-                    "¿Eliminar permanentemente del sistema\n"
-                    + "todas las reservas CANCELADAS, EXPIRADAS\n"
-                    + "y FINALIZADAS?\n\n"
+                    "¿Eliminar permanentemente:\n"
+                    + "• Reservas CANCELADAS, EXPIRADAS y FINALIZADAS\n"
+                    + "• Bitácora completa del sistema\n\n"
                     + "⚠ Esta acción no se puede deshacer.",
                     "Confirmar limpieza",
                     JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE
-            );
+                    JOptionPane.WARNING_MESSAGE);
 
             if (confirm != JOptionPane.YES_OPTION) {
                 return;
             }
 
             ReservationPersistence.clearInactive(ServerApp.calendar);
+            ServerApp.log.clearLog();
+            txtLogArea.setText("");
 
             synchronized (ServerApp.connectedClients) {
                 for (ClientHandler handler : ServerApp.connectedClients) {
                     handler.send("LIMPIAR_HISTORIAL");
                 }
             }
-
-            log("🗑 Historial limpiado. Solo quedan reservas activas.");
+            
+            log("🗑 Sistema limpiado. Reservas activas y bitácora reiniciada.");
             refreshView();
         });
         btnEditReservation.addActionListener(e -> {
@@ -1222,6 +1222,7 @@ public class FrmServer extends JFrame {
         lblStatusValue.setForeground(COLOR_ACTIVE);
         btnStart.setEnabled(false);
         btnStop.setEnabled(true);
+        btnClearHistory.setEnabled(true);
         log("Servidor INICIADO en puerto 9000.");
 
         serverThread = new Thread(() -> {
@@ -1338,7 +1339,7 @@ public class FrmServer extends JFrame {
         btnStop.setEnabled(false);
         btnEditReservation.setEnabled(false);
         btnCancelReservation.setEnabled(false);
-
+        btnClearHistory.setEnabled(false);
         log("Servidor DETENIDO.");
     }
 
