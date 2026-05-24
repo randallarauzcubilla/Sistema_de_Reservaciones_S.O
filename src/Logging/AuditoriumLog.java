@@ -179,4 +179,25 @@ public class AuditoriumLog {
             System.out.println("[ERROR] Bitacora disco: " + e.getMessage());
         }
     }
+    
+    /**
+     * Clears all log entries and overwrites the log file with an empty file.
+     * Ensures thread-safe access using the log mutex.
+     */
+    public void clearLog() {
+        manager.getLogMutex().lock();
+        try {
+            entries.clear();
+            try (PrintWriter pw = new PrintWriter(
+                    new FileWriter(logFile, false))) {
+                pw.println();
+            } catch (IOException e) {
+                System.out.println("[BITACORA] Error limpiando: "
+                        + e.getMessage());
+            }
+            System.out.println("[BITACORA] Limpiada.");
+        } finally {
+            manager.getLogMutex().unlock();
+        }
+    }
 }
