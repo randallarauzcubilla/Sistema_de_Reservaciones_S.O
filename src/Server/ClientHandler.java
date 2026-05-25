@@ -5,6 +5,7 @@ import Core.AuditoriumManager;
 import Core.Reservation;
 import Core.ReservationCalendar;
 import Logging.AuditoriumLog;
+import Notifications.EmailStorage;
 import Persistence.ReservationPersistence;
 import Security.RoleValidator;
 import java.io.*;
@@ -53,11 +54,16 @@ public class ClientHandler extends Thread {
         this.resources = resources;
         this.ttlQueue = ttlQueue;
         this.log = log;
-
-        String[] parts = clientData.split("\\|", 3);
+        
+        String[] parts = clientData.split("\\|", 4);
         this.clientName = parts[0].trim();
         this.clientId = parts.length >= 2 ? parts[1].trim() : parts[0].trim();
         this.clientRole = parts.length >= 3 ? parts[2].trim() : "ESTUDIANTE";
+        String email = parts.length >= 4 ? parts[3].trim() : "";
+
+        if (!email.isEmpty()) {
+            EmailStorage.saveEmail(clientId, email);
+        }
 
         try {
             inputStream = new DataInputStream(

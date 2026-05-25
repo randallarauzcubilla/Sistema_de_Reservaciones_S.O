@@ -2661,7 +2661,8 @@ public class ClientView extends JFrame {
                     new BufferedInputStream(tempSocket.getInputStream()));
             DataOutputStream tempOut = new DataOutputStream(
                     new BufferedOutputStream(tempSocket.getOutputStream()));
-            tempOut.writeUTF(name + "|" + id + "|" + role);
+            String emailToSend = txtEmail.getText().trim();
+            tempOut.writeUTF(name + "|" + id + "|" + role + "|" + emailToSend);
             tempOut.flush();
             tempSocket.setSoTimeout(3000);
             String response = tempIn.readUTF();
