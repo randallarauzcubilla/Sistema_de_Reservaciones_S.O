@@ -216,7 +216,15 @@ public class Reservation {
     }
 
     public Equipment getEquipment() {
-        return equipment;
+        if (equipmentQuantities.containsKey(Equipment.PROYECTOR)
+                && equipmentQuantities.containsKey(Equipment.MICROFONO)
+                && equipmentQuantities.containsKey(Equipment.SONIDO)) {
+            return Equipment.COMPLETO;
+        }
+        if (!equipmentQuantities.isEmpty()) {
+            return equipmentQuantities.keySet().iterator().next();
+        }
+        return Equipment.NINGUNO;
     }
 
     public Priority getPriority() {
