@@ -124,6 +124,7 @@ public class FrmServer extends JFrame {
                 System.exit(0);
             }
         });
+        startServer();
     }
 
     /**
@@ -1217,6 +1218,10 @@ public class FrmServer extends JFrame {
      * thread.
      */
     private void startServer() {
+        if (isServerRunning) {
+            return;
+        }
+
         isServerRunning = true;
         lblStatusValue.setText("ACTIVO");
         lblStatusValue.setForeground(COLOR_ACTIVE);
